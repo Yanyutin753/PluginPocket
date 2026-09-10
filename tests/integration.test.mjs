@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { execFile, spawn } from 'node:child_process';
 import { once } from 'node:events';
+import { mkdtemp, rm } from 'node:fs/promises';
 import net from 'node:net';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { after, before, test } from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
 import { promisify } from 'node:util';
@@ -23,6 +26,11 @@ before(
     server = spawn('./build/loadout-server', [], {
       env: {
         ...process.env,
+        LOADOUT_DATABASE_URL: '',
+        LOADOUT_REDIS_URL: '',
+        LOADOUT_REDIS_NAMESPACE: '',
+        LOADOUT_ADMIN_USERNAME: '',
+        LOADOUT_ADMIN_PASSWORD: '',
         LOADOUT_ADDR: `127.0.0.1:${port}`,
         LOADOUT_WEB_DIR: 'web/dist',
       },
@@ -117,13 +125,26 @@ test('Go serves built React HTML, SPA routes and their actual assets', async () 
 
 test('real Rust release CLI checks the same Go service', {
   timeout: 10_000,
-}, async () => {
+}, async (t) => {
+  const home = await mkdtemp(join(tmpdir(), 'loadout-doctor-'));
+  t.after(() => rm(home, { recursive: true, force: true }));
   const { stdout, stderr } = await exec(
     './cli/target/release/loadout',
     ['doctor', '--server', origin],
     {
       timeout: 8_000,
-      env: { ...process.env, NO_PROXY: '*' },
+      env: {
+        ...process.env,
+        LOADOUT_DATABASE_URL: '',
+        LOADOUT_REDIS_URL: '',
+        LOADOUT_REDIS_NAMESPACE: '',
+        LOADOUT_ADMIN_USERNAME: '',
+        LOADOUT_ADMIN_PASSWORD: '',
+        HOME: home,
+        USERPROFILE: home,
+        LOADOUT_CONFIG: join(home, 'config.json'),
+        NO_PROXY: '*',
+      },
     },
   );
   assert.match(stdout, /Loadout 0\.1\.0 is reachable/);

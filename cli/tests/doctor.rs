@@ -6,8 +6,12 @@ use std::{
 };
 
 fn cli(args: &[&str]) -> Output {
+    let dir = tempfile::tempdir().unwrap();
     let mut child = Command::new(env!("CARGO_BIN_EXE_loadout"))
         .args(args)
+        .env("HOME", dir.path())
+        .env("USERPROFILE", dir.path())
+        .env_remove("LOADOUT_CONFIG")
         .env("NO_PROXY", "*")
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -176,7 +180,11 @@ fn cli_exposes_only_implemented_commands() {
     assert!(output.status.success());
     let help = String::from_utf8_lossy(&output.stdout);
     assert!(help.contains("doctor"));
-    assert!(!help.contains("login"));
+    for command in [
+        "login", "logout", "status", "apply", "remove", "bridge", "version",
+    ] {
+        assert!(help.contains(command));
+    }
     let output = cli(&["--version"]);
     assert!(String::from_utf8_lossy(&output.stdout).contains("loadout 0.1.0"));
     assert!(!cli(&["login"]).status.success());

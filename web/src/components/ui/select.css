@@ -1,0 +1,132 @@
+@layer theme, base, components, utilities;
+
+@layer components {
+  .select-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    min-height: 44px;
+    min-width: 0;
+    width: 100%;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--input-border);
+    border-radius: 12px;
+    background: var(--card);
+    color: var(--foreground);
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+    transition:
+      background-color 160ms ease,
+      border-color 160ms ease;
+  }
+  .select-leading-icon { display: inline-flex; align-items: center; flex-shrink: 0; color: var(--muted-foreground); }
+  .select-leading-icon svg { width: 16px; height: 16px; }
+  .select-label {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .select-trigger > svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    color: var(--muted-foreground);
+  }
+  .select-trigger[data-placeholder] {
+    color: var(--muted-foreground);
+  }
+  .select-trigger:focus-visible:not([data-pointer-focus]) {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
+    border-color: var(--focus);
+  }
+  .select-trigger:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .select-trigger:enabled:active {
+    background: var(--muted);
+  }
+  .select-content {
+    z-index: 100;
+    min-width: var(--radix-select-trigger-width);
+    max-width: min(32rem, calc(100vw - 24px));
+    max-height: min(22rem, var(--radix-select-content-available-height));
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--card);
+    color: var(--foreground);
+    box-shadow: 0 8px 30px light-dark(rgb(0 0 0 / 14%), rgb(0 0 0 / 40%));
+    font: inherit;
+  }
+  .select-viewport {
+    padding: 5px;
+  }
+  .select-option {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0.65rem 2.25rem 0.65rem 0.85rem;
+    border-radius: 9px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+    cursor: default;
+    outline: none;
+    user-select: none;
+  }
+  .select-option[data-state="checked"] {
+    font-weight: 600;
+  }
+  .select-option[data-highlighted]:not([data-state="checked"]) {
+    background: var(--muted);
+  }
+  .select-content:not([data-pointer-focus]) .select-option:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: -2px;
+  }
+  .select-content[data-pointer-focus] .select-option:focus-visible,
+  .select-trigger[data-pointer-focus]:focus-visible {
+    outline: none;
+  }
+  .select-option[data-disabled] {
+    color: var(--muted-foreground);
+    opacity: 0.5;
+    pointer-events: none;
+  }
+  .select-check {
+    position: absolute;
+    right: 0.65rem;
+    display: flex;
+    align-items: center;
+    color: var(--foreground);
+  }
+  .select-check svg,
+  .select-scroll svg {
+    width: 16px;
+    height: 16px;
+  }
+  .select-scroll {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    background: var(--card);
+    color: var(--muted-foreground);
+  }
+  @media (hover: hover) {
+    .select-trigger:enabled:hover {
+      border-color: var(--foreground);
+      background: var(--muted);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .select-trigger {
+      transition: none;
+    }
+  }
+}

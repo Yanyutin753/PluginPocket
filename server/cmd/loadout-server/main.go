@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/Yanyutin753/loadout/server/internal/config"
-	"github.com/Yanyutin753/loadout/server/internal/httpapi"
 )
 
 var version = "0.1.0"
@@ -37,11 +36,17 @@ func run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+	handler, closeHandler, err := applicationHandler(ctx, cfg, logger)
+	if err != nil {
+		_ = listener.Close()
+		return err
+	}
+	defer closeHandler()
 	server := &http.Server{
-		Handler:           httpapi.New(cfg.WebDir, version),
+		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
-		WriteTimeout:      30 * time.Second,
+		WriteTimeout:      40 * time.Second,
 		IdleTimeout:       60 * time.Second,
 		MaxHeaderBytes:    1 << 20,
 	}

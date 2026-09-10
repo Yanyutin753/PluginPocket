@@ -17,7 +17,11 @@ func TestRunReturnsBindFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer listener.Close()
+	defer func() {
+		if err := listener.Close(); err != nil {
+			t.Errorf("fixture cleanup failed: %v", err)
+		}
+	}()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	if err := run(context.Background(), config.Config{Addr: listener.Addr().String()}, logger); err == nil {
 		t.Fatal("occupied address must fail")
@@ -30,7 +34,9 @@ func TestRunShutsDownAndReleasesListener(t *testing.T) {
 		t.Fatal(err)
 	}
 	addr := listener.Addr().String()
-	listener.Close()
+	if err := listener.Close(); err != nil {
+		t.Errorf("fixture cleanup failed: %v", err)
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	done := make(chan error, 1)
@@ -40,7 +46,9 @@ func TestRunShutsDownAndReleasesListener(t *testing.T) {
 	for {
 		res, err := client.Get("http://" + addr + "/healthz")
 		if err == nil {
-			res.Body.Close()
+			if err := res.Body.Close(); err != nil {
+				t.Errorf("fixture cleanup failed: %v", err)
+			}
 			if res.StatusCode != 200 {
 				t.Fatal(res.StatusCode)
 			}
@@ -64,5 +72,7 @@ func TestRunShutsDownAndReleasesListener(t *testing.T) {
 	if err != nil {
 		t.Fatal("listener not released:", err)
 	}
-	listener.Close()
+	if err := listener.Close(); err != nil {
+		t.Errorf("fixture cleanup failed: %v", err)
+	}
 }

@@ -1,12 +1,64 @@
 services:
+  db:
+    image: postgres:18.6-alpine
+    environment:
+      POSTGRES_DB: loadout
+      POSTGRES_USER: loadout
+      POSTGRES_PASSWORD: ${LOADOUT_DB_PASSWORD:?Set LOADOUT_DB_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:${LOADOUT_DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U loadout -d loadout"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  redis:
+    image: redis:8.10.1-alpine
+    command: [redis-server, --save, "", --appendonly, "no", --maxmemory, 128mb, --maxmemory-policy, allkeys-lru]
+    ports:
+      - "127.0.0.1:${LOADOUT_REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
   loadout:
     build: .
     ports:
       - "127.0.0.1:${LOADOUT_PORT:-8787}:8787"
     environment:
       LOADOUT_ADDR: 0.0.0.0:8787
+      LOADOUT_DATABASE_URL: postgres://loadout:${LOADOUT_DB_PASSWORD}@db:5432/loadout?sslmode=disable
+      LOADOUT_REDIS_URL: redis://redis:6379/0
+      LOADOUT_REDIS_NAMESPACE: ${LOADOUT_REDIS_NAMESPACE:-loadout}
+      LOADOUT_PUBLIC_URL: ${LOADOUT_PUBLIC_URL:-http://localhost:8787}
+      LOADOUT_ENCRYPTION_KEY: ${LOADOUT_ENCRYPTION_KEY:-}
+      LOADOUT_ADMIN_USERNAME: ${LOADOUT_ADMIN_USERNAME:-}
+      LOADOUT_ADMIN_PASSWORD: ${LOADOUT_ADMIN_PASSWORD:-}
+      LOADOUT_INITIAL_CREDITS: ${LOADOUT_INITIAL_CREDITS:-1000}
+      LOADOUT_GITHUB_CLIENT_ID: ${LOADOUT_GITHUB_CLIENT_ID:-}
+      LOADOUT_GITHUB_CLIENT_SECRET: ${LOADOUT_GITHUB_CLIENT_SECRET:-}
+      LOADOUT_GITHUB_ORG: ${LOADOUT_GITHUB_ORG:-}
+      LOADOUT_SMTP_ADDRESS: ${LOADOUT_SMTP_ADDRESS:-}
+      LOADOUT_SMTP_FROM: ${LOADOUT_SMTP_FROM:-}
+      LOADOUT_SMTP_USERNAME: ${LOADOUT_SMTP_USERNAME:-}
+      LOADOUT_SMTP_PASSWORD: ${LOADOUT_SMTP_PASSWORD:-}
+      LOADOUT_SMTP_ALLOW_LOCAL_INSECURE: ${LOADOUT_SMTP_ALLOW_LOCAL_INSECURE:-false}
+      LOADOUT_ALLOW_PRIVATE_UPSTREAMS: ${LOADOUT_ALLOW_PRIVATE_UPSTREAMS:-false}
+      LOADOUT_STDIO_COMMANDS: ${LOADOUT_STDIO_COMMANDS:-}
+    depends_on:
+      redis:
+        condition: service_started
+      db:
+        condition: service_healthy
     init: true
     read_only: true
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     restart: unless-stopped
+volumes:
+  postgres_data:

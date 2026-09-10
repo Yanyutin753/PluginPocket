@@ -6,13 +6,20 @@
 
 | 项 | 值 |
 |---|---|
-| 文档版本 | v0.2（React / Go / Rust；完整 TDD） |
+| 文档版本 | v0.4（产品实现与本机验收完成） |
 | 日期 | 2026-09-10 |
-| 状态 | M0.0 本地 harness 通过；业务功能按里程碑交付 |
-| 仓库规划 | monorepo：`server` + `cli` + `web` |
+| 状态 | 本轮产品功能与本机harness完成；外部/平台边界见验收账本 |
+| 仓库规划 | monorepo：`server` + `cli` + `web` + `desktop` |
 | 开源策略 | open-core（核心网关与 CLI 开源，运营侧保留） |
 
+
+2026-09-11 增加管理员系统配置热更新：注册赠送额度、GitHub/SMTP运行时配置使用PostgreSQL版本化保存，设计见 [系统配置](superpowers/specs/2026-09-11-runtime-settings.md)。
+
+当前实施以 [完整产品设计](superpowers/specs/2026-09-10-product-design.md)、[架构 ADR](adr/0001-product-architecture.md)、[实施计划](superpowers/plans/2026-09-10-product.md) 与 [验收账本](superpowers/plans/2026-09-10-product-execution.md) 为准。用户确认响应式 Web + Tauri 桌面；充值先做兑换码/管理员调账，外部支付保留接口。当前数据模型、Cookie会话与预占账本已同步；详细REST字段以 [API](API.md) / [OpenAPI](openapi.json) 和可执行迁移为准。
+
 ---
+
+本轮界面工作：用户选择 AI 装备工坊视觉全面重设计（[实施记录](superpowers/plans/2026-09-10-workshop-ui.md)），保留中英文与浅色/深色/跟随系统。实施与验证见 [界面重设计](superpowers/plans/2026-09-10-interface-redesign.md)。
 
 ## 目录
 
@@ -155,7 +162,7 @@
 │  └────┬────┘  └──────┬───────┘  └────────────────────────────┘  │
 │       ▼              ▼                                           │
 │  ┌──────────────────────────────┐                                │
-│  │ SQLite(P0) → PostgreSQL(P2)  │                                │
+│  │ PostgreSQL 18.6 + pgx pool  │                                │
 │  │ users/tokens/tools/usage_logs│                                │
 │  └──────────────────────────────┘                                │
 └──────────────────────────────────────────────────────────────────┘
@@ -212,10 +219,10 @@ Codex(用户按 F5 调用 time_now)
   └─ stdio ─► loadout bridge（本地，读 ~/.loadout/config.json）
        └─ HTTP+Bearer ldt_xxx ─► 网关 /mcp (tools/call)
             ├─ 1. 鉴权：ldt_xxx → sha256 → tokens 表 → user
-            ├─ 2. 查余额 < 工具单价？不足 → denied + 记账 + 返回错误
+            ├─ 2. 事务预占钱包额度并写 pending；不足 → denied
             ├─ 3. 转发上游（builtin 直调 / http 上游转发）
-            ├─ 4. 成功：UPDATE users SET balance=balance-N WHERE id=? AND balance>=N（原子）
-            ├─ 5. INSERT usage_logs(user, tool, status, duration, cost)
+            ├─ 4. 成功结算；失败原路退款；不持事务等待上游
+            ├─ 5. usage_logs 与 ledger 保存真实状态、时长、额度
             └─ 6. 返回结果 → bridge → Codex 展示
 ```
 
@@ -236,79 +243,19 @@ Codex(用户按 F5 调用 time_now)
 
 ## 7. 数据模型设计
 
-P0 四张表（SQLite），P1/P2 增量表。所有时间存 UTC ISO 字符串。
+当前为 PostgreSQL 18；可执行 DDL 见 `server/internal/store/migrations/`，不维护 SQLite 兼容层。
 
-```sql
--- 用户
-CREATE TABLE IF NOT EXISTS users (
-  id            INTEGER PRIMARY KEY AUTOINCREMENT,
-  username      TEXT UNIQUE NOT NULL,             -- 3-32 字符
-  password_hash TEXT NOT NULL,                    -- scrypt: salt:hash
-  role          TEXT NOT NULL DEFAULT 'user',     -- user | admin
-  balance       INTEGER NOT NULL DEFAULT 0,       -- 额度（credits）
-  created_at    TEXT NOT NULL DEFAULT (datetime('now'))
-);
+| 表组 | 责任 |
+|---|---|
+| users / sessions / tokens | 账号、可撤销哈希会话、独立网关令牌 |
+| wallets / ledger / usage_logs | 个人与团队钱包、事务流水、预占/结算/退款/恢复 |
+| tools / rate_limits | 加密预设池配置、多实例一致的调用限额 |
+| plans / redemption_codes / orders | 套餐、一次性兑换、真实充值记录 |
+| teams / team_members / team_invites | 席位、owner/member、一次性邀请 |
+| device_authorizations | 设备授权、轮询间隔、一次性令牌领取 |
+| oauth_states / oauth_identities / email_verifications | PKCE/state、提供方身份映射、邮箱验证 |
 
--- 网关令牌（opaque，库中只存 sha256）
-CREATE TABLE IF NOT EXISTS tokens (
-  id           INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id      INTEGER NOT NULL REFERENCES users(id),
-  name         TEXT NOT NULL DEFAULT 'default',   -- 设备备注名
-  token_hash   TEXT UNIQUE NOT NULL,
-  prefix       TEXT NOT NULL,                     -- 前 12 位，用于后台识别
-  created_at   TEXT NOT NULL DEFAULT (datetime('now')),
-  last_used_at TEXT,
-  revoked      INTEGER NOT NULL DEFAULT 0
-);
-
--- 预设工具池
-CREATE TABLE IF NOT EXISTS tools (
-  id             INTEGER PRIMARY KEY AUTOINCREMENT,
-  key            TEXT UNIQUE NOT NULL,            -- 服务标识，如 websearch
-  name           TEXT NOT NULL,                   -- 展示名
-  description    TEXT NOT NULL DEFAULT '',
-  enabled        INTEGER NOT NULL DEFAULT 1,
-  units_per_call INTEGER NOT NULL DEFAULT 1,      -- 计费倍率（credits/次）
-  kind           TEXT NOT NULL,                   -- builtin | http | stdio
-  config         TEXT NOT NULL DEFAULT '{}',      -- JSON：上游连接配置
-  created_at     TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- 调用账单（计量核心表）
-CREATE TABLE IF NOT EXISTS usage_logs (
-  id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id     INTEGER NOT NULL,
-  token_id    INTEGER,                            -- 可空（防御性）
-  tool_key    TEXT NOT NULL,                      -- 冗余存工具名，便于审计
-  status      TEXT NOT NULL,                      -- ok | error | denied
-  duration_ms INTEGER NOT NULL DEFAULT 0,
-  cost        INTEGER NOT NULL DEFAULT 0,         -- 实扣 credits
-  error       TEXT,
-  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
-);
-CREATE INDEX IF NOT EXISTS idx_usage_user   ON usage_logs(user_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_usage_tool   ON usage_logs(tool_key, created_at DESC);
-```
-
-**tools.config 各 kind 的格式：**
-
-```jsonc
-// kind = "builtin"：内置实现，config 为空
-{}
-// kind = "http"：远程 MCP 上游（P0 主力）
-{ "url": "https://upstream.example.com/mcp", "headers": { "Authorization": "Bearer up_key" } }
-// kind = "stdio"：服务端子进程上游（P1，默认禁用，见安全设计）
-{ "command": "npx", "args": ["-y", "some-mcp"], "env": { "K": "V" } }
-```
-
-**P1/P2 增量表（规划，不在 P0 实现）：**
-
-```sql
-CREATE TABLE plans        (id, name, price_cents, monthly_credits, enabled, ...);
-CREATE TABLE topups       (id, user_id, amount, channel, status, created_at, ...);
-CREATE TABLE redeem_codes (id, code_hash, credits, redeemed_by, redeemed_at, ...);
-CREATE TABLE teams        (id, name, owner_id, shared_balance, ...);
-```
+额度使用 bigint，时间使用 timestamptz；主外键、唯一约束和游标索引均随迁移管理。钱包变更和 ledger 必须同一事务，授权在行锁取得后重新查询，避免等待期间角色变化留下旧权限。
 
 ---
 
@@ -316,15 +263,15 @@ CREATE TABLE teams        (id, name, owner_id, shared_balance, ...);
 
 前缀 `/api/v1`。鉴权两轨：
 
-- **网页会话**：`Authorization: Bearer <session-jwt>`（HS256，7 天有效，登录获得）
+- **网页会话**：HttpOnly/SameSite `loadout_session` Cookie，7天；写请求校验 Origin，服务端可立即注销
 - **网关令牌**：`Authorization: Bearer ldt_xxx`（opaque，仅用于 `/mcp` 与 verify）
 
 ### 8.1 认证与账号（网页会话）
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| POST | `/api/v1/auth/register` | `{username, password}` → `{session}`，送初始额度 |
-| POST | `/api/v1/auth/login` | `{username, password}` → `{session}` |
+| POST | `/api/v1/auth/register` | `{username, password}` → `{user}` + session cookie，送配置的初始额度 |
+| POST | `/api/v1/auth/login` | `{username, password}` → `{user}` + session cookie |
 | GET | `/api/v1/account/me` | 用户信息 + 今日/累计用量摘要 |
 | GET | `/api/v1/account/usage?limit=50` | 本人调用明细 |
 
@@ -395,29 +342,18 @@ CREATE TABLE teams        (id, name, owner_id, shared_balance, ...);
 ### 9.4 计量与扣费（核心）
 
 ```
-tools/call 到达
-  ├─ 未知名 → JSON-RPC InvalidParams
-  ├─ 余额 < units_per_call → 记 denied 账 → 返回 isError("额度不足，当前 X 需 Y")
-  ├─ 执行（超时 30s，可按工具覆盖）
-  │    ├─ 成功 → 原子扣费：
-  │    │     UPDATE users SET balance = balance - ? WHERE id = ? AND balance >= ?
-  │    │     changes == 0（并发耗尽）→ 按 denied 记账并返回错误
-  │    │     → 记 ok 账（duration, cost）
-  │    └─ 异常 → 不扣费 → 记 error 账（含错误摘要）
-  └─ 返回上游结果
+tools/call → 当前令牌/成员/工具权限 → 数据库共享限额
+  → 短事务锁钱包、重新验证权限、预占额度、写 pending/ledger
+  → 提交后执行上游（30秒，无自动重放）
+  → 成功结算 ok；失败同事务退款+error；崩溃超期恢复为 recovered
 ```
 
-规则明细：
-
-1. **只有成功调用扣费**；error / denied 一律 cost=0 但必须留痕（防滥用分析 + 对账）。
-2. 扣费用条件 UPDATE 原子完成，不先读后写（并发安全）。
-3. 每次 tools/call 同步写 usage_logs（P0 同库无压力；P2 量大改异步批量）。
-4. `tools/list`、`initialize` 永不扣费。
+初始化与列表免费；error/denied/recovered 的 cost 为0。成功扣费不会在上游执行后才竞争余额。协议层未知工具/无效 JSON 请求由官方 SDK 拒绝，不进入额度账本；已分派工具的禁用、限频、余额不足会留拒绝流水。详细幂等和竞态证据见产品执行记录。
 
 ### 9.5 限流与防滥用（P1）
 
-- 单 token：默认 60 次/分钟（令牌桶，进程内存；P2 Redis）；
-- 单用户：每日调用上限（可按套餐覆盖）；
+- 单 token：默认60次/固定分钟窗（PostgreSQL 原子计数，多实例共享）；
+- 单用户：每日10000次调用上限（当前统一限制）；
 - 超限返回 `isError("rate limited")` 并记 `denied`；
 - coding agent 循环调用是主要滥用形态，超时（30s）+ 限频 + 日上限三道闸。
 
@@ -444,7 +380,7 @@ loadout version
 - `~/.loadout/config.json`（Windows: `%USERPROFILE%\.loadout\config.json`），权限 0600：
   `{ "serverUrl": "https://api.xxx.com", "token": "ldt_xxx", "username": "alice" }`
 - 登录即调 `GET /api/v1/account/verify` 校验，失败提示重新粘贴。
-- P2 增加 device-code 流：`loadout login` 输出网页码，浏览器登录后自动回写 token（更好体验）。
+- 已实现 device-code 流：`loadout login --device` 输出网页码，浏览器登录后自动回写 token（更好体验）。
 
 ### 10.3 配置写入目标（三种客户端）
 
@@ -584,10 +520,10 @@ P0 起使用 React + TypeScript + Vite、Tailwind CSS、shadcn/ui、TanStack Que
 |---|---|
 | 密码泄露 | scrypt 加盐哈希；登录失败不区分"用户不存在/密码错" |
 | 网关 token 泄露 | 库中只存 sha256；明文仅创建时一次；可吊销；多设备分 token |
-| 会话劫持 | JWT HS256 + 服务端 secret（env 注入）；7 天过期 |
+| 会话劫持 | 随机 opaque session 哈希入库、HttpOnly/SameSite/Secure cookie；7天过期，可撤销 |
 | 本地凭证泄露 | `~/.loadout/config.json` 0600；客户端配置零密钥（bridge 模式） |
 | **服务端任意命令执行（stdio 上游）** | stdio 上游 = 服务器上跑任意命令。**P0 默认禁用**；P1 开启时仅 admin 可配 + 命令白名单；生产建议放容器/独立沙箱节点 |
-| 上游凭证泄露 | 上游 key 存 tools.config（P2 加密落盘 + KMS）；后台脱敏展示 |
+| 上游凭证泄露 | AES-GCM 加密 JSONB，部署密钥；管理列表不返回秘密 |
 | 滥用/刷量 | 限频（60/min/token）、日上限、30s 超时、error/denied 全留痕 |
 | SQL 注入 | 全部参数化查询 |
 | 传输 | 生产强制 HTTPS（反代终止 TLS） |
@@ -602,15 +538,15 @@ P0 起使用 React + TypeScript + Vite、Tailwind CSS、shadcn/ui、TanStack Que
 | 层 | 选型 | 理由 |
 |---|---|---|
 | 后端 | 最新稳定 Go、net/http、slog | 标准库优先，原生二进制、明确 HTTP 生命周期 |
-| 数据库 | M0 SQLite → 后续 PostgreSQL | 在持久化任务引入驱动和迁移，基建不伪造数据 |
+| 数据库 | PostgreSQL 18.6 + pgx | 在持久化任务引入驱动和迁移，基建不伪造数据 |
 | MCP | 官方 Go SDK；客户端官方 Rust rmcp | 协议复用官方实现；在 MCP 任务锁定最新稳定版 |
-| 本地端 | 最新稳定 Rust、clap、reqwest、serde | 无 Node 运行依赖；CLI 与未来桌面共享 Rust 逻辑 |
+| 本地端 | 最新稳定 Rust、clap、reqwest、serde | 无 Node 运行依赖；CLI 与 Tauri 共享 Rust 逻辑 |
 | 前端 | 最新稳定 React / TypeScript / Vite | 从第一天使用正式组件工程 |
 | UI | Tailwind CSS / shadcn/ui / Lucide | 语义 token、可访问组件、统一图标 |
 | 状态与契约 | TanStack Query / Zod | 请求生命周期、重试和运行时边界校验 |
 | 测试 | Go testing / cargo test / Vitest / Testing Library / Node 内置测试运行器 | 完整 TDD，真实三端集成 harness |
-| 质量 | Biome / gofmt + go vet / rustfmt + clippy | CI 与本地同一检查入口 |
-| 分发 | 原生二进制；Go + Web 单容器 | CLI 不依赖 npm 安装；后续考虑 Tauri |
+| 质量 | Biome + TypeScript / golangci-lint (含 go vet、staticcheck、errcheck) + gofmt/goimports + go mod tidy / rustfmt + clippy | CI 与本地同一检查入口 |
+| 分发 | 原生二进制；Go + Web 单容器 | CLI 不依赖 npm 安装；Tauri Linux deb |
 
 “最新”指搭建时查询官方发布源的最新稳定版并锁定，更新走 PR 和完整 harness；不跟随 beta/rc，不在 CI 浮动升级。当前具体版本以 manifests、工具链文件和锁文件为准。
 
@@ -631,7 +567,8 @@ loadout/
 │   └── tests/                 # CLI 黑盒行为测试
 ├── web/src/                   # React、API、components/ui、设计 token
 ├── tests/                    # Node 标准库：真实 HTTP / CLI 与进程集成
-├── Makefile                   # dev/test/check/build
+├── Makefile                   # help/dev/up/down/status/check/build
+├── scripts/dev.mjs            # 本地开发后台生命周期；复用 pnpm dev
 ├── pnpm-workspace.yaml        # JS 工具和 Web 工作区
 ├── rust-toolchain.toml        # Rust 固定稳定工具链
 └── .env.example               # 当前已实现的环境变量
@@ -639,11 +576,15 @@ loadout/
 
 M0.0 环境变量：`LOADOUT_ADDR`（默认 `127.0.0.1:8787`）、`LOADOUT_WEB_DIR`（默认 `web/dist`，相对服务工作目录）。数据库、会话密钥和额度配置随对应业务任务增加，不在基建接收无效选项。
 
+本地开发提供 `make dev` 前台启动，以及 `make up/down/restart/status/logs` 后台管理 Go + Vite；CLI 是按需运行的命令，不作为常驻服务。`make ready` 串行执行完整 `check` 后再 `up`。后台状态与日志默认保存在 `.loadout/`，可用 `LOADOUT_RUN_DIR` 隔离；通过本地 Unix socket 控制本次开发进程，不按端口或进程名杀进程。后台启动须等待真实 API 和 Web 就绪，重复启动保持现有实例，启动失败清理已启动的子进程。
+
 ---
+
+根目录开发启动与控制命令通过 Node 原生 `--env-file-if-exists=.env` 加载本地配置，已导出的环境变量优先；独立 Go 二进制仍仅读取环境变量。未配置数据库时只运行健康基建模式，账号页面需要业务数据库才能工作。
 
 ## 16. 里程碑与验收标准
 
-### M0.0 —— 工程基建（当前交付）
+### M0.0 —— 工程基建（已交付）
 
 React 状态页 → Go 健康 API ← Rust doctor；完整 TDD / harness、三套开发技能、固定依赖、CI、容器定义。详细范围见 [基建设计](superpowers/specs/2026-09-10-foundation-design.md)。不等同于下面的 M0 业务验收完成。
 
@@ -663,13 +604,13 @@ React 状态页 → Go 健康 API ← Rust doctor；完整 TDD / harness、三�
 
 ### M1 —— 可运营（2 周）
 
-- 管理后台完整（用户/工具池/全局用量）；HTTP 上游接入 3 个真实工具；限频 + 日上限 + 30s 超时；Docker compose 一键部署；结构化日志；API 文档（OpenAPI）。
+- 管理后台完整（用户/工具池/全局用量）；HTTP 上游管理与真实协议 fixture 验证；运营接入自有供应商凭证；限频 + 日上限 + 30s 超时；Docker compose 一键部署；结构化日志；API 文档（OpenAPI）。
 - 验收：后台新增 http 上游 → 10 秒内对用户可见可调用可计费。
 
 ### M2 —— 商业闭环（2-3 周）
 
-- 支付（Stripe 或国内通道）、套餐、兑换码、充值流水；device-code 登录；React 控制台报表扩展；用量报表导出。
-- 验收：真实支付一单 → 额度到账 → 调用扣减 → 对账平。
+- 套餐、兑换码、管理员充值与流水（用户确认外部支付仅预留接口）；device-code 登录；React 控制台报表扩展；用量报表导出。
+- 验收：管理员充值/兑换一次 → 额度到账 → 调用扣减 → 账本一致；外部实收排除。
 
 ### M3 —— 团队版（3-4 周）
 
@@ -703,7 +644,7 @@ React 状态页 → Go 健康 API ← Rust doctor；完整 TDD / harness、三�
 | 本地一键写配置 | ✅ 三客户端 | ❌ | ❌ | ✅ 但无服务端 | ❌ | ✅ 仅自家 |
 | 计量 + 额度 | ✅ 核心 | ✅ 企业级 | ✅ | ❌ | ❌ | ❌ |
 | 网页管理后台 | ✅ | ✅ 重型 | ✅ | ❌ | ❌ | ✅ |
-| 轻量自部署 | ✅（SQLite 单进程） | ❌（Java+K8s） | ❌ 闭源 | — | ✅ 但无商业层 | ❌ |
+| 轻量自部署 | ✅（Go + PostgreSQL） | ❌（Java+K8s） | ❌ 闭源 | — | ✅ 但无商业层 | ❌ |
 | 国内本地化 | ✅ 规划 | 部分 | ❌ | ❌ | ❌ | ❌ |
 | 开源 | ✅ core MIT | ✅ | ❌ | 部分 | ✅ | ❌ |
 
@@ -737,7 +678,7 @@ React 状态页 → Go 健康 API ← Rust doctor；完整 TDD / harness、三�
 |---|---|
 | credit | 计费单位；1 credit = 1 次成功调用 × 工具倍率 |
 | 网关令牌 / `ldt_` | 用户创建的 opaque 密钥，调 `/mcp` 用，库中只存哈希 |
-| 网页会话 | JWT，网页控制台用，7 天 |
+| 网页会话 | 可撤销 opaque Cookie，网页控制台用，7天 |
 | bridge | CLI 内置本地 stdio→HTTP 转发进程，客户端配置零密钥的关键 |
 | direct 模式 | 客户端直连网关 HTTP 端点的配置方式（高级选项） |
 | 上游 / 预设池 | 网关聚合的 MCP server 集合（builtin/http/stdio 三类） |

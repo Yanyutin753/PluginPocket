@@ -1,6 +1,7 @@
 .git
 .agents
 .impeccable
+.loadout
 node_modules
 **/node_modules
 **/target

@@ -18,11 +18,11 @@
 | 可访问性 | Testing Library + user-event、Biome | 语义与键盘行为自动检查；视觉人工检查 |
 | 格式与 lint | Biome | 本地与 CI 同规则；CI 只检查，不自动改写 |
 
-新增路由时统一评估成熟路由库；首次复杂表单引入表单库。当前只有一个状态页，不安装未使用的路由、全局状态、图表和表单依赖。避免为了“标准化”同时安装多个职责重叠的库。
+路由统一使用已选 React Router，复杂表单使用已选 React Hook Form；具体精确版本以 web/package.json 为准。避免为了“标准化”安装职责重叠或尚未使用的依赖。
 
 ## 目录与依赖方向
 
-`src/components/ui/` 为基础组件，`src/lib/` 为项目级通用能力，业务代码随需求按 `features/<name>/` 聚合。当前 App 和健康 API 文件足以承载单页，不预建空业务目录。UI 不直接耦合 HTTP URL；API 函数处理契约，组件处理展示，Query 管生命周期。
+`src/components/ui/` 为基础组件，`src/lib/` 为项目级通用能力，业务代码随需求按 `features/<name>/` 聚合。当前已有账户、令牌、工具、用量与管理路由；沿用已有聚合方式，不预建空业务目录。UI 不直接耦合 HTTP URL；API 函数处理契约，组件处理展示，Query 管生命周期。
 
 TypeScript strict 开启，禁止 any、无说明 ts-ignore、非空断言掩盖边界错误。组件使用具名 props 类型；只导出被实际使用的 API；不滥用 memo/useMemo/useCallback。
 
@@ -35,7 +35,7 @@ TypeScript strict 开启，禁止 any、无说明 ts-ignore、非空断言掩盖
 
 ## UI 与可访问性
 
-使用用户选择的深色开发者工具风格；具体 token 和布局规则以 DESIGN.md 为准。字号、间距、圆角和焦点统一；className 优先用于布局，颜色走组件变体。按钮用语义 button，链接用 a，不做伪点击 div。表单有 label，异步状态有 live region，图表和状态不能只靠颜色区分。
+使用用户选择的 AI 装备工坊视觉系统（最新 iOS 风格：中性灰白/黄色/薄荷绿，兼容深色）；具体 token 和布局规则以 DESIGN.md 为准。字号、间距、圆角和焦点统一；className 优先用于布局，颜色走组件变体。按钮用语义 button，链接用 a，不做伪点击 div。表单有 label，异步状态有 live region，图表和状态不能只靠颜色区分。
 
 375/390px 窄屏无页面横向溢出，代码块可自身滚动；长中文/URL 可换行。按钮覆盖 hover/focus/disabled/pending，遵循 prefers-reduced-motion。未实现功能以说明呈现，不出现无行为的“登录/创建令牌”按钮。
 
@@ -43,4 +43,21 @@ TypeScript strict 开启，禁止 any、无说明 ts-ignore、非空断言掩盖
 
 先写失败测试再实现：成功契约、网络失败、HTTP 错误、非法 JSON/字段、重试和取消。组件测试使用真实 QueryClient（每例独立），只 mock 网络边界；集成测试使用真实 Go 服务。用 user-event 操作、role/name 查询；禁止源码字符串测试、任意 sleep、snapshot 代替关键断言。
 
-执行：`pnpm --dir web test` → `pnpm --dir web typecheck` → `make check`。CI 保留 harness 日志，不使用浏览器自动化验证；DOM 测试不作为视觉通过证据。具体 RED/GREEN 工作流见 HARNESS.md。
+执行：`pnpm --dir web test` → `pnpm --dir web typecheck` → `make check`。CI 保留 harness 日志；DOM 测试不作为视觉通过证据。本次工坊重设计用户已明确授权浏览器自动化与保留原画的本地抠图，使用实际浏览器检查响应式、计算样式、破图及页面横向溢出，并人工检查桌面、手机及两个主题；这是本任务授权记录，不修改 AGENTS.md。具体 RED/GREEN 工作流见 HARNESS.md。
+
+## 工坊素材与视觉记录
+
+Web 正文优先自托管 Manrope 与中文系统字体；桌面端优先系统 UI 字体；Caveat 只用于局部手写注释，许可见 docs/third-party/Caveat-OFL.txt。七张 workshop WebP 统一使用透明 alpha；详细尺寸、字节和 token 见 DESIGN.md。大屏主内容最大 1360px，业务表格与代码局部滚动，不能导致页面横向越界。
+
+本轮覆盖 18 条路由、浅深两主题、390/1440/2560px 宽度，共 108 张主截图及 20 张手机底部截图。人工审阅与行为测试证据、未完成的最终检查统一记入 docs/superpowers/plans/2026-09-10-workshop-ui.md。
+
+登录采用最大 1040px 的双栏 auth-card，900px 以下隐藏欢迎插画，仅保留表单。登录卡/面板/按钮圆角分别为 32/16/12px。加载页面提供原创 workshop-loading 插画、语义标题与骨架，加载状态来源于真实请求，遵循 reduced-motion。新增素材生成出处和尺寸见 DESIGN.md；本轮最终验证结果由实施记录保存，旧截图统计不替代新页面回归。
+
+## 页面 head 与应用图标
+
+Web 的 index.html 提供中文初始标题、产品描述、theme-color 与 color-scheme，运行时标题随实际语言更新。favicon 从原创 workshop-mark 本地派生：透明 16/32/48px ICO 和 16/32px PNG；apple-touch-icon 为中性底 180px，manifest 引用透明 192/512px PNG（purpose any）。图标以同一角色与安全留白保持一致；不使用生产站绝对 URL。site.webmanifest 只声明应用展示元数据，未注册 Service Worker，不承诺离线可用。
+
+桌面 index.html 使用“Loadout · 本地接入”初始标题与打包内相对 favicon，不硬编码 dark class；主题由现有设置逻辑决定。两端构建后应检查 HTML/manifest 引用都落在各自 dist 内。
+
+
+公共首页为 LandingPage，账户概览使用 /overview。品牌专用 Bricolage 字体只用于字标，许可与原始字体来源随仓库保存。偏好控件前置图标必须在可点击 trigger 内；选中、hover、键盘焦点分别表达。桌面侧栏可收起为图标栏，所有链接保留可访问名称；账号退出在右上菜单，失败可重试。左下账号设置入口是导航，不直接执行退出。

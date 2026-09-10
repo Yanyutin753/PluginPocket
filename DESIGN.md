@@ -1,140 +1,151 @@
 ---
-name: Loadout
-description: 深色开发者工具；真实状态、清晰边界、直接操作。
+name: Loadout · AI 装备工坊
+description: 给你的 AI，装上超能力。
 colors:
-  background: '#0c1017'
-  foreground: '#edf1f7'
-  card: '#131a24'
-  muted: '#1c2532'
-  muted-foreground: '#a3b1c4'
-  border: '#303e51'
-  primary: '#8eb8ff'
-  primary-foreground: '#10213c'
-  success: '#80dcb3'
-  destructive: '#ff9d9d'
+  background: "#f5f5f7"
+  foreground: "#202124"
+  card: "#ffffff"
+  sidebar: "#ededf0"
+  muted: "#e9e9ee"
+  muted-foreground: "#62646c"
+  border: "#d8d9df"
+  input-border: "#868993"
+  primary: "#f7b500"
+  primary-foreground: "#202124"
+  link: "#765000"
+  focus: "#62646c"
+  nav-active: "#ffe5a0"
+  success: "#34674b"
+  destructive: "#b13d32"
 typography:
-  headline:
-    fontFamily: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei",
-      sans-serif
-    fontSize: 1.875rem
-    fontWeight: 600
-    lineHeight: 2.25rem
-    letterSpacing: -0.025em
-  title:
-    fontFamily: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei",
-      sans-serif
-    fontSize: 1.25rem
-    fontWeight: 500
-    lineHeight: 1.75rem
+  display:
+    fontFamily: Manrope, PingFang SC, Microsoft YaHei, system-ui, sans-serif
+    fontSize: clamp(2.35rem, 4.8vw, 4.5rem)
+    fontWeight: 800
+    lineHeight: 1.18
+    letterSpacing: -0.035em
   body:
-    fontFamily: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei",
-      sans-serif
-    fontSize: 1rem
-    fontWeight: 400
-    lineHeight: 1.75rem
-  label:
-    fontFamily: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei",
-      sans-serif
-    fontSize: 0.875rem
-    fontWeight: 400
-    lineHeight: 1.5rem
-  code:
-    fontFamily: ui-monospace, SFMono-Regular, Consolas, monospace
-    fontSize: 0.875rem
-    fontWeight: 400
-    lineHeight: 1.5rem
+    fontFamily: Manrope, PingFang SC, Microsoft YaHei, system-ui, sans-serif
+    fontSize: 14px
+  note:
+    fontFamily: Caveat, cursive
+    fontSize: 25px
+    lineHeight: 0.95
 rounded:
-  md: calc(0.75rem - 4px)
-  lg: 0.75rem
-spacing:
-  '2': 0.5rem
-  '3': 0.75rem
-  '4': 1rem
-  '5': 1.25rem
-  '6': 1.5rem
-  '8': 2rem
-  '10': 2.5rem
-  '14': 3.5rem
+  md: 12px
+  lg: 16px
+  auth: 32px
 components:
   button-primary:
-    backgroundColor: '{colors.primary}'
-    textColor: '{colors.primary-foreground}'
-    rounded: '{rounded.md}'
-    height: 2.25rem
-    padding: 0.5rem 0.75rem
-  button-primary-hover:
-    backgroundColor: 'color-mix(in oklab, #8eb8ff 90%, transparent)'
-  status-panel:
-    backgroundColor: '{colors.card}'
-    textColor: '{colors.foreground}'
-    rounded: '{rounded.lg}'
-    padding: 1.5rem
-  command-block:
-    backgroundColor: '{colors.card}'
-    textColor: '{colors.foreground}'
-    typography: '{typography.code}'
-    rounded: '{rounded.lg}'
-    padding: 1.25rem
-  separator:
-    backgroundColor: '{colors.border}'
-    height: 1px
-    width: 100%
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.primary-foreground}"
+    rounded: "{rounded.md}"
+    height: 44px
+  workshop-action:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.primary-foreground}"
+    height: 58px
 ---
 
 # Design System: Loadout
 
 ## Overview
 
-**Creative North Star: "深色开发者工具"**
+**Creative North Star: "AI 装备工坊"**
 
-采用用户确认的深色开发者工具风格：冷色深灰背景、克制的蓝色动作、清晰文字与边界。中文内容以系统无衬线字体为主，等宽字体用于代码与版本。当前基线从已实现的单页提取，后续页面沿用这些视觉关系。
+用户最新明确要求以更精致的 iOS 风格为优先：中性灰白画布、柔和圆角与清晰层次，保留第一张设计稿（exec-80fb9574）的黄色动作和原创薄荷绿工具箱角色。登录与加载使用更细线条、柔和陶瓷质感的新插画；业务操作保持清晰。此方向替代上一轮奶油/橄榄中性色，不回退到旧金属雕塑或蓝灰开发者工具视觉。
+
+参考 [awesome-design-md / PostHog](https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/posthog/DESIGN.md) 的工程手册与友好插画语言；不复制其商标或角色。运行时 token 的唯一来源是 `web/src/styles.css`，此文档和 sidecar 是当前实现的提取记录。
 
 **Key Characteristics:**
 
-- 深色底面与轻微提亮的容器形成层级。
-- 蓝色标识动作，状态以文字、图标和颜色共同表达。
-- 单一阅读轴、适中密度、窄屏自然排列。
+- 中性灰白画布与薄荷绿原创角色构成品牌识别。
+- 黄色突出主要动作，细分隔线组织真实业务数据。
+- 桌面宽松、手机自然纵排；状态与恢复操作保持可读。
 
 ## Colors
 
-主色为清冷浅蓝，中性色从近黑背景逐步提亮到正文。上方 frontmatter 的值与 `web/src/styles.css` 对应；颜色别名不另建一套色值。
+浅色 token 见 frontmatter；深色通过同名 CSS 变量覆盖，保持相同语义。
 
-- **Primary**：`primary` 用于主要动作、品牌图标、焦点与选择高亮；`primary-foreground` 确保蓝底按钮文字清晰。
-- **Neutral**：`background` 是页面底面，`card` 是状态与命令容器，`muted` 是基础组件的弱强调底面；`foreground` 为正文，`muted-foreground` 为辅助文字，`border` 区分区域。
-- **Status**：`success` 表达已连接；`destructive` 表达连接错误，二者均与不同图标、文字配合。
+| 角色 | 深色 |
+|---|---|
+| background | #161719 |
+| foreground | #f4f4f7 |
+| card | #242528 |
+| sidebar | #1c1d20 |
+| muted | #303136 |
+| muted-foreground | #b2b4bd |
+| border | #42444b |
+| input-border | #858995 |
+| primary | #ffd15c |
+| primary-foreground | #202124 |
+| link | #ffd15c |
+| focus | #ffd15c |
+| nav-active | #4b4326 |
+| success | #a0d6ab |
+| destructive | #ffb3a6 |
+
+主要按钮用深色文字配黄色底；正文链接用独立 link 色，输入边框用 input-border。成功与错误各有语义色。终端固定深中性灰底和浅色文字；三色终端圆点只是装饰。
 
 ## Typography
 
-主标题使用 headline，状态标题使用 title，介绍段落使用 body，辅助说明使用 label，终端命令使用 code。其余小标题沿用正文或较大正文层级；品牌和流程区域标题为 1.125rem。标题不使用等宽体，版本值使用平台等宽字体。介绍和说明最大行宽为 65ch。
+Web 优先使用自托管 Manrope Latin 可变字体（200–800），中文使用 PingFang SC / Microsoft YaHei / system-ui。桌面客户端优先 system-ui / -apple-system / BlinkMacSystemFont / Segoe UI，Manrope 和中文系统字体作为后续回退；两端字体顺序不相同。正文 14px，主视觉标题使用 frontmatter 的响应式规格。代码用 ui-monospace / SFMono-Regular / Consolas，数值使用 tabular-nums。
+
+Caveat 自托管可变字体（400–700）仅用于英文手写注释，`font-display: swap`；手机注释 22px。许可为 SIL Open Font License 1.1，原文位于 [Caveat-OFL.txt](docs/third-party/Caveat-OFL.txt)，来源为官方 google/fonts 的 Caveat；Manrope 许可位于 `web/public/fonts/OFL-Manrope.txt`。不用手写字体承载表单、关键命令或中文正文。
 
 ## Layout
 
-容器最大宽度为 64rem，居中；页面左右留白在窄屏为 1.25rem，从 40rem 断点起为 2rem。主内容垂直留白从 2.5rem 变为 3.5rem，区域间隔为 2.5rem。主间距以 4px 为基数，紧密关联的标题与说明使用较小间隔。
+桌面 900px 起为 228px 侧栏，1280px 起为 248px；侧栏独立滚动。主内容最大 1360px 居中，避免 2560px 大屏把信息拉散。900px 以下使用可展开导航。
 
-当前页面按标题、连接状态、流程说明、CLI 命令排列。状态容器内边距从 1.5rem 变为 2rem；宽屏状态与按钮并排，窄屏垂直排列。三步说明从一列变为三列。版本信息允许断行，代码块独立横向滚动，不扩张页面宽度。具体页面意图见 PRODUCT.md 和表面 brief。
+概览在 1100px 起左右两栏，图文比例 1:1.05；更窄时纵排。接入步骤 640px 起两列，手机一列；账号数据桌面四列、手机两列。登录/注册使用最大 1040px 的统一 auth-card，两栏分别为欢迎场景和表单。900px 以下隐藏欢迎场景，只保留最大 480px 的表单卡；不在手机表单后追加大幅插画。表格和独立代码区可局部横向滚动，页面不横向溢出。
 
 ## Elevation & Depth
 
-当前页面没有投影。深度来自底面与容器的明度差、细边框和留白。主要按钮的键盘焦点使用半透明主色光环；这是交互反馈，不是容器阴影。
+界面以中性色面、1px 边界和留白区分层次。业务正文容器保持克制；登录卡使用 0 16px 64px、前景色 7% 的柔和阴影。彩铅插画保留原画的铅笔阴影；所有工坊素材使用真正透明背景，不再通过 multiply 或矩形纸面模拟融入。
 
 ## Shapes
 
-容器与代码块使用 lg 圆角，按钮使用 md 圆角；边框和分隔线为 1px。Lucide 线条图标遵循既有组件大小：品牌 20px、状态 24px、按钮与终端标识 16px。
+面板 16px 圆角，按钮与输入 12px 圆角，登录外卡 32px、内部欢迎面板 22px 圆角。按钮与输入至少 44px，概览主动作 58px。轮廓清晰，避免装饰性卡片套卡片。
 
 ## Components
 
-- **主要按钮**：消费 shadcn Button 的 default 变体；上方 padding 对应当前含图标按钮，纯文字默认水平内边距为 1rem。字号 0.875rem、字重 500、行高 1.25rem。hover 降低底色不透明度；focus-visible 为 3px 主色半透明环；disabled 降至 50% 不透明度且禁止触发。保留原生按下行为，没有额外缩放动画。
-- **状态容器**：使用 card、细边框、圆角，信息区以 Separator 分隔。polite live region 呈现检查中、已连接、连接错误；检查时禁用按钮并隐藏旧版本，错误提示确认服务启动后重试。
-- **命令块**：与状态容器同色，等宽文字、独立滚动和键盘焦点；通用焦点轮廓为 2px 主色、外偏移 4px。
-- **分隔线**：消费 shadcn Separator，使用 border 颜色，不添加装饰阴影。
+- 原创工具箱品牌图标约 42px；装饰图像使用空 alt，不代替控件标签。
+- 概览主入口创建网关令牌；接入说明为有序列表，命令完整可复制，失败提供恢复。
+- 表单和列表复用 shadcn 基础组件；loading/error/empty/success 均有真实状态。
+- 登录欢迎区使用 workshop-welcome：小白色圆台、手持星星的角色与两块 API/code 积木。
+- 页面加载使用 workshop-loading 连接插头场景、可访问的加载标题与骨架占位；不是定时模拟进度，不掩盖真实错误。
+- 命令区使用深色背景、三色圆点和小角色；手写注释只作局部点缀。
+- 焦点为 2px focus 色轮廓，偏移 4px；状态色过渡约 160ms，reduced-motion 时关闭。
 
-已引入的 Button 还保留官方生成的其他变体 API；当前页面只消费 default，未使用变体不构成新增产品交互。页面尚无表单输入、导航或标签组件，不提前制定它们的视觉规则。交互过渡采用 Tailwind 默认 150ms 与 cubic-bezier(0.4, 0, 0.2, 1)；reduced-motion 时关闭动画和过渡。
+当前生产插画均位于仓库内，尺寸和字节实测：
+
+| 文件 | 尺寸 | bytes | 通道 |
+|---|---|---:|---|
+| web/public/images/workshop-credits.webp | 900×600 | 47,882 | RGBA |
+| web/public/images/workshop-empty.webp | 900×600 | 35,234 | RGBA |
+| web/public/images/workshop-hero.webp | 1200×900 | 292,646 | RGBA |
+| web/public/images/workshop-loading.webp | 800×600 | 44,136 | RGBA |
+| web/public/images/workshop-mark.webp | 256×256 | 17,076 | RGBA |
+| web/public/images/workshop-tools.webp | 900×600 | 55,212 | RGBA |
+| web/public/images/workshop-welcome.webp | 1200×900 | 69,026 | RGBA |
+
+Hero 按 alpha > 8 的完整画迹边界重构画布，保留铅笔阴影，约 3% 最小透明留白，固定 4:3；未裁掉物体。新增 welcome/loading 由内置 ImageGen 参照原创角色生成，统一纯底后经用户授权的本地连通抠图、边缘去底色生成 RGBA；两张均在浅/深底合成检查，未用假棋盘格。生成原件分别为 `exec-c0037a9b-bf86-40dc-b4d8-81be96703760.png` 和 `exec-4a18a3e2-5fa6-4236-a481-5076fcb21357.png`，保留在 Codex generated_images；应用不依赖该本地目录。旧素材不再用于工坊页面。
 
 ## Do's and Don'ts
 
-- Do 使用语义颜色 token，并保持中文、长版本号与代码可读。
-- Do 为键盘焦点保留明显反馈；可横向滚动的命令区域必须可聚焦。
-- Do 同时提供状态文字与图标，错误给出可执行的恢复指引。
-- Don't 把成功、错误或检查中的区别只交给颜色。
-- Don't 用不可操作的导航或虚构业务数据填充当前基建页面。
-- Don't 添加入场动画；交互过渡遵循 reduced-motion。
+- 使用语义颜色、可见键盘焦点和真实业务数据。
+- 插画保持透明 alpha，保留眼睛、高光及彩铅阴影。
+- 错误给出恢复动作，状态同时使用文字和图标。
+- 不回退到旧蓝灰或金属雕塑视觉。
+- 不把关键说明只放进插画或只用颜色表达。
+- 不以 DOM 测试替代桌面和移动端视觉检查。
+
+
+## 2026-09-11 细节更新
+
+- 公共首页 `/` 为产品落地页；工作空间概览位于 `/overview`，登录默认进入概览。
+- 品牌字标自托管 Bricolage Grotesque，750 字重、opsz 48、wdth 100、字距 -0.045em；只作用于 Loadout，正文不变。完整 OFL 与来源见 docs/third-party/BricolageGrotesque.md。
+- 导航操作统一 14px/20px、44px 点击高度。关键操作和选择文字保持单行；小屏允许整组调整位置。
+- 选择框使用共享 Radix Select；前置图标在触发按钮内，图标/文字/箭头间距 8px，两侧内边距 12px（手机偏好控件 8px）。鼠标选中只显示勾选，键盘使用中性焦点线，浅色 #62646c、深色 #b2b4bd。
+- 桌面侧栏支持 228px 展开与 80px 图标模式（更大断点原展开宽度规则保留）；移动端用原导航按钮。右上角账号菜单支持 Escape 返回焦点，左下角另有账号设置入口。
+- 控制台页脚以 1360px 容器与主内容对齐，品牌图标/字标与服务状态入口组成；手机隐藏非关键英文口号。

@@ -1,0 +1,407 @@
+export const en: Record<string, string> = {
+  正在检查服务: 'Checking service',
+  服务已连接: 'Service connected',
+  暂时无法连接: 'Unable to connect',
+  接入控制台: 'Connection console',
+  接入状态: 'Connection status',
+  '让你的 AI 工具，准备就绪。从这里确认 Loadout 服务是否可用。':
+    'Get your AI tools ready. Check whether your Loadout service is available.',
+  服务连接: 'Service connection',
+  '正在与网关建立连接，请稍候。': 'Connecting to the gateway. Please wait.',
+  '网关可以响应请求。你可以继续在本地检查连接。':
+    'The gateway is responding. You can now check your local connection.',
+  '确认服务已启动，再检查连接。':
+    'Start the service, then check the connection again.',
+  检查连接: 'Check connection',
+  服务版本: 'Service version',
+  当前阶段: 'Current stage',
+  服务健康检查: 'Service health check',
+  '一套工具，连接你的工作流': 'One toolkit for your workflow',
+  '先确认服务连接，再进入控制台创建令牌并配置客户端。':
+    'Check the connection, then open the console to create a token and configure your clients.',
+  网页开通: 'Create an account',
+  '注册账号，创建专属网关令牌。':
+    'Register an account and create your gateway token.',
+  本地配置: 'Configure locally',
+  '通过 CLI 登录，一次配置多个 AI 客户端。':
+    'Sign in with the CLI and configure multiple AI clients at once.',
+  工具就绪: 'Tools ready',
+  '使用预设 MCP 工具，统一查看用量与额度。':
+    'Use preset MCP tools and track usage and credits in one place.',
+  在本地检查连接: 'Check your local connection',
+  '安装 CLI 后，用下面的命令检查同一台服务。将地址替换为你的服务地址。':
+    'After installing the CLI, run this command with your service address to check the connection.',
+  'CLI 检查命令': 'CLI connection check command',
+  进入控制台: 'Open console',
+  '调整 {value1} 的余额': 'Adjust balance for {value1}',
+  调整: 'Adjust',
+  完成: 'Done',
+  '正数增加额度，负数扣减额度。每次调整都会保留备注。':
+    'Use a positive amount to add credits or a negative amount to deduct them. Every adjustment keeps a note.',
+  调整额度: 'Credit adjustment',
+  备注: 'Note',
+  '请求结果未确认。重试将沿用本次操作编号，避免重复调账。':
+    'The result is unconfirmed. Retrying uses the same operation ID to prevent duplicate adjustments.',
+  '正在调账…': 'Adjusting…',
+  确认调账: 'Confirm adjustment',
+  关闭: 'Close',
+  没有管理员权限: 'Administrator access required',
+  '请使用有权限的账号访问此页面。':
+    'Sign in with an authorized account to access this page.',
+  用户管理: 'User management',
+  '查看账号与额度，记录每一笔人工调整。':
+    'Review accounts, credits, and every manual adjustment.',
+  停用: 'Disable',
+  启用: 'Enable',
+  '停用后，此账号将无法登录或调用工具。':
+    'Disabling this account prevents sign-in and tool calls.',
+  '此账号将恢复登录和调用权限。':
+    'This account will regain access to sign-in and tool calls.',
+  确认停用: 'Confirm disable',
+  确认启用: 'Confirm enable',
+  取消: 'Cancel',
+  '暂无用户。': 'No users yet.',
+  用户表格: 'Users table',
+  用户: 'User',
+  角色: 'Role',
+  状态: 'Status',
+  可用额度: 'Available credits',
+  操作: 'Actions',
+  管理员: 'Administrator',
+  正常: 'Active',
+  已停用: 'Disabled',
+  调整余额: 'Adjust balance',
+  网关令牌: 'Gateway tokens',
+  '为不同设备分别命名。令牌只显示一次，撤销后立即失效。':
+    'Name tokens for each device. Tokens are shown once and become invalid immediately when revoked.',
+  令牌名称: 'Token name',
+  '例如：工作电脑': 'For example: Work computer',
+  扣费钱包: 'Billing wallet',
+  个人钱包: 'Personal wallet',
+  '正在创建…': 'Creating…',
+  创建令牌: 'Create token',
+  新令牌: 'New token',
+  请立即保存令牌: 'Save your token now',
+  '离开此页面或隐藏后，将无法再次查看明文。':
+    'You cannot view the token again after hiding it or leaving this page.',
+  令牌已复制: 'Token copied',
+  '无法自动复制，请选中令牌并手动复制。':
+    'Could not copy automatically. Select the token and copy it manually.',
+  复制令牌: 'Copy token',
+  '我已保存，隐藏令牌': 'Saved, hide token',
+  还没有令牌: 'No tokens yet',
+  '创建第一个令牌，让本地客户端连接网关。':
+    'Create your first token to connect a local client to the gateway.',
+  已撤销: 'Revoked',
+  '撤销后，使用此令牌的客户端将无法连接。':
+    'Clients using this token will no longer be able to connect.',
+  '正在撤销…': 'Revoking…',
+  确认撤销: 'Confirm revocation',
+  '撤销 {value1}': 'Revoke {value1}',
+  撤销: 'Revoke',
+  全局用量: 'Global usage',
+  团队用量: 'Team usage',
+  用量明细: 'Usage details',
+  '逐次查看工具调用、执行结果与实际消耗。':
+    'Review each tool call, its result, and actual credit usage.',
+  工具筛选: 'Filter by tool',
+  工具标识: 'Tool identifier',
+  结果筛选: 'Filter by result',
+  全部结果: 'All results',
+  成员编号筛选: 'Filter by member ID',
+  应用筛选: 'Apply filters',
+  '正在导出…': 'Exporting…',
+  '导出 CSV': 'Export CSV',
+  '下载 CSV': 'Download CSV',
+  导出下一页: 'Export next page',
+  '每次导出最多 50 条记录。下载当前文件后，可继续导出下一页。':
+    'Each export contains up to 50 records. Download this file, then export the next page.',
+  没有符合筛选条件的记录: 'No matching records',
+  还没有调用记录: 'No tool calls yet',
+  '通过客户端调用工具后，记录会显示在这里。':
+    'Tool calls from your clients will appear here.',
+  调用明细表格: 'Tool call details table',
+  成员编号: 'Member ID',
+  工具: 'Tool',
+  时间: 'Time',
+  结果: 'Result',
+  耗时: 'Duration',
+  额度: 'Credits',
+  重试: 'Retry',
+  '正在加载，请稍候…': 'Loading, please wait…',
+  '正在加载…': 'Loading…',
+  加载更多: 'Load more',
+  额度与账单: 'Billing',
+  兑换码: 'Redemption code',
+  '正在兑换…': 'Redeeming…',
+  兑换额度: 'Redeem code',
+  可用套餐: 'Available plans',
+  '在线支付暂未配置，可使用兑换码或联系管理员补充额度。':
+    'Online payments are not configured. Use a redemption code or contact an administrator to add credits.',
+  '运营方暂未提供套餐，可使用兑换码补充额度。':
+    'No plans are available yet. You can add credits with a redemption code.',
+  '购买 {value1}': 'Buy {value1}',
+  购买: 'Buy',
+  额度流水: 'Credit transactions',
+  '还没有额度变动。': 'No credit transactions yet.',
+  额度流水表格: 'Credit transactions table',
+  变动: 'Change',
+  变动后余额: 'Balance after',
+  订单记录: 'Order history',
+  '还没有订单。': 'No orders yet.',
+  待支付: 'Awaiting payment',
+  已支付: 'Paid',
+  已取消: 'Cancelled',
+  失败: 'Failed',
+  处理中: 'Processing',
+  兑换码管理: 'Redemption codes',
+  '生成单次兑换凭据，查看发放和兑换状态。':
+    'Create single-use codes and track their issue and redemption status.',
+  '正在生成…': 'Generating…',
+  生成兑换码: 'Create redemption code',
+  '还没有生成兑换码。': 'No redemption codes yet.',
+  '已兑换 · {value1}': 'Redeemed · {value1}',
+  未兑换: 'Not redeemed',
+  设备授权: 'Device authorization',
+  '将本地 CLI 或桌面客户端连接到你的账号。':
+    'Connect a local CLI or desktop client to your account.',
+  '请确认下面的授权码与你自己设备上显示的一致。批准后，该设备可以使用你的额度调用工具。':
+    'Check that this code matches the one on your own device. Once approved, the device can use your credits to call tools.',
+  '设备已获授权，请回到本地设备完成登录。':
+    'Device authorized. Return to your device to finish signing in.',
+  设备授权码: 'Device authorization code',
+  '正在批准…': 'Approving…',
+  批准此设备: 'Approve this device',
+  额度审计: 'Credit audit',
+  '按用户、操作人和变动类型核对不可变账本。':
+    'Review the immutable ledger by user, actor, and transaction type.',
+  用户编号: 'User ID',
+  操作人编号: 'Actor ID',
+  变动类型: 'Transaction type',
+  所有类型: 'All types',
+  筛选流水: 'Filter transactions',
+  '没有符合条件的额度变动。': 'No matching credit transactions.',
+  额度审计表格: 'Credit audit table',
+  操作人: 'Actor',
+  钱包: 'Wallet',
+  额度变动: 'Credit change',
+  系统: 'System',
+  '隐藏或离开页面后，不再显示明文。':
+    'The code cannot be viewed again after hiding it or leaving this page.',
+  '有效期至 {value1}。': 'Expires {value1}.',
+  已复制: 'Copied',
+  '无法自动复制，请选中并手动复制。':
+    'Could not copy automatically. Select the code and copy it manually.',
+  编辑套餐: 'Edit plan',
+  添加套餐: 'Create plan',
+  套餐名称: 'Plan name',
+  额度数量: 'Credit amount',
+  '价格（分）': 'Price (minor units)',
+  币种: 'Currency',
+  保存套餐: 'Save plan',
+  套餐管理: 'Plan management',
+  '套餐额度和价格由你定义。付款能力取决于支付服务配置。':
+    'Define plan credits and pricing. Purchases require a configured payment service.',
+  '暂时没有套餐。': 'No plans yet.',
+  在售: 'Available',
+  '编辑 {value1}': 'Edit {value1}',
+  编辑: 'Edit',
+  个人设置: 'Account settings',
+  '管理账号的联系方式和验证状态。':
+    'Manage your contact details and verification status.',
+  邮箱验证: 'Email verification',
+  已验证: 'Verified',
+  未验证: 'Not verified',
+  '还没有绑定邮箱。': 'No email address linked yet.',
+  邮件服务尚未配置: 'Email service is not configured',
+  邮箱地址: 'Email address',
+  '验证邮件已发送，请检查收件箱并点击验证链接。':
+    'Verification email sent. Check your inbox and follow the verification link.',
+  '正在发送…': 'Sending…',
+  发送验证邮件: 'Send verification email',
+  团队设置: 'Team settings',
+  团队显示名称: 'Team display name',
+  团队席位: 'Team seats',
+  保存团队设置: 'Save team settings',
+  新的所有者: 'New owner',
+  请选择成员: 'Choose a member',
+  '交接后你将成为普通成员，团队管理权限会立即转移。':
+    'You will become a regular member. Team administration will transfer immediately.',
+  确认交接: 'Confirm transfer',
+  交接所有权: 'Transfer ownership',
+  我的团队: 'My teams',
+  '让成员共用额度，并按成员查看工具调用。':
+    'Share credits with your team and review tool calls by member.',
+  新建团队: 'New team',
+  团队名称: 'Team name',
+  创建团队: 'Create team',
+  接受邀请: 'Accept invitation',
+  团队邀请码: 'Team invitation code',
+  加入团队: 'Join team',
+  还没有加入团队: 'You have not joined any teams',
+  所有者: 'Owner',
+  成员: 'Member',
+  '管理 {value1}': 'Manage {value1}',
+  管理团队: 'Manage team',
+  转入团队额度: 'Fund team wallet',
+  '从你的个人钱包转入。转入后由团队共同使用。':
+    'Transfer credits from your personal wallet for the team to share.',
+  再转入一笔: 'Transfer more credits',
+  转入额度: 'Credits to transfer',
+  '重试沿用同一个操作编号，避免重复转入。':
+    'Retrying uses the same operation ID to prevent duplicate transfers.',
+  确认转入: 'Confirm transfer',
+  所有团队: 'All teams',
+  团队用量与导出: 'Team usage and export',
+  创建团队令牌: 'Create team token',
+  邀请成员: 'Invite members',
+  '邀请码仅可使用一次，24 小时内有效。':
+    'Invitation codes can be used once and expire after 24 hours.',
+  生成邀请: 'Create invitation',
+  邀请码: 'Invitation code',
+  团队所有权已交接: 'Team ownership transferred',
+  团队成员: 'Team members',
+  '（你）': ' (you)',
+  '退出后将无法访问团队额度与工具。最后一位所有者需要先交接团队。':
+    'Leaving removes access to team credits and tools. The last owner must transfer ownership first.',
+  '移除后，此成员的团队令牌将无法使用团队额度。':
+    "This member's team tokens will no longer be able to use team credits.",
+  确认退出: 'Confirm leave',
+  确认移除: 'Confirm removal',
+  退出团队: 'Leave team',
+  '移除 {value1}': 'Remove {value1}',
+  移除成员: 'Remove member',
+  团队不存在: 'Team not found',
+  编辑工具: 'Edit tool',
+  添加工具: 'Add tool',
+  '例如：echo': 'For example: echo',
+  显示名称: 'Display name',
+  工具说明: 'Tool description',
+  连接方式: 'Connection type',
+  内置工具: 'Built-in tool',
+  'HTTP 服务': 'HTTP service',
+  本地进程: 'Local process',
+  每次调用额度: 'Credits per call',
+  '参数 Schema（JSON）': 'Input schema (JSON)',
+  '连接配置（JSON）': 'Connection configuration (JSON)',
+  '填写 url 和可选 headers。服务地址必须符合服务器允许的网络范围。':
+    "Enter a URL and optional headers. The address must be within the server's allowed network range.",
+  '填写已获服务器允许的 command 别名，以及可选 args、env。':
+    'Enter an allowed command alias and optional args and env.',
+  ' 留空保留原配置；已保存的凭证不会回传。':
+    ' Leave blank to keep the existing configuration. Saved credentials are never returned.',
+  ' 凭证仅用于运营方预设池。':
+    " Credentials are only for the operator's preset pool.",
+  '正在保存…': 'Saving…',
+  保存工具: 'Save tool',
+  工具管理: 'Tool management',
+  工具目录: 'Tool catalog',
+  '维护预设工具、连接配置和每次调用的额度。':
+    'Manage preset tools, connection settings, and credits per call.',
+  '查看当前可用的工具与调用成本。':
+    'Explore available tools and their per-call costs.',
+  '暂时没有工具。': 'No tools available',
+  可用: 'Available',
+  ' · 已配置连接': ' · Connection configured',
+  '查看参数 {value1}': 'View parameters for {value1}',
+  查看参数: 'View parameters',
+  调用汇总: 'Usage summary',
+  汇总时间范围: 'Summary period',
+  '近 7 天（UTC）': 'Last 7 days (UTC)',
+  '今天（UTC）': 'Today (UTC)',
+  '当前时间范围暂无调用。': 'No calls in this period.',
+  调用汇总表格: 'Usage summary table',
+  调用次数: 'Calls',
+  消耗额度: 'Credits used',
+  失败次数: 'Failures',
+  验证邮箱: 'Verify email',
+  '确认将此邮箱用于你的 Loadout 账号。':
+    'Confirm this email address for your Loadout account.',
+  '邮箱验证成功。': 'Email verified successfully.',
+  '正在验证…': 'Verifying…',
+  确认验证邮箱: 'Confirm email verification',
+  '验证链接不完整，请重新发送验证邮件。':
+    'The verification link is incomplete. Request another verification email.',
+  返回个人设置: 'Back to account settings',
+  '余额已调整，当前额度 {credits}。':
+    'Balance updated. Available credits: {credits}.',
+  '创建于 {created} · 最近使用：{lastUsed}':
+    'Created {created} · Last used: {lastUsed}',
+  '请立即保存{title}': 'Save your {title} now',
+  '复制{title}': 'Copy {title}',
+  '我已保存，隐藏{title}': 'Saved, hide {title}',
+  '当前可用额度 {credits}。兑换额度、查看变动记录和订单。':
+    'Available credits: {credits}. Redeem credits and review transactions and orders.',
+  '已兑换 {credits} 额度，当前余额 {balance}。':
+    'Redeemed {credits} credits. Current balance: {balance}.',
+  '订单 #{id}': 'Order #{id}',
+  '{role} · 共享额度 {credits} · {seats} 个席位':
+    '{role} · Shared credits: {credits} · Seats: {seats}',
+  '已转入 {credits} 额度。': 'Transferred {credits} credits.',
+  '共享额度 {credits} · {seats} 个席位':
+    'Shared credits: {credits} · Seats: {seats}',
+  成功: 'Successful',
+  已恢复额度: 'Credits restored',
+  已拒绝: 'Denied',
+  注册额度: 'Registration credits',
+  人工调账: 'Manual adjustment',
+  团队转账: 'Team transfer',
+  调用预占: 'Call reservation',
+  失败退款: 'Failure refund',
+  异常恢复: 'Recovery',
+  从未使用: 'Never used',
+  '在线支付暂未配置，请使用兑换码或联系管理员补充额度。':
+    'Online payments are not configured. Use a redemption code or contact an administrator to add credits.',
+  '请求过于频繁，请稍后再试。': 'Too many requests. Please try again later.',
+  '邮件服务暂时不可用，请稍后再试。':
+    'Email service is temporarily unavailable. Please try again later.',
+  '验证链接无效或已过期，请重新发送验证邮件。':
+    'This verification link is invalid or expired. Request another verification email.',
+  '此兑换码已经使用，请核对额度流水。':
+    'This code has already been redeemed. Check your credit transactions.',
+  'JSON 格式不正确，请检查参数或连接配置后重试。':
+    'Invalid JSON. Check the parameters or connection configuration and try again.',
+  '授权码已过期，请在设备上重新发起登录。':
+    'This authorization code has expired. Start sign-in again on your device.',
+  '授权码无效或已使用，请在设备上重新发起登录。':
+    'This authorization code is invalid or already used. Start sign-in again on your device.',
+  '团队席位已满，请联系团队所有者。':
+    'All team seats are occupied. Contact the team owner.',
+  '邀请码已过期，请联系团队所有者生成新邀请。':
+    'This invitation has expired. Ask the team owner for a new invitation.',
+  '邀请码已经使用，请联系团队所有者生成新邀请。':
+    'This invitation has already been used. Ask the team owner for a new invitation.',
+  '你已经是此团队成员。': 'You are already a member of this team.',
+  '团队席位已满，请联系团队所有者调整席位。':
+    'All team seats are occupied. Ask the team owner to add seats.',
+  '席位数量不能少于现有成员人数。':
+    'The seat limit cannot be lower than the current number of members.',
+  '不能停用当前登录账号。':
+    'You cannot disable the account you are signed in with.',
+  '需要保留至少一位启用的管理员。':
+    'At least one administrator must remain active.',
+  '设备授权码无效、已使用或已过期，请在设备上重新发起登录。':
+    'This device code is invalid, already used, or expired. Start sign-in again on your device.',
+  '最后一位团队所有者不能退出。': 'The last team owner cannot leave the team.',
+  '用户名已被使用，请换一个用户名。':
+    'This username is taken. Choose another username.',
+  '用户名或密码不正确，请重新输入。':
+    'Incorrect username or password. Please try again.',
+  '提交内容不符合要求，请检查后重试。':
+    'Check the submitted information and try again.',
+  '没有权限执行此操作。': 'You do not have permission to perform this action.',
+  '请求来源未通过验证，请从本站重新打开页面。':
+    'The request origin could not be verified. Reopen the page from this site.',
+  '可用额度不足，请检查调整金额。':
+    'Not enough credits. Check the adjustment amount.',
+  '这次操作与已有记录冲突，请关闭表单并重新核对。':
+    'This operation conflicts with an existing record. Close the form and review the details.',
+  '记录已不存在，请刷新后重试。':
+    'This record no longer exists. Refresh and try again.',
+  '登录已过期，请重新登录。': 'Your session has expired. Sign in again.',
+  '暂时无法完成请求，请检查连接后重试。':
+    'Unable to complete the request. Check your connection and try again.',
+  '{credits} 额度': '{credits} credits',
+  '{credits} 额度 · {price}': '{credits} credits · {price}',
+  '{credits} 额度 / 次': '{credits} credits / call',
+};

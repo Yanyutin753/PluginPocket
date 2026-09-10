@@ -6,7 +6,7 @@ import {
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import App from './App';
+import App from './HealthPage';
 
 function renderApp() {
   const client = new QueryClient({
@@ -79,6 +79,10 @@ describe('gateway connection', () => {
       expect(screen.getByRole('status')).toHaveTextContent('服务已连接'),
     );
     const user = userEvent.setup();
+    await user.tab();
+    expect(screen.getByRole('combobox', { name: '语言' })).toHaveFocus();
+    await user.tab();
+    expect(screen.getByRole('combobox', { name: '外观' })).toHaveFocus();
     await user.tab();
     expect(screen.getByRole('button', { name: '检查连接' })).toHaveFocus();
     await user.tab();

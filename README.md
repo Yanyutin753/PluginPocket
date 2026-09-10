@@ -2,7 +2,7 @@
 
 > **Your AI, fully loaded.** — 登录即武装的 MCP 订阅网关
 
-[![Status](https://img.shields.io/badge/status-foundation-blue)](docs/PLAN.md)
+[![Status](https://img.shields.io/badge/status-implemented-blue)](docs/PLAN.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ## 这是什么
@@ -14,8 +14,8 @@
 ```bash
 # 1. 网页注册，复制一个令牌
 # 2. 本地两条命令：
-loadout login --server https://api.example.com
-loadout apply        # 自动检测 Codex / Claude Code / Cursor 并写入配置
+loadout login --device --server https://api.example.com
+loadout apply --clients codex,claude,cursor
 ```
 
 重启客户端，整套预设好的 MCP 工具直接可用。所有调用经过统一网关：**鉴权、计量、扣额度，后台看得见每一次调用**。
@@ -40,19 +40,13 @@ Codex / Claude Code / Cursor
 
 ## 项目状态
 
-当前已搭建 **M0.0 工程基建**：React 深色控制台、Go 健康 API、Rust `doctor`，配套完整 TDD harness。上面的 `login / apply / bridge` 是后续 M0 目标，目前尚未实现。
+已实现账号与令牌、MCP 网关、事务额度账本、运营后台、套餐/兑换码、团队共享额度、设备授权、Rust CLI 和 Tauri 桌面端。React 控制台采用 AI 装备工坊风格，支持中英文与浅色/深色/跟随系统，手机、平板和桌面共用 API 与功能。GitHub/邮箱通过部署配置启用；外部支付按本次范围仅预留接口，不产生虚假支付成功。
 
-本地验证与未执行范围见 [基建执行记录](docs/superpowers/plans/2026-09-10-foundation-execution.md)。
+管理员可在“系统配置”页热更新注册赠送额度、GitHub登录与SMTP邮件参数；配置版本化保存在数据库，密钥加密且不回显，多个副本的新请求同时生效。部署连接和安全边界参数仍由环境变量管理，详见 [环境配置](docs/ENVIRONMENT.md)。
 
-完整产品与技术方案见 **[docs/PLAN.md](docs/PLAN.md)**。Loadout 不托管用户第三方账号的 OAuth token，上游凭证仅属于运营方自有预设池。
+数据库选用 PostgreSQL 18.6，Redis 8.10.1 提供跨副本工具元数据缓存与刷新通知（故障可降级），Go 模块化单体通过官方 MCP SDK 接入 HTTP 或受控 stdio 上游；Rust CLI 与桌面共享接入逻辑。性能依据和完整验收状态见 [产品执行记录](docs/superpowers/plans/2026-09-10-product-execution.md)，架构取舍见 [ADR](docs/adr/0001-product-architecture.md)。
 
-| 里程碑 | 内容 | 状态 |
-|---|---|---|
-| M0.0 | React / Go / Rust 基建、技能、TDD harness 与 CI | ✅ 本地 harness 通过 |
-| M0 | 端到端骨架：网关 + 控制台 + CLI，冒烟全绿 | ⏳ 后续业务开发 |
-| M1 | 可运营：上游管理、限流防滥用、Docker 部署 | ⏳ |
-| M2 | 商业闭环：支付、套餐、兑换码 | ⏳ |
-| M3 | 团队版：席位、共享额度、审计 | ⏳ |
+2026-09-11 本机完整 `make check` 通过：真实 PostgreSQL / Redis、多实例与故障恢复、Web79项组件及生产/开发真实HTTP旅程、CLI与桌面bridge、Linux deb构建。新增分布式与Redis验收见 [执行记录](docs/superpowers/plans/2026-09-10-development-e2e-execution.md)；此前数据库基准结果见产品执行记录。真实屏幕/托盘、macOS/Windows 桌面和外部 OAuth/邮件服务仍需在对应环境验收；CI 配置不等于远程 CI 已通过。
 
 ## 快速开始
 
@@ -64,10 +58,38 @@ cd loadout
 # 使用 nvm 时：nvm install 26.8.2 && nvm use 26.8.2
 npm install -g pnpm@12.3.4
 make setup
-make dev
 ```
 
-打开 **http://127.0.0.1:5173**，页面通过 Vite 代理访问 **http://127.0.0.1:8787** 的 Go 服务。Ctrl+C 停止开发进程。
+集群部署见 [部署规范与Kubernetes模板](docs/CLUSTER.md)，全部参数见 [环境变量参考](docs/ENVIRONMENT.md)。
+
+先完成 [数据库与部署配置](docs/DEPLOYMENT.md)，导出 `LOADOUT_DATABASE_URL`、`LOADOUT_PUBLIC_URL` 和管理员配置。Linux 桌面构建还需要 GTK/WebKit 开发库，具体命令见该文档。未配置数据库只提供基建健康检查，无法使用账号业务。配置完成后执行 `make up`；若已用旧配置启动，执行 `make restart`。
+
+打开 **http://127.0.0.1:5173**，页面通过 Vite 代理访问 **http://127.0.0.1:8787** 的 Go 服务。使用 `make down` 关闭后台服务；偏好前台日志时运行 `make dev`，Ctrl+C 关闭。
+
+日常命令（直接运行 `make` 或 `make help` 查看全部入口）：
+
+常用入口也已注册在根 `package.json`，可以从 IDE 的 **NPM Scripts** 面板点击运行，或执行 `pnpm run ready`、`pnpm run up`、`pnpm run down`、`pnpm run check`。`npm run <名称>` 同样可用；依赖仍统一用 pnpm 安装。分组命令使用冒号，例如 `pnpm run test:server`、`pnpm run docker:up`，内部复用 Makefile。
+
+| 命令 | 用途 |
+|---|---|
+| `make ready` | 一键完整检查，成功后后台启动全部开发服务 |
+| `make up` / `make start` | 后台启动 Go + Vite，等待 HTTP 就绪；已启动时保持现有实例 |
+| `make down` / `make stop` | 关闭后台开发进程，保留日志 |
+| `make restart` | 先关闭再启动，重新构建 Go；服务端代码或启动配置变更后使用 |
+| `make status` | 查看后台运行状态和地址 |
+| `make logs` | 跟随最近 100 行及新日志；Ctrl+C 仅退出日志查看 |
+| `make dev` | 前台运行 Go + Vite，Ctrl+C 停止 |
+| `make test` | Go / Rust / React 三端测试 |
+| `make check` / `make test-all` | 真实测试数据库、四端检查/构建、跨进程产品流程；需 Linux 桌面依赖 |
+| `make db-up` / `make redis-up` | 启动 PostgreSQL / Redis，供源码开发 |
+| `make test-product` / `make benchmark` | 真实产品调用链 / 同钱包事务基准 |
+| `make build-desktop` | 构建 Linux Tauri deb |
+| `make build` | 构建三端生产产物 |
+| `make docker-up` / `make docker-down` / `make docker-logs` | Compose 容器的后台启动、关闭和日志 |
+
+后台命令在 Linux 验证，使用 Unix socket 和进程组（Windows 请用 WSL）。日志和控制 socket 存在 `.loadout/`，已被 Git 忽略；`make down` 仅管理 `make up` 启动的实例。`make dev` 的前台实例用 Ctrl+C 停止，容器用 `make docker-down` 停止。Rust CLI 按需运行，无需常驻进程。
+
+`make up` 启动失败返回非零退出码，并清理本次创建的进程；详细日志见 `.loadout/dev.log`。若主管进程被强制终止导致 socket 无法连接，先检查旧服务是否仍在运行，确认停止后再删除 `.loadout/dev.sock` 并重新 `make up`。不要在服务运行时删除控制文件。
 
 ```sh
 # 完整检查：静态检查、三端测试、构建、进程生命周期与真实 HTTP/CLI 集成
@@ -82,17 +104,26 @@ make build
 # 打开 http://127.0.0.1:8787
 
 # 或使用容器
-docker compose up --build
+make docker-up
 ```
 
-`.env.example` 列出当前支持的配置。Go 从环境变量读取，**不自动加载 `.env`**；Compose 自动读取 `.env` 中的端口配置。开发端口冲突时设置 `LOADOUT_ADDR`、`LOADOUT_API_ORIGIN`、`LOADOUT_DEV_PORT`；集成测试自动分配临时端口。
+`.env.example` 列出当前支持的配置。根目录的 `make up/dev/restart/status/logs` 及对应 NPM Scripts 自动读取 `.env`，已导出的环境变量优先。Go 二进制本身不加载 `.env`；单独运行 Go 或 `make check` 时需显式导出配置。Compose 也会读取 `.env`。开发端口冲突时设置 `LOADOUT_ADDR`、`LOADOUT_API_ORIGIN`、`LOADOUT_DEV_PORT`；集成测试自动分配临时端口。
+
+```sh
+# 后台模式在未设置 LOADOUT_API_ORIGIN 时，会从 LOADOUT_ADDR 推导代理地址
+LOADOUT_ADDR=127.0.0.1:8887 LOADOUT_DEV_PORT=5183 make up
+make status
+make down
+```
+
+需要隔离多套开发实例时设置不同的 `LOADOUT_RUN_DIR` 和端口；后续 `down/status/logs` 使用同一 `LOADOUT_RUN_DIR`。`make ready` 与 `make restart` 在单个目标内部保证顺序；请勿用 `make -j check up` 或 `make -j down up` 代替它们。
 
 ## 开发规范
 
 - **[AGENTS.md](AGENTS.md)**：强制 Superpowers + Ponytail + Impeccable，以及 RED → GREEN → REFACTOR → 完整验证。
 - **[docs/HARNESS.md](docs/HARNESS.md)**：测试分层、可执行命令、隔离、证据与失败排查。
 - **[docs/FRONTEND.md](docs/FRONTEND.md)**：React、shadcn/ui、Tailwind、Query、Zod、无障碍与前端测试规范。
-- **[PRODUCT.md](PRODUCT.md) / [DESIGN.md](DESIGN.md)**：产品事实、用户选定的深色风格与设计 token。
+- **[PRODUCT.md](PRODUCT.md) / [DESIGN.md](DESIGN.md)**：产品事实、用户选定的装备工坊风格与设计 token。
 - **[.agents/README.md](.agents/README.md)**：三套技能的安装位置、官方来源、固定提交和许可证；随仓库共享。
 
 方案与实现不一致时，先改 [docs/PLAN.md](docs/PLAN.md) 再改代码。

@@ -1,0 +1,137 @@
+.loading-skeleton {
+  width: 100%;
+  min-width: 0;
+}
+.loading-skeleton--page {
+  max-width: 960px;
+  margin-inline: auto;
+  padding-block: clamp(1rem, 3vw, 3rem);
+}
+.loading-preparation {
+  display: grid;
+  justify-items: center;
+  gap: 0.75rem;
+  padding: 0 0.5rem 2rem;
+  text-align: center;
+}
+.loading-preparation img {
+  display: block;
+  width: 160px;
+  max-width: 100%;
+  height: auto;
+}
+.loading-preparation h2 {
+  margin: 0;
+  color: var(--foreground);
+  font-size: clamp(1.25rem, 2vw, 1.75rem);
+  font-weight: 650;
+  letter-spacing: -0.025em;
+  line-height: 1.4;
+}
+.loading-preparation p {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 14px;
+  line-height: 1.7;
+}
+.loading-skeleton--page > section {
+  max-width: 760px;
+  margin-inline: auto;
+}
+.skeleton-shapes {
+  display: grid;
+  gap: 1.5rem;
+  animation: skeleton-pulse 1600ms ease-in-out infinite;
+}
+.skeleton-shapes span {
+  display: block;
+  background: var(--muted);
+  border-radius: 6px;
+}
+.skeleton-heading {
+  width: min(18rem, 65%);
+  height: 2rem;
+}
+.skeleton-rows {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  overflow: hidden;
+}
+.skeleton-row {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.25rem;
+}
+.skeleton-row + .skeleton-row {
+  border-top: 1px solid var(--border);
+}
+.loading-skeleton--page .skeleton-row {
+  padding-block: 1rem;
+}
+.skeleton-label {
+  width: 36%;
+  height: 0.875rem;
+}
+.skeleton-detail {
+  width: 72%;
+  height: 0.75rem;
+}
+.skeleton-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.skeleton-metric {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+}
+.skeleton-metric .skeleton-label {
+  width: 75%;
+}
+.skeleton-value {
+  width: 55%;
+  height: 2rem;
+}
+.loading-skeleton--form {
+  max-width: 42rem;
+  padding: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+}
+.loading-skeleton--form .skeleton-rows {
+  border: 0;
+}
+.loading-skeleton--form .skeleton-row {
+  padding: 0 0 1.25rem;
+  border: 0;
+}
+.loading-skeleton--form .skeleton-detail {
+  width: 100%;
+  height: 2.75rem;
+}
+.skeleton-action {
+  width: min(9rem, 60%);
+  height: 2.75rem;
+}
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+@media (min-width: 900px) {
+  .skeleton-metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-shapes {
+    animation: none;
+  }
+}

@@ -11,9 +11,12 @@ export default defineConfig({
     proxy: {
       '/api': process.env.LOADOUT_API_ORIGIN ?? 'http://127.0.0.1:8787',
       '/healthz': process.env.LOADOUT_API_ORIGIN ?? 'http://127.0.0.1:8787',
+      '/readyz': process.env.LOADOUT_API_ORIGIN ?? 'http://127.0.0.1:8787',
+      '/mcp': process.env.LOADOUT_API_ORIGIN ?? 'http://127.0.0.1:8787',
     },
   },
   test: {
+    include: ['src/**/*.test.{ts,tsx}'],
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     restoreMocks: true,

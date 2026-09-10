@@ -6,6 +6,7 @@ dist/
 build/
 
 # runtime data
+.loadout/
 server/data/
 *.db
 *.db-shm

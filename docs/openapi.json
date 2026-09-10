@@ -1,0 +1,5137 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Loadout HTTP API",
+    "version": "0.2.0",
+    "description": "实际Go app/identity/运维路由。网页会话与ldt_网关令牌分离；业务写请求校验Origin；外部支付目前不可用。Body总大小app16KiB、identity4KiB；字符串长度限制以Go UTF-8字节校验为准，JSON Schema maxLength仅作客户端提示。"
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "同源服务根地址"
+    }
+  ],
+  "tags": [
+    {
+      "name": "账号",
+      "description": "账号、个人工具、团队和身份"
+    },
+    {
+      "name": "管理",
+      "description": "服务器验证admin角色"
+    },
+    {
+      "name": "运维",
+      "description": "健康/就绪/指标"
+    },
+    {
+      "name": "MCP",
+      "description": "官方SDK拥有的MCP协议"
+    }
+  ],
+  "security": [
+    {
+      "CookieSession": []
+    }
+  ],
+  "paths": {
+    "/healthz": {
+      "get": {
+        "operationId": "get_healthz",
+        "summary": "服务存活检查",
+        "tags": ["运维"],
+        "description": "服务存活检查",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      },
+      "head": {
+        "operationId": "head_healthz",
+        "summary": "服务存活检查（无响应体）",
+        "tags": ["运维"],
+        "description": "服务存活检查（无响应体）",
+        "responses": {
+          "200": {
+            "description": "服务可用，无响应体"
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/v1/health": {
+      "get": {
+        "operationId": "get_api_v1_health",
+        "summary": "服务存活检查",
+        "tags": ["运维"],
+        "description": "服务存活检查",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      },
+      "head": {
+        "operationId": "head_api_v1_health",
+        "summary": "服务存活检查（无响应体）",
+        "tags": ["运维"],
+        "description": "服务存活检查（无响应体）",
+        "responses": {
+          "200": {
+            "description": "服务可用，无响应体"
+          }
+        },
+        "security": []
+      }
+    },
+    "/readyz": {
+      "get": {
+        "operationId": "get_readyz",
+        "summary": "数据库就绪与Redis缓存状态",
+        "tags": ["运维"],
+        "description": "数据库未就绪返回503。Redis仅为可降级缓存，异常时仍返回200并标记degraded。",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "const": "ready"
+                    },
+                    "redis": {
+                      "type": "string",
+                      "enum": ["ready", "degraded", "disabled"]
+                    }
+                  },
+                  "required": ["status", "redis"]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "数据库连接不可用，或未配置业务数据库（database_unconfigured）。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "required": ["status"],
+                      "properties": {
+                        "status": {
+                          "const": "unavailable"
+                        }
+                      }
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/metrics": {
+      "get": {
+        "operationId": "get_metrics",
+        "summary": "Prometheus 指标",
+        "tags": ["运维"],
+        "description": "Prometheus 指标",
+        "responses": {
+          "200": {
+            "description": "Prometheus/OpenMetrics文本",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/openmetrics-text": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "并发或导出超时，纯文本错误"
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/v1/meta": {
+      "get": {
+        "operationId": "get_api_v1_meta",
+        "summary": "外部能力配置状态",
+        "tags": ["账号"],
+        "description": "外部能力配置状态",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Meta"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "operationId": "post_api_v1_auth_register",
+        "summary": "注册并创建会话",
+        "tags": ["账号"],
+        "description": "注册并创建会话",
+        "responses": {
+          "201": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResult"
+                }
+              }
+            },
+            "headers": {
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "loadout_session；HttpOnly、SameSite=Lax、Path=/，有效期7天；生产Secure。"
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "format": "uri"
+            },
+            "description": "必须与部署公开站点源一致；浏览器同源写请求自动携带。"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Credentials"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "operationId": "post_api_v1_auth_login",
+        "summary": "登录并创建会话",
+        "tags": ["账号"],
+        "description": "登录并创建会话",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResult"
+                }
+              }
+            },
+            "headers": {
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "loadout_session；HttpOnly、SameSite=Lax、Path=/，有效期7天；生产Secure。"
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "format": "uri"
+            },
+            "description": "必须与部署公开站点源一致；浏览器同源写请求自动携带。"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Credentials"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "operationId": "post_api_v1_auth_logout",
+        "summary": "注销当前会话",
+        "tags": ["账号"],
+        "description": "删除当前Cookie对应会话并清Cookie；没有Cookie也返回204。",
+        "responses": {
+          "204": {
+            "description": "成功"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "format": "uri"
+            },
+            "description": "必须与部署公开站点源一致；浏览器同源写请求自动携带。"
+          }
+        ]
+      }
+    },
+    "/api/v1/account/me": {
+      "get": {
+        "operationId": "get_api_v1_account_me",
+        "summary": "当前账号与用量概览",
+        "tags": ["账号"],
+        "description": "今日与本月边界按UTC；实际余额来自钱包，注册赠额可由部署配置修改。",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ]
+      }
+    },
+    "/api/v1/account/verify": {
+      "get": {
+        "operationId": "get_api_v1_account_verify",
+        "summary": "验证网关令牌",
+        "tags": ["账号"],
+        "description": "仅ldt_ Bearer，返回该令牌钱包余额与启用预设池key。远程工具的具体命名空间工具用MCP tools/list查询。",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenVerify"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "GatewayToken": []
+          }
+        ]
+      }
+    },
+    "/api/v1/account/tokens": {
+      "get": {
+        "operationId": "get_api_v1_account_tokens",
+        "summary": "个人创建的令牌列表",
+        "tags": ["账号"],
+        "description": "个人创建的令牌列表",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          }
+        ]
+      },
+      "post": {
+        "operationId": "post_api_v1_account_tokens",
+        "summary": "创建个人或团队令牌",
+        "tags": ["账号"],
+        "description": "创建个人或团队令牌",
+        "responses": {
+          "201": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenCreated"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "format": "uri"
+            },
+            "description": "必须与部署公开站点源一致；浏览器同源写请求自动携带。"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenCreate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/tokens/{id}": {
+      "delete": {
+        "operationId": "delete_api_v1_account_tokens_id",
+        "summary": "撤销自己的令牌",
+        "tags": ["账号"],
+        "description": "重复撤销保持原撤销时间；其他账号令牌不可操作。",
+        "responses": {
+          "204": {
+            "description": "成功"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "format": "uri"
+            },
+            "description": "必须与部署公开站点源一致；浏览器同源写请求自动携带。"
+          }
+        ]
+      }
+    },
+    "/api/v1/account/usage": {
+      "get": {
+        "operationId": "get_api_v1_account_usage",
+        "summary": "个人调用明细",
+        "tags": ["账号"],
+        "description": "ID降序游标；团队接口要求当前成员。status=ok代表成功，error代表失败。",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsagePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/ToolFilter"
+          },
+          {
+            "$ref": "#/components/parameters/StatusFilter"
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/usage": {
+      "get": {
+        "operationId": "get_api_v1_admin_usage",
+        "summary": "全局调用明细",
+        "tags": ["管理"],
+        "description": "ID降序游标；团队接口要求当前成员。status=ok代表成功，error代表失败。 仅管理员，角色由服务端验证。",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsagePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/ToolFilter"
+          },
+          {
+            "$ref": "#/components/parameters/StatusFilter"
+          },
+          {
+            "$ref": "#/components/parameters/UserFilter"
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/usage/export": {
+      "get": {
+        "operationId": "get_api_v1_admin_usage_export",
+        "summary": "分页导出调用CSV",
+        "tags": ["管理"],
+        "description": "分页导出调用CSV 仅管理员，角色由服务端验证。",
+        "responses": {
+          "200": {
+            "description": "单页CSV，字符串单元格进行公式转义。",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "headers": {
+              "X-Next-Cursor": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "下一页cursor，空字符串表示结束。"
+              },
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=\"loadout-usage.csv\""
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/ToolFilter"
+          },
+          {
+            "$ref": "#/components/parameters/StatusFilter"
+          },
+          {
+            "$ref": "#/components/parameters/UserFilter"
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/usage/summary": {
+      "get": {
+        "operationId": "get_api_v1_admin_usage_summary",
+        "summary": "全局工具汇总",
+        "tags": ["管理"],
+        "description": "UTC今天或含今天的最近7天；按分组游标分页，默认50/最大100组；消费方须继续读取next_cursor直到为空；仅按days汇总，明细筛选不改变此汇总。 仅管理员，角色由服务端验证。",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ToolSummary"
+                      }
+                    },
+                    "next_cursor": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["items", "next_cursor"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Days"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          }
+        ]
+      }
+    },
+    "/api/v1/account/teams/{id}/usage": {
+      "get": {
+        "operationId": "get_api_v1_account_teams_id_usage",
+        "summary": "团队调用明细",
+        "tags": ["账号"],
+        "description": "ID降序游标；团队接口要求当前成员。status=ok代表成功，error代表失败。",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsagePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/ToolFilter"
+          },
+          {
+            "$ref": "#/components/parameters/StatusFilter"
+          },
+          {
+            "$ref": "#/components/parameters/UserFilter"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/account/teams/{id}/usage/export": {
+      "get": {
+        "operationId": "get_api_v1_account_teams_id_usage_export",
+        "summary": "分页导出调用CSV",
+        "tags": ["账号"],
+        "description": "分页导出调用CSV",
+        "responses": {
+          "200": {
+            "description": "单页CSV，字符串单元格进行公式转义。",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "headers": {
+              "X-Next-Cursor": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "下一页cursor，空字符串表示结束。"
+              },
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "attachment; filename=\"loadout-usage.csv\""
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/ToolFilter"
+          },
+          {
+            "$ref": "#/components/parameters/StatusFilter"
+          },
+          {
+            "$ref": "#/components/parameters/UserFilter"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/account/teams/{id}/usage/summary": {
+      "get": {
+        "operationId": "get_api_v1_account_teams_id_usage_summary",
+        "summary": "团队成员汇总",
+        "tags": ["账号"],
+        "description": "UTC今天或含今天的最近7天；按分组游标分页，默认50/最大100组；消费方须继续读取next_cursor直到为空；仅按days汇总，明细筛选不改变此汇总。",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/MemberSummary"
+                      }
+                    },
+                    "next_cursor": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["items", "next_cursor"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Days"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/users": {
+      "get": {
+        "operationId": "get_api_v1_admin_users",
+        "summary": "用户列表",
+        "tags": ["管理"],
+        "description": "用户列表 仅管理员，角色由服务端验证。",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/users/{id}": {
+      "patch": {
+        "operationId": "patch_api_v1_admin_users_id",
+        "summary": "启用或停用用户",
+        "tags": ["管理"],
+        "description": "禁止停用自己或最后一个启用管理员。 仅管理员，角色由服务端验证。",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "format": "uri"
+            },
+            "description": "必须与部署公开站点源一致；浏览器同源写请求自动携带。"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                },
+                "required": ["enabled"],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users/{id}/balance": {
+      "post": {
+        "operationId": "post_api_v1_admin_users_id_balance",
+        "summary": "人工调整用户余额",
+        "tags": ["管理"],
+        "description": "相同用户/幂等键及相同delta/note返回原结果；不同内容409 idempotency_conflict。负余额拒绝；钱包与账本同事务。 仅管理员，角色由服务端验证。",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "format": "uri"
+            },
+            "description": "必须与部署公开站点源一致；浏览器同源写请求自动携带。"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BalanceAdjustment"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tools": {
+      "get": {
+        "operationId": "get_api_v1_tools",
+        "summary": "公开工具元数据",
+        "tags": ["账号"],
+        "description": "要求网页登录；不返回config/headers/env或任何密钥。",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ToolPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/tools": {
+      "get": {
+        "operationId": "get_api_v1_admin_tools",
+        "summary": "管理工具列表",
+        "tags": ["管理"],
+        "description": "要求网页登录；不返回config/headers/env或任何密钥。 仅管理员，角色由服务端验证。",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminToolPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          }
+        ]
+      },
+      "post": {
+        "operationId": "post_api_v1_admin_tools",
+        "summary": "新增工具",
+        "tags": ["管理"],
+        "description": "新增工具 仅管理员，角色由服务端验证。",
+        "responses": {
+          "201": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "item": {
+                      "$ref": "#/components/schemas/AdminTool"
+                    }
+                  },
+                  "required": ["item"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "format": "uri"
+            },
+            "description": "必须与部署公开站点源一致；浏览器同源写请求自动携带。"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolWrite"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/tools/{id}": {
+      "patch": {
+        "operationId": "patch_api_v1_admin_tools_id",
+        "summary": "更新完整工具定义",
+        "tags": ["管理"],
+        "description": "不是JSON Merge Patch：定义字段需完整提交；省略config保留已有配置，改变kind可能要求新配置。 仅管理员，角色由服务端验证。",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "item": {
+                      "$ref": "#/components/schemas/AdminTool"
+                    }
+                  },
+                  "required": ["item"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "format": "uri"
+            },
+            "description": "必须与部署公开站点源一致；浏览器同源写请求自动携带。"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolWrite"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/plans": {
+      "get": {
+        "operationId": "get_api_v1_plans",
+        "summary": "启用套餐列表",
+        "tags": ["账号"],
+        "description": "启用套餐列表",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/plans": {
+      "get": {
+        "operationId": "get_api_v1_admin_plans",
+        "summary": "管理套餐列表",
+        "tags": ["管理"],
+        "description": "管理套餐列表 仅管理员，角色由服务端验证。",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          }
+        ]
+      },
+      "post": {
+        "operationId": "post_api_v1_admin_plans",
+        "summary": "创建套餐",
+        "tags": ["管理"],
+        "description": "创建套餐 仅管理员，角色由服务端验证。",
+        "responses": {
+          "201": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "item": {
+                      "$ref": "#/components/schemas/Plan"
+                    }
+                  },
+                  "required": ["item"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "format": "uri"
+            },
+            "description": "必须与部署公开站点源一致；浏览器同源写请求自动携带。"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanWrite"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/plans/{id}": {
+      "patch": {
+        "operationId": "patch_api_v1_admin_plans_id",
+        "summary": "更新完整套餐定义",
+        "tags": ["管理"],
+        "description": "更新完整套餐定义 仅管理员，角色由服务端验证。",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "item": {
+                      "$ref": "#/components/schemas/Plan"
+                    }
+                  },
+                  "required": ["item"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "format": "uri"
+            },
+            "description": "必须与部署公开站点源一致；浏览器同源写请求自动携带。"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanWrite"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/redemption-codes": {
+      "get": {
+        "operationId": "get_api_v1_admin_redemption_codes",
+        "summary": "兑换码元数据列表",
+        "tags": ["管理"],
+        "description": "兑换码元数据列表 仅管理员，角色由服务端验证。",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedemptionCodePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          }
+        ]
+      },
+      "post": {
+        "operationId": "post_api_v1_admin_redemption_codes",
+        "summary": "生成一次性兑换码",
+        "tags": ["管理"],
+        "description": "生成一次性兑换码 仅管理员，角色由服务端验证。",
+        "responses": {
+          "201": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CodeCreated"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "format": "uri"
+            },
+            "description": "必须与部署公开站点源一致；浏览器同源写请求自动携带。"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CodeCreate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/redeem": {
+      "post": {
+        "operationId": "post_api_v1_account_redeem",
+        "summary": "兑换额度",
+        "tags": ["账号"],
+        "description": "同一兑换码仅首次入账；重用409 already_redeemed；与账本在同一事务写入。",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Redeemed"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "format": "uri"
+            },
+            "description": "必须与部署公开站点源一致；浏览器同源写请求自动携带。"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Redeem"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/orders": {
+      "get": {
+        "operationId": "get_api_v1_account_orders",
+        "summary": "真实订单列表",
+        "tags": ["账号"],
+        "description": "真实订单列表",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          }
+        ]
+      },
+      "post": {
+        "operationId": "post_api_v1_account_orders",
+        "summary": "申请外部支付订单",
+        "tags": ["账号"],
+        "description": "当前未配置外部支付，合法启用plan_id返回503 payment_unavailable；不创建订单、不增加余额。没有成功响应可依赖。",
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "format": "uri"
+            },
+            "description": "必须与部署公开站点源一致；浏览器同源写请求自动携带。"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "plan_id": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 1
+                  }
+                },
+                "required": ["plan_id"],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/ledger": {
+      "get": {
+        "operationId": "get_api_v1_account_ledger",
+        "summary": "个人钱包账本",
+        "tags": ["账号"],
+        "description": "个人钱包账本",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LedgerPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/KindFilter"
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/ledger": {
+      "get": {
+        "operationId": "get_api_v1_admin_ledger",
+        "summary": "全局额度审计账本",
+        "tags": ["管理"],
+        "description": "全局额度审计账本 仅管理员，角色由服务端验证。",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminLedgerPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/KindFilter"
+          },
+          {
+            "$ref": "#/components/parameters/UserFilter"
+          },
+          {
+            "$ref": "#/components/parameters/ActorFilter"
+          }
+        ]
+      }
+    },
+    "/api/v1/account/teams": {
+      "get": {
+        "operationId": "get_api_v1_account_teams",
+        "summary": "我加入的团队",
+        "tags": ["账号"],
+        "description": "我加入的团队",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          }
+        ]
+      },
+      "post": {
+        "operationId": "post_api_v1_account_teams",
+        "summary": "创建团队",
+        "tags": ["账号"],
+        "description": "创建者为owner，初始5席位、团队余额0；不虚构转入额度。",
+        "responses": {
+          "201": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "item": {
+                      "$ref": "#/components/schemas/Team"
+                    }
+                  },
+                  "required": ["item"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "format": "uri"
+            },
+            "description": "必须与部署公开站点源一致；浏览器同源写请求自动携带。"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamCreate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/teams/{id}": {
+      "get": {
+        "operationId": "get_api_v1_account_teams_id",
+        "summary": "团队详情",
+        "tags": ["账号"],
+        "description": "必须为团队成员。",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "item": {
+                      "$ref": "#/components/schemas/Team"
+                    }
+                  },
+                  "required": ["item"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "patch_api_v1_account_teams_id",
+        "summary": "更新团队/席位/交接所有者",
+        "tags": ["账号"],
+        "description": "仅owner；席位不能少于现成员；owner_user_id须为现成员，交接者成为member。",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "item": {
+                      "$ref": "#/components/schemas/Team"
+                    }
+                  },
+                  "required": ["item"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "format": "uri"
+            },
+            "description": "必须与部署公开站点源一致；浏览器同源写请求自动携带。"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamUpdate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/teams/{id}/members": {
+      "get": {
+        "operationId": "get_api_v1_account_teams_id_members",
+        "summary": "团队成员列表",
+        "tags": ["账号"],
+        "description": "团队成员列表",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/account/teams/{id}/members/{user_id}": {
+      "delete": {
+        "operationId": "delete_api_v1_account_teams_id_members_user_id",
+        "summary": "移除成员或退出团队",
+        "tags": ["账号"],
+        "description": "owner可移除成员，成员可退出自己；最后owner不可退出。成员离开后，其团队token立即失去花费权限。",
+        "responses": {
+          "204": {
+            "description": "成功"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "format": "uri"
+            },
+            "description": "必须与部署公开站点源一致；浏览器同源写请求自动携带。"
+          }
+        ]
+      }
+    },
+    "/api/v1/account/teams/{id}/invites": {
+      "post": {
+        "operationId": "post_api_v1_account_teams_id_invites",
+        "summary": "生成单次团队邀请",
+        "tags": ["账号"],
+        "description": "仅owner；邀请码24小时有效且只可消费一次。此接口不要求请求体。",
+        "responses": {
+          "201": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invitation"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "format": "uri"
+            },
+            "description": "必须与部署公开站点源一致；浏览器同源写请求自动携带。"
+          }
+        ]
+      }
+    },
+    "/api/v1/account/team-invites/accept": {
+      "post": {
+        "operationId": "post_api_v1_account_team_invites_accept",
+        "summary": "接受团队邀请",
+        "tags": ["账号"],
+        "description": "事务内校验邀请码与席位；invite_used/invite_expired/already_member/team_full。",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "item": {
+                      "$ref": "#/components/schemas/Team"
+                    }
+                  },
+                  "required": ["item"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "410": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "format": "uri"
+            },
+            "description": "必须与部署公开站点源一致；浏览器同源写请求自动携带。"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                "required": ["code"],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/teams/{id}/fund": {
+      "post": {
+        "operationId": "post_api_v1_account_teams_id_fund",
+        "summary": "从个人钱包转入团队",
+        "tags": ["账号"],
+        "description": "仅owner，双钱包及账本同事务；相同操作编号重试不重复划转。",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "item": {
+                      "$ref": "#/components/schemas/Team"
+                    }
+                  },
+                  "required": ["item"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "format": "uri"
+            },
+            "description": "必须与部署公开站点源一致；浏览器同源写请求自动携带。"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamFund"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/device/authorize": {
+      "post": {
+        "operationId": "post_api_v1_device_authorize",
+        "summary": "发起设备授权",
+        "tags": ["账号"],
+        "description": "公开端点，不要求Origin；设备必须按interval轮询，用户在verification_uri输入user_code后明确批准。",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceAuthorization"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/device/token": {
+      "post": {
+        "operationId": "post_api_v1_device_token",
+        "summary": "轮询并领取设备令牌",
+        "tags": ["账号"],
+        "description": "未批准400 authorization_pending；过快429 slow_down（Retry-After:5）；过期400 expired_token；已领取400 invalid_grant。禁止自动重放任何工具调用。",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "^ldt_",
+                      "description": "仅首次领取显示明文。"
+                    }
+                  },
+                  "required": ["token"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "device_code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "writeOnly": true
+                  }
+                },
+                "required": ["device_code"],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/devices/approve": {
+      "post": {
+        "operationId": "post_api_v1_account_devices_approve",
+        "summary": "明确批准本地设备",
+        "tags": ["账号"],
+        "description": "匹配10字符授权码（不区分大小写），仅首次批准成功；无效或已用409 invalid_device_code。",
+        "responses": {
+          "204": {
+            "description": "成功"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "format": "uri"
+            },
+            "description": "必须与部署公开站点源一致；浏览器同源写请求自动携带。"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user_code": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 10
+                  }
+                },
+                "required": ["user_code"],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/email": {
+      "get": {
+        "operationId": "get_api_v1_account_email",
+        "summary": "邮箱状态",
+        "tags": ["账号"],
+        "description": "邮箱状态",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ]
+      }
+    },
+    "/api/v1/account/email/request": {
+      "post": {
+        "operationId": "post_api_v1_account_email_request",
+        "summary": "发送邮箱验证邮件",
+        "tags": ["账号"],
+        "description": "配置真实SMTP后发送；邮件不可用503 email_unavailable；限频429 rate_limited。",
+        "responses": {
+          "202": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "const": "sent"
+                    }
+                  },
+                  "required": ["status"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "format": "uri"
+            },
+            "description": "必须与部署公开站点源一致；浏览器同源写请求自动携带。"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "minLength": 1,
+                    "format": "email"
+                  }
+                },
+                "required": ["email"],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/email/verify": {
+      "post": {
+        "operationId": "post_api_v1_auth_email_verify",
+        "summary": "确认邮箱验证链接",
+        "tags": ["账号"],
+        "description": "一次性链接，网页必须用户确认后提交，成功后清除地址栏token。无效/过期400 invalid_token。",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "const": "verified"
+                    }
+                  },
+                  "required": ["status"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "format": "uri"
+            },
+            "description": "必须与部署公开站点源一致；浏览器同源写请求自动携带。"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "minLength": 1,
+                    "writeOnly": true
+                  }
+                },
+                "required": ["token"],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/github/start": {
+      "get": {
+        "operationId": "get_api_v1_auth_github_start",
+        "summary": "开始GitHub授权",
+        "tags": ["账号"],
+        "description": "配置GitHub OAuth才启用；未配置503 github_unavailable。使用PKCE与浏览器state cookie，不将GitHub access token存入用户凭证。",
+        "responses": {
+          "302": {
+            "description": "重定向至GitHub授权页或登录成功后的站点首页。",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "start设置10分钟state cookie；callback清state并设置7天session。"
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "502": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/v1/auth/github/callback": {
+      "get": {
+        "operationId": "get_api_v1_auth_github_callback",
+        "summary": "GitHub回调",
+        "tags": ["账号"],
+        "description": "配置GitHub OAuth才启用；未配置503 github_unavailable。使用PKCE与浏览器state cookie，不将GitHub access token存入用户凭证。",
+        "responses": {
+          "302": {
+            "description": "重定向至GitHub授权页或登录成功后的站点首页。",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "start设置10分钟state cookie；callback清state并设置7天session。"
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "502": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [],
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "code",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/mcp": {
+      "post": {
+        "operationId": "post_mcp",
+        "summary": "MCP Streamable HTTP / JSON-RPC",
+        "tags": ["MCP"],
+        "description": "官方MCP Go SDK stateless + JSONResponse。调用initialize、notifications/initialized、tools/list、tools/call等标准MCP方法；不由本OpenAPI重新定义全部MCP协议。仅POST，认证ldt_；请求体上限1MiB。",
+        "responses": {
+          "200": {
+            "description": "SDK JSON-RPC响应；工具失败可为result.isError=true。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "SDK已接受通知，无响应体"
+          },
+          "400": {
+            "description": "HTTP传输、鉴权或SDK错误；不保证为REST Error结构。",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "HTTP传输、鉴权或SDK错误；不保证为REST Error结构。",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "HTTP传输、鉴权或SDK错误；不保证为REST Error结构。",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "HTTP传输、鉴权或SDK错误；不保证为REST Error结构。",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "HTTP传输、鉴权或SDK错误；不保证为REST Error结构。",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "HTTP传输、鉴权或SDK错误；不保证为REST Error结构。",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "GatewayToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "jsonrpc": {
+                    "const": "2.0"
+                  },
+                  "id": {
+                    "type": ["string", "integer", "null"]
+                  },
+                  "method": {
+                    "type": "string"
+                  },
+                  "params": {}
+                },
+                "required": ["jsonrpc", "method"]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "MCP-Protocol-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            },
+            "description": "后续请求按initialize协商版本携带。"
+          },
+          {
+            "name": "Accept",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            },
+            "example": "application/json, text/event-stream"
+          }
+        ]
+      },
+      "get": {
+        "operationId": "get_mcp_unsupported",
+        "summary": "此部署不提供MCP流式GET/DELETE会话操作",
+        "tags": ["MCP"],
+        "security": [
+          {
+            "GatewayToken": []
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "缺少或无效Bearer",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "已认证请求仅允许POST",
+            "headers": {
+              "Allow": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "POST"
+              }
+            },
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "delete_mcp_unsupported",
+        "summary": "此部署不提供MCP流式GET/DELETE会话操作",
+        "tags": ["MCP"],
+        "security": [
+          {
+            "GatewayToken": []
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "缺少或无效Bearer",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "已认证请求仅允许POST",
+            "headers": {
+              "Allow": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "POST"
+              }
+            },
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/settings": {
+      "get": {
+        "operationId": "get_api_v1_admin_settings",
+        "summary": "读取管理员系统配置",
+        "tags": ["管理"],
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "当前配置；不包含任何密钥原文",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuntimeSettingsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "description": "环境配置为未保存时默认值；保存后数据库配置优先。秘密只返回是否设置。"
+      },
+      "patch": {
+        "operationId": "patch_api_v1_admin_settings",
+        "summary": "保存系统配置并对新请求生效",
+        "tags": ["管理"],
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "当前配置；不包含任何密钥原文",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuntimeSettingsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "description": "完整公开字段与读取时的revision；省略secret保留既有值。版本冲突409 settings_conflict，密钥不能安全存储503 settings_encryption_unavailable。跨副本下一请求读取当前配置。",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuntimeSettingsUpdate"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "format": "uri"
+            },
+            "description": "必须与部署公开站点源一致；浏览器同源写请求自动携带。"
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "CookieSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "loadout_session",
+        "description": "HttpOnly、SameSite=Lax，7天opaque session；生产Secure。"
+      },
+      "GatewayToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "ldt_ token",
+        "description": "网页会话不能替代此令牌。"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "minLength": 1,
+            "description": "稳定错误码；没有原始响应或内部凭证。"
+          }
+        },
+        "required": ["error"]
+      },
+      "Health": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "const": "ok"
+          },
+          "service": {
+            "const": "loadout"
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1,
+            "description": "非空且不包含 Unicode 控制字符。"
+          }
+        },
+        "required": ["status", "service", "version"]
+      },
+      "Meta": {
+        "type": "object",
+        "properties": {
+          "github": {
+            "type": "boolean"
+          },
+          "email": {
+            "type": "boolean"
+          },
+          "payments": {
+            "const": false
+          }
+        },
+        "required": ["github", "email", "payments"]
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "username": {
+            "type": "string"
+          },
+          "role": {
+            "enum": ["user", "admin"]
+          },
+          "balance": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": ["id", "username", "role", "balance", "enabled"]
+      },
+      "UserResult": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/User"
+          }
+        },
+        "required": ["user"]
+      },
+      "Account": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/User"
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "today_calls": {
+                "type": "integer",
+                "format": "int64",
+                "minimum": 0
+              },
+              "month_cost": {
+                "type": "integer",
+                "format": "int64",
+                "minimum": 0
+              },
+              "token_count": {
+                "type": "integer",
+                "format": "int64",
+                "minimum": 0
+              }
+            },
+            "required": ["today_calls", "month_cost", "token_count"]
+          }
+        },
+        "required": ["user", "summary"]
+      },
+      "Credentials": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 32,
+            "pattern": "^[a-zA-Z0-9_-]+$"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "description": "注册要求 UTF-8 长度 12–1024 字节；不是字符计数。",
+            "writeOnly": true
+          }
+        },
+        "required": ["username", "password"],
+        "additionalProperties": false
+      },
+      "Token": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "wallet_id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "name": {
+            "type": "string"
+          },
+          "prefix": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "wallet_id",
+          "name",
+          "prefix",
+          "created_at",
+          "revoked_at",
+          "last_used_at"
+        ]
+      },
+      "TokenCreate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "team_id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "description": "省略或 0 使用个人钱包；正整数要求是该团队成员。"
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      },
+      "TokenCreated": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^ldt_",
+            "description": "只在本次响应显示明文。"
+          },
+          "item": {
+            "$ref": "#/components/schemas/Token"
+          }
+        },
+        "required": ["token", "item"]
+      },
+      "TokenVerify": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "balance": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["username", "balance", "tools"]
+      },
+      "Usage": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "user_id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "token_id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "wallet_id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "tool": {
+            "type": "string"
+          },
+          "cost": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "status": {
+            "enum": ["pending", "ok", "error", "denied", "recovered"]
+          },
+          "duration_ms": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "user_id",
+          "token_id",
+          "wallet_id",
+          "tool",
+          "cost",
+          "status",
+          "duration_ms",
+          "created_at"
+        ]
+      },
+      "BalanceAdjustment": {
+        "type": "object",
+        "properties": {
+          "delta": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": -1000000000000,
+            "maximum": 1000000000000,
+            "not": {
+              "const": 0
+            }
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        },
+        "required": ["delta", "note", "idempotency_key"],
+        "additionalProperties": false
+      },
+      "Tool": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": ["builtin", "http", "stdio"]
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "units_per_call": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "input_schema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "name",
+          "description",
+          "kind",
+          "enabled",
+          "units_per_call",
+          "input_schema"
+        ]
+      },
+      "HTTPConfig": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "minLength": 1,
+            "format": "uri",
+            "description": "默认只允许公开 HTTPS；显式开发配置才可允许私网。"
+          },
+          "headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["url"],
+        "additionalProperties": false
+      },
+      "StdioConfig": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string",
+            "minLength": 1,
+            "description": "部署白名单中的别名，不能传任意可执行路径。"
+          },
+          "args": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "env": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["command"],
+        "additionalProperties": false
+      },
+      "Plan": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "name": {
+            "type": "string"
+          },
+          "credits": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "price_cents": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "currency": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "credits",
+          "price_cents",
+          "currency",
+          "enabled",
+          "created_at"
+        ]
+      },
+      "PlanWrite": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "credits": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "maximum": 1000000000000
+          },
+          "price_cents": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 1000000000000
+          },
+          "currency": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3,
+            "pattern": "^[A-Z]{3}$"
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": ["name", "credits", "price_cents", "currency", "enabled"],
+        "additionalProperties": false
+      },
+      "RedemptionCode": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "credits": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "note": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "redeemed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": ["id", "credits", "note", "created_at", "redeemed_at"]
+      },
+      "CodeCreate": {
+        "type": "object",
+        "properties": {
+          "credits": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "maximum": 1000000000000
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": ["credits", "note"],
+        "additionalProperties": false
+      },
+      "CodeCreated": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^ldr_",
+            "description": "仅本次响应包含明文。"
+          },
+          "item": {
+            "$ref": "#/components/schemas/RedemptionCode"
+          }
+        },
+        "required": ["code", "item"]
+      },
+      "Redeem": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "writeOnly": true
+          }
+        },
+        "required": ["code"],
+        "additionalProperties": false
+      },
+      "Redeemed": {
+        "type": "object",
+        "properties": {
+          "balance": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "credits": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        },
+        "required": ["balance", "credits"]
+      },
+      "Order": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "plan_id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "credits": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "price_cents": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "currency": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "plan_id",
+          "credits",
+          "price_cents",
+          "currency",
+          "status",
+          "created_at"
+        ]
+      },
+      "Ledger": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "delta": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "balance_after": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "format": "int64",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "delta",
+          "kind",
+          "note",
+          "created_at",
+          "balance_after"
+        ]
+      },
+      "Team": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "enum": ["owner", "member"]
+          },
+          "balance": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "seat_limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000
+          }
+        },
+        "required": ["id", "name", "role", "balance", "seat_limit"]
+      },
+      "TeamCreate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      },
+      "TeamUpdate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "seat_limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "owner_user_id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "Member": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "user_id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "username": {
+            "type": "string"
+          },
+          "role": {
+            "enum": ["owner", "member"]
+          }
+        },
+        "required": ["id", "user_id", "username", "role"]
+      },
+      "Invitation": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "description": "单次邀请，24 小时有效。"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["code", "expires_at"]
+      },
+      "TeamFund": {
+        "type": "object",
+        "properties": {
+          "credits": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "maximum": 1000000000000
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        },
+        "required": ["credits", "idempotency_key"],
+        "additionalProperties": false
+      },
+      "DeviceAuthorization": {
+        "type": "object",
+        "properties": {
+          "device_code": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^ldd_"
+          },
+          "user_code": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 10,
+            "description": "10 个大写 ASCII 字符，可能含数字、横线或下划线。"
+          },
+          "verification_uri": {
+            "type": "string",
+            "minLength": 1,
+            "format": "uri"
+          },
+          "expires_in": {
+            "const": 600
+          },
+          "interval": {
+            "const": 5
+          }
+        },
+        "required": [
+          "device_code",
+          "user_code",
+          "verification_uri",
+          "expires_in",
+          "interval"
+        ]
+      },
+      "EmailStatus": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "verified_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "configured": {
+            "type": "boolean"
+          }
+        },
+        "required": ["email", "verified_at", "configured"]
+      },
+      "ToolSummary": {
+        "type": "object",
+        "properties": {
+          "tool": {
+            "type": "string"
+          },
+          "calls": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "cost": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "errors": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        },
+        "required": ["tool", "calls", "cost", "errors"]
+      },
+      "MemberSummary": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "username": {
+            "type": "string"
+          },
+          "calls": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "cost": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "errors": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        },
+        "required": ["user_id", "username", "calls", "cost", "errors"]
+      },
+      "AdminTool": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": ["builtin", "http", "stdio"]
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "units_per_call": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "input_schema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "configured": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "name",
+          "description",
+          "kind",
+          "enabled",
+          "units_per_call",
+          "input_schema",
+          "configured"
+        ]
+      },
+      "ToolWrite": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 32,
+            "pattern": "^[a-zA-Z0-9_-]+$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "kind": {
+            "enum": ["builtin", "http", "stdio"]
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "units_per_call": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 1000000000000
+          },
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "object"
+              }
+            },
+            "required": ["type"],
+            "additionalProperties": true
+          },
+          "config": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/HTTPConfig"
+              },
+              {
+                "$ref": "#/components/schemas/StdioConfig"
+              }
+            ],
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "kind",
+          "enabled",
+          "units_per_call",
+          "input_schema"
+        ],
+        "additionalProperties": false,
+        "description": "POST/PATCH均提交完整工具定义；PATCH省略config保留原配置。builtin仅echo/time_now，不提交config。HTTP/stdio配置加密后存储，不回传。所有请求体总计至多16KiB。"
+      },
+      "AdminLedger": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "delta": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "balance_after": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "format": "int64",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "user_id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "actor_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "format": "int64",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "wallet_id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "id",
+          "delta",
+          "kind",
+          "note",
+          "created_at",
+          "balance_after",
+          "user_id",
+          "actor_id",
+          "wallet_id"
+        ]
+      },
+      "UserPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/User"
+            }
+          },
+          "next_cursor": {
+            "type": "string",
+            "pattern": "^([1-9][0-9]*)?$",
+            "description": "下一页最后 ID；空字符串代表结束。"
+          }
+        },
+        "required": ["items", "next_cursor"]
+      },
+      "TokenPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Token"
+            }
+          },
+          "next_cursor": {
+            "type": "string",
+            "pattern": "^([1-9][0-9]*)?$",
+            "description": "下一页最后 ID；空字符串代表结束。"
+          }
+        },
+        "required": ["items", "next_cursor"]
+      },
+      "UsagePage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Usage"
+            }
+          },
+          "next_cursor": {
+            "type": "string",
+            "pattern": "^([1-9][0-9]*)?$",
+            "description": "下一页最后 ID；空字符串代表结束。"
+          }
+        },
+        "required": ["items", "next_cursor"]
+      },
+      "ToolPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Tool"
+            }
+          },
+          "next_cursor": {
+            "type": "string",
+            "pattern": "^([1-9][0-9]*)?$",
+            "description": "下一页最后 ID；空字符串代表结束。"
+          }
+        },
+        "required": ["items", "next_cursor"]
+      },
+      "AdminToolPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminTool"
+            }
+          },
+          "next_cursor": {
+            "type": "string",
+            "pattern": "^([1-9][0-9]*)?$",
+            "description": "下一页最后 ID；空字符串代表结束。"
+          }
+        },
+        "required": ["items", "next_cursor"]
+      },
+      "PlanPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Plan"
+            }
+          },
+          "next_cursor": {
+            "type": "string",
+            "pattern": "^([1-9][0-9]*)?$",
+            "description": "下一页最后 ID；空字符串代表结束。"
+          }
+        },
+        "required": ["items", "next_cursor"]
+      },
+      "RedemptionCodePage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RedemptionCode"
+            }
+          },
+          "next_cursor": {
+            "type": "string",
+            "pattern": "^([1-9][0-9]*)?$",
+            "description": "下一页最后 ID；空字符串代表结束。"
+          }
+        },
+        "required": ["items", "next_cursor"]
+      },
+      "OrderPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Order"
+            }
+          },
+          "next_cursor": {
+            "type": "string",
+            "pattern": "^([1-9][0-9]*)?$",
+            "description": "下一页最后 ID；空字符串代表结束。"
+          }
+        },
+        "required": ["items", "next_cursor"]
+      },
+      "LedgerPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Ledger"
+            }
+          },
+          "next_cursor": {
+            "type": "string",
+            "pattern": "^([1-9][0-9]*)?$",
+            "description": "下一页最后 ID；空字符串代表结束。"
+          }
+        },
+        "required": ["items", "next_cursor"]
+      },
+      "AdminLedgerPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminLedger"
+            }
+          },
+          "next_cursor": {
+            "type": "string",
+            "pattern": "^([1-9][0-9]*)?$",
+            "description": "下一页最后 ID；空字符串代表结束。"
+          }
+        },
+        "required": ["items", "next_cursor"]
+      },
+      "TeamPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Team"
+            }
+          },
+          "next_cursor": {
+            "type": "string",
+            "pattern": "^([1-9][0-9]*)?$",
+            "description": "下一页最后 ID；空字符串代表结束。"
+          }
+        },
+        "required": ["items", "next_cursor"]
+      },
+      "MemberPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Member"
+            }
+          },
+          "next_cursor": {
+            "type": "string",
+            "pattern": "^([1-9][0-9]*)?$",
+            "description": "下一页最后 ID；空字符串代表结束。"
+          }
+        },
+        "required": ["items", "next_cursor"]
+      },
+      "RuntimeSettings": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "initial_credits": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 1000000000000
+          },
+          "github_enabled": {
+            "type": "boolean"
+          },
+          "github_client_id": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "github_org": {
+            "type": "string",
+            "maxLength": 39
+          },
+          "smtp_enabled": {
+            "type": "boolean"
+          },
+          "smtp_address": {
+            "type": "string",
+            "maxLength": 320
+          },
+          "smtp_from": {
+            "type": "string",
+            "maxLength": 320
+          },
+          "smtp_username": {
+            "type": "string",
+            "maxLength": 320
+          },
+          "github_client_secret_set": {
+            "type": "boolean"
+          },
+          "smtp_password_set": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "revision",
+          "initial_credits",
+          "github_enabled",
+          "github_client_id",
+          "github_org",
+          "smtp_enabled",
+          "smtp_address",
+          "smtp_from",
+          "smtp_username",
+          "github_client_secret_set",
+          "smtp_password_set"
+        ]
+      },
+      "RuntimeSettingsResponse": {
+        "type": "object",
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/RuntimeSettings"
+          },
+          "secret_writes_available": {
+            "type": "boolean"
+          }
+        },
+        "required": ["item", "secret_writes_available"]
+      },
+      "RuntimeSettingsUpdate": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "initial_credits": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 1000000000000
+          },
+          "github_enabled": {
+            "type": "boolean"
+          },
+          "github_client_id": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "github_org": {
+            "type": "string",
+            "maxLength": 39
+          },
+          "smtp_enabled": {
+            "type": "boolean"
+          },
+          "smtp_address": {
+            "type": "string",
+            "maxLength": 320
+          },
+          "smtp_from": {
+            "type": "string",
+            "maxLength": 320
+          },
+          "smtp_username": {
+            "type": "string",
+            "maxLength": 320
+          },
+          "github_client_secret": {
+            "type": "string",
+            "maxLength": 4096,
+            "writeOnly": true,
+            "description": "省略保留；空字符串清除。启用GitHub时不能清空。"
+          },
+          "smtp_password": {
+            "type": "string",
+            "maxLength": 4096,
+            "writeOnly": true,
+            "description": "省略保留；空字符串清除。SMTP用户名与密码须配对。"
+          }
+        },
+        "required": [
+          "revision",
+          "initial_credits",
+          "github_enabled",
+          "github_client_id",
+          "github_org",
+          "smtp_enabled",
+          "smtp_address",
+          "smtp_from",
+          "smtp_username"
+        ]
+      }
+    },
+    "parameters": {
+      "Limit": {
+        "name": "limit",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 50
+        }
+      },
+      "Cursor": {
+        "name": "cursor",
+        "in": "query",
+        "schema": {
+          "type": "string",
+          "pattern": "^([1-9][0-9]*)?$",
+          "default": ""
+        },
+        "description": "ID降序游标；不要把页码放在此参数。"
+      },
+      "ToolFilter": {
+        "name": "tool",
+        "in": "query",
+        "schema": {
+          "type": "string",
+          "maxLength": 200
+        }
+      },
+      "StatusFilter": {
+        "name": "status",
+        "in": "query",
+        "schema": {
+          "enum": ["pending", "ok", "error", "denied", "recovered"]
+        }
+      },
+      "UserFilter": {
+        "name": "user_id",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "format": "int64",
+          "minimum": 1
+        }
+      },
+      "ActorFilter": {
+        "name": "actor_id",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "format": "int64",
+          "minimum": 1
+        }
+      },
+      "KindFilter": {
+        "name": "kind",
+        "in": "query",
+        "schema": {
+          "enum": [
+            "registration",
+            "adjustment",
+            "redemption",
+            "team_transfer",
+            "reservation",
+            "refund",
+            "recovery"
+          ]
+        }
+      },
+      "Days": {
+        "name": "days",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "enum": [1, 7],
+          "default": 7
+        },
+        "description": "按UTC日期，包括今天；不受明细工具/用户筛选影响。"
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "业务错误；参见 error 稳定代码。",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
+    }
+  }
+}

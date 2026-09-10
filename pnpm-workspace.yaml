@@ -1,5 +1,6 @@
 packages:
   - web
+  - desktop/ui
 saveExact: true
 # User explicitly requires the latest stable releases; exceptions are exact versions.
 minimumReleaseAgeExclude:

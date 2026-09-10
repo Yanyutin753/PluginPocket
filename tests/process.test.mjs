@@ -34,7 +34,15 @@ async function waitUntil(check, timeout = 15_000) {
 
 function launch(command, args, env) {
   const child = spawn(command, args, {
-    env: { ...process.env, ...env },
+    env: {
+      ...process.env,
+      LOADOUT_DATABASE_URL: '',
+      LOADOUT_REDIS_URL: '',
+      LOADOUT_REDIS_NAMESPACE: '',
+      LOADOUT_ADMIN_USERNAME: '',
+      LOADOUT_ADMIN_PASSWORD: '',
+      ...env,
+    },
     detached: true,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -112,6 +120,18 @@ test('terminal interruption stops both development services', {
   }, 25_000).catch((error) => {
     throw new Error(`${error.message}\n${proc.output()}`);
   });
+  // Protocol and readiness paths must reach Go, never Vite's SPA fallback.
+  for (const path of ['/readyz', '/mcp']) {
+    const direct = await request(`http://127.0.0.1:${apiPort}${path}`);
+    const proxied = await request(`http://127.0.0.1:${webPort}${path}`);
+    assert.equal(proxied.status, direct.status, path);
+    assert.match(
+      proxied.headers.get('content-type'),
+      /application\/json/,
+      path,
+    );
+    assert.deepEqual(await proxied.json(), await direct.json(), path);
+  }
   // A terminal delivers Ctrl+C to the foreground process group, including pnpm.
   process.kill(-proc.child.pid, 'SIGINT');
   await proc.exited;
