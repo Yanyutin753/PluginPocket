@@ -1,0 +1,26 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+build/
+
+# runtime data
+server/data/
+*.db
+*.db-shm
+*.db-wal
+
+# env & secrets
+.env
+.env.*
+
+# logs
+*.log
+logs/
+
+# editor & os
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
