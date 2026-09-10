@@ -1,0 +1,20 @@
+[package]
+name = "loadout"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.98"
+license = "MIT"
+description = "Local companion for the Loadout MCP gateway"
+repository = "https://github.com/Yanyutin753/loadout"
+publish = false
+
+[dependencies]
+clap = { version = "=4.6.6", features = ["derive"] }
+reqwest = { version = "=0.13.5", default-features = false, features = ["blocking", "json", "rustls"] }
+serde = { version = "=1.0.229", features = ["derive"] }
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = "warn"

@@ -14,6 +14,7 @@ server/data/
 # env & secrets
 .env
 .env.*
+!.env.example
 
 # logs
 *.log
@@ -24,3 +25,14 @@ logs/
 Thumbs.db
 .idea/
 .vscode/
+
+# Rust and test artifacts
+target/
+coverage/
+.impeccable/review/
+.impeccable/mocks/
+.impeccable/config.local.json
+.impeccable/cache/
+
+# Local skill engine binaries (skill source is versioned)
+.agents/skills/**/scripts/bin/

@@ -1,0 +1,23 @@
+FROM node:26.8.2-alpine AS web
+WORKDIR /src
+RUN npm install -g pnpm@12.3.4
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
+COPY web/package.json web/package.json
+RUN pnpm install --frozen-lockfile
+COPY web web
+RUN pnpm --dir web build
+
+FROM golang:1.27.1-alpine AS server
+WORKDIR /src
+COPY server/ ./
+RUN CGO_ENABLED=0 go build -trimpath -o /loadout-server ./cmd/loadout-server
+
+FROM scratch
+WORKDIR /app
+COPY --from=server /loadout-server /app/loadout-server
+COPY --from=server /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=web /src/web/dist /app/web/dist
+USER 65532:65532
+ENV LOADOUT_ADDR=0.0.0.0:8787
+EXPOSE 8787
+ENTRYPOINT ["/app/loadout-server"]

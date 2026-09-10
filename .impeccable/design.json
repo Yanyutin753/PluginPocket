@@ -1,0 +1,245 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-10T13:40:38.635698+00:00",
+  "title": "Design System: Loadout",
+  "extensions": {
+    "colorMeta": {
+      "background": {
+        "role": "neutral",
+        "displayName": "background",
+        "tonalRamp": [
+          "oklch(15.00% 0.01601 261.51)",
+          "oklch(26.43% 0.01601 261.51)",
+          "oklch(37.86% 0.01601 261.51)",
+          "oklch(49.29% 0.01601 261.51)",
+          "oklch(60.71% 0.01601 261.51)",
+          "oklch(72.14% 0.01601 261.51)",
+          "oklch(83.57% 0.01601 261.51)",
+          "oklch(95.00% 0.01601 261.51)"
+        ]
+      },
+      "foreground": {
+        "role": "neutral",
+        "displayName": "foreground",
+        "tonalRamp": [
+          "oklch(15.00% 0.00912 258.34)",
+          "oklch(26.43% 0.00912 258.34)",
+          "oklch(37.86% 0.00912 258.34)",
+          "oklch(49.29% 0.00912 258.34)",
+          "oklch(60.71% 0.00912 258.34)",
+          "oklch(72.14% 0.00912 258.34)",
+          "oklch(83.57% 0.00912 258.34)",
+          "oklch(95.00% 0.00912 258.34)"
+        ]
+      },
+      "card": {
+        "role": "neutral",
+        "displayName": "card",
+        "tonalRamp": [
+          "oklch(15.00% 0.02243 257.29)",
+          "oklch(26.43% 0.02243 257.29)",
+          "oklch(37.86% 0.02243 257.29)",
+          "oklch(49.29% 0.02243 257.29)",
+          "oklch(60.71% 0.02243 257.29)",
+          "oklch(72.14% 0.02243 257.29)",
+          "oklch(83.57% 0.02243 257.29)",
+          "oklch(95.00% 0.02243 257.29)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "muted",
+        "tonalRamp": [
+          "oklch(15.00% 0.02771 257.53)",
+          "oklch(26.43% 0.02771 257.53)",
+          "oklch(37.86% 0.02771 257.53)",
+          "oklch(49.29% 0.02771 257.53)",
+          "oklch(60.71% 0.02771 257.53)",
+          "oklch(72.14% 0.02771 257.53)",
+          "oklch(83.57% 0.02771 257.53)",
+          "oklch(95.00% 0.02771 257.53)"
+        ]
+      },
+      "muted-foreground": {
+        "role": "neutral",
+        "displayName": "muted-foreground",
+        "tonalRamp": [
+          "oklch(15.00% 0.03151 256.04)",
+          "oklch(26.43% 0.03151 256.04)",
+          "oklch(37.86% 0.03151 256.04)",
+          "oklch(49.29% 0.03151 256.04)",
+          "oklch(60.71% 0.03151 256.04)",
+          "oklch(72.14% 0.03151 256.04)",
+          "oklch(83.57% 0.03151 256.04)",
+          "oklch(95.00% 0.03151 256.04)"
+        ]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "border",
+        "tonalRamp": [
+          "oklch(15.00% 0.03792 256.16)",
+          "oklch(26.43% 0.03792 256.16)",
+          "oklch(37.86% 0.03792 256.16)",
+          "oklch(49.29% 0.03792 256.16)",
+          "oklch(60.71% 0.03792 256.16)",
+          "oklch(72.14% 0.03792 256.16)",
+          "oklch(83.57% 0.03792 256.16)",
+          "oklch(95.00% 0.03792 256.16)"
+        ]
+      },
+      "primary": {
+        "role": "primary",
+        "displayName": "primary",
+        "tonalRamp": [
+          "oklch(15.00% 0.11179 260.61)",
+          "oklch(26.43% 0.11179 260.61)",
+          "oklch(37.86% 0.11179 260.61)",
+          "oklch(49.29% 0.11179 260.61)",
+          "oklch(60.71% 0.11179 260.61)",
+          "oklch(72.14% 0.11179 260.61)",
+          "oklch(83.57% 0.11179 260.61)",
+          "oklch(95.00% 0.11179 260.61)"
+        ]
+      },
+      "primary-foreground": {
+        "role": "primary",
+        "displayName": "primary-foreground",
+        "tonalRamp": [
+          "oklch(15.00% 0.05640 259.28)",
+          "oklch(26.43% 0.05640 259.28)",
+          "oklch(37.86% 0.05640 259.28)",
+          "oklch(49.29% 0.05640 259.28)",
+          "oklch(60.71% 0.05640 259.28)",
+          "oklch(72.14% 0.05640 259.28)",
+          "oklch(83.57% 0.05640 259.28)",
+          "oklch(95.00% 0.05640 259.28)"
+        ]
+      },
+      "success": {
+        "role": "status",
+        "displayName": "success",
+        "tonalRamp": [
+          "oklch(15.00% 0.10666 163.69)",
+          "oklch(26.43% 0.10666 163.69)",
+          "oklch(37.86% 0.10666 163.69)",
+          "oklch(49.29% 0.10666 163.69)",
+          "oklch(60.71% 0.10666 163.69)",
+          "oklch(72.14% 0.10666 163.69)",
+          "oklch(83.57% 0.10666 163.69)",
+          "oklch(95.00% 0.10666 163.69)"
+        ]
+      },
+      "destructive": {
+        "role": "status",
+        "displayName": "destructive",
+        "tonalRamp": [
+          "oklch(15.00% 0.11740 20.00)",
+          "oklch(26.43% 0.11740 20.00)",
+          "oklch(37.86% 0.11740 20.00)",
+          "oklch(49.29% 0.11740 20.00)",
+          "oklch(60.71% 0.11740 20.00)",
+          "oklch(72.14% 0.11740 20.00)",
+          "oklch(83.57% 0.11740 20.00)",
+          "oklch(95.00% 0.11740 20.00)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "headline",
+        "purpose": "页面主标题"
+      },
+      "title": {
+        "displayName": "title",
+        "purpose": "连接状态标题"
+      },
+      "body": {
+        "displayName": "body",
+        "purpose": "介绍段落"
+      },
+      "label": {
+        "displayName": "label",
+        "purpose": "辅助说明"
+      },
+      "code": {
+        "displayName": "code",
+        "purpose": "CLI 命令"
+      }
+    },
+    "shadows": [
+      {
+        "name": "button-focus-ring",
+        "value": "0 0 0 3px color-mix(in oklab, var(--primary) 50%, transparent)",
+        "purpose": "仅用于按钮键盘焦点反馈；页面容器无投影。"
+      }
+    ],
+    "motion": [
+      {
+        "name": "state-transition",
+        "value": "150ms cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "按钮状态过渡；prefers-reduced-motion: reduce 时关闭。"
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "40rem"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "检查连接",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "当前状态页使用的含图标主要按钮。",
+      "html": "<button type=\"button\" class=\"ds-button\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\"/><path d=\"M21 3v5h-5\"/><path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\"/><path d=\"M8 16H3v5\"/></svg>检查连接</button>",
+      "css": ".ds-button { display:inline-flex; align-items:center; justify-content:center; gap:.5rem; height:2.25rem; padding:.5rem .75rem; border:0; border-radius:calc(var(--radius, .75rem) - 4px); background:var(--primary, #8eb8ff); color:var(--primary-foreground, #10213c); font-family:inherit; font-size:.875rem; font-weight:500; line-height:1.25rem; white-space:nowrap; cursor:pointer; transition:all 150ms cubic-bezier(.4,0,.2,1); } .ds-button svg { width:1rem; height:1rem; flex-shrink:0; } .ds-button:hover { background:color-mix(in oklab,var(--primary, #8eb8ff) 90%,transparent); } .ds-button:focus-visible { outline:none; box-shadow:0 0 0 3px color-mix(in oklab,var(--primary, #8eb8ff) 50%,transparent); } .ds-button:disabled { pointer-events:none; opacity:.5; } @media(prefers-reduced-motion:reduce) { .ds-button { transition:none; } }"
+    },
+    {
+      "name": "连接状态容器",
+      "kind": "card",
+      "refersTo": "status-panel",
+      "description": "已连接状态的结构预览；实际页面另有检查中与错误状态。",
+      "html": "<section class=\"ds-status\" aria-label=\"服务连接\"><div class=\"ds-status-content\" role=\"status\" aria-live=\"polite\"><svg class=\"ds-status-icon\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m9 12 2 2 4-4\"/></svg><div><h2 class=\"ds-status-title\">服务已连接</h2><p class=\"ds-status-description\">网关可以响应请求。你可以继续在本地检查连接。</p></div></div></section>",
+      "css": ".ds-status { padding:1.5rem; border:1px solid var(--border, #303e51); border-radius:var(--radius, .75rem); background:var(--card, #131a24); color:var(--foreground, #edf1f7); } .ds-status-content { display:flex; align-items:flex-start; gap:1rem; } .ds-status-icon { width:1.5rem; height:1.5rem; flex-shrink:0; margin-top:.25rem; color:var(--success, #80dcb3); } .ds-status-title { margin:0; font-size:1.25rem; font-weight:500; line-height:1.75rem; } .ds-status-description { margin:.5rem 0 0; max-width:65ch; font-size:.875rem; line-height:1.5rem; color:var(--muted-foreground, #a3b1c4); } @media(min-width:40rem) { .ds-status { padding:2rem; } }"
+    },
+    {
+      "name": "CLI 命令块",
+      "kind": "custom",
+      "refersTo": "command-block",
+      "description": "可聚焦、可独立横向滚动的真实 doctor 命令。",
+      "html": "<pre class=\"ds-command\" role=\"region\" aria-label=\"CLI 检查命令\" tabindex=\"0\"><code class=\"ds-code\">loadout doctor --server http://127.0.0.1:8787</code></pre>",
+      "css": ".ds-command { margin:0; overflow-x:auto; padding:1.25rem; border:1px solid var(--border, #303e51); border-radius:var(--radius, .75rem); background:var(--card, #131a24); color:var(--foreground, #edf1f7); font-size:.875rem; line-height:1.5rem; } .ds-code { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; } .ds-command:focus-visible { outline:2px solid var(--primary, #8eb8ff); outline-offset:4px; }"
+    },
+    {
+      "name": "分隔线",
+      "kind": "custom",
+      "refersTo": "separator",
+      "description": "状态信息区使用的装饰性分隔线。",
+      "html": "<div class=\"ds-separator\" aria-hidden=\"true\"></div>",
+      "css": ".ds-separator { height:1px; width:100%; flex-shrink:0; background:var(--border, #303e51); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "深色开发者工具",
+    "overview": "采用用户确认的深色开发者工具风格：冷色深灰背景、克制的蓝色动作、清晰文字与边界。中文内容以系统无衬线字体为主，等宽字体用于代码与版本。当前基线从已实现的单页提取，后续页面沿用这些视觉关系。",
+    "keyCharacteristics": [
+      "深色底面与轻微提亮的容器形成层级。",
+      "蓝色标识动作，状态以文字、图标和颜色共同表达。",
+      "单一阅读轴、适中密度、窄屏自然排列。"
+    ],
+    "rules": [],
+    "dos": [
+      "Do 使用语义颜色 token，并保持中文、长版本号与代码可读。",
+      "Do 为键盘焦点保留明显反馈；可横向滚动的命令区域必须可聚焦。",
+      "Do 同时提供状态文字与图标，错误给出可执行的恢复指引。"
+    ],
+    "donts": [
+      "Don't 把成功、错误或检查中的区别只交给颜色。",
+      "Don't 用不可操作的导航或虚构业务数据填充当前基建页面。",
+      "Don't 添加入场动画；交互过渡遵循 reduced-motion。"
+    ]
+  }
+}

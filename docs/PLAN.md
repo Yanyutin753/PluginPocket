@@ -6,9 +6,9 @@
 
 | 项 | 值 |
 |---|---|
-| 文档版本 | v0.1（首版，作为开发唯一依据） |
+| 文档版本 | v0.2（React / Go / Rust；完整 TDD） |
 | 日期 | 2026-09-10 |
-| 状态 | 待评审 |
+| 状态 | M0.0 本地 harness 通过；业务功能按里程碑交付 |
 | 仓库规划 | monorepo：`server` + `cli` + `web` |
 | 开源策略 | open-core（核心网关与 CLI 开源，运营侧保留） |
 
@@ -169,7 +169,7 @@
 | **MCP 网关** | 唯一工具入口：鉴权 → 按套餐过滤工具 → 转发调用 → 计量扣费 | 无状态（每请求新建 transport），水平扩展友好 |
 | **预设上游池** | 管理员维护的工具集合，三种类型：builtin / http / stdio | 连接懒加载 + 缓存 + 失败重连 |
 | **bridge（CLI 内置）** | 本地 stdio MCP server，读取本地凭证，转发到网关 | 客户端配置零密钥；token 轮换不触碰客户端配置 |
-| **网页控制台** | 用户端 + 管理端 | P0 纯静态（服务端托管），P1 升级 Vite+React |
+| **网页控制台** | 用户端 + 管理端 | P0 起 React + TypeScript + Vite，Go 托管生产资源 |
 
 ### 5.3 三个关键设计决策
 
@@ -179,7 +179,7 @@
 - 收益 1：客户端配置文件里**不落任何密钥**；
 - 收益 2：token 轮换 / 换服务器只需改 `~/.loadout/config.json`，**不动各客户端配置**；
 - 收益 3：绕开各客户端远程认证差异（Codex 只支持 `bearer_token_env_var`，体验差）；
-- 代价：本地多一跳（纳秒级，可忽略）。
+- 代价：本地多一跳（实际开销通过后续 bridge 端到端基准测量）。
 
 direct 模式（客户端直连网关 HTTP 端点 + Authorization 头）作为高级选项保留，Claude/Cursor 支持良好，Codex 不推荐。
 
@@ -196,10 +196,10 @@ direct 模式（客户端直连网关 HTTP 端点 + Authorization 头）作为�
 ### 6.1 用户首次接入（目标 < 2 分钟）
 
 ```
-1. 网页 /login.html 注册（送初始额度，如 1000 credits）
+1. 网页 /login 注册（送初始额度，如 1000 credits）
 2. 控制台 → 令牌页 → 「创建令牌」→ 复制 ldt_xxxx（只显示这一次）
-3. 终端：npm i -g loadout && loadout login --server https://api.xxx.com
-   → 粘贴令牌 → CLI 调 /api/account/verify 校验 → 写 ~/.loadout/config.json (0600)
+3. 终端：安装原生 loadout 二进制后执行 loadout login --server https://api.xxx.com
+   → 粘贴令牌 → CLI 调 /api/v1/account/verify 校验 → 写 ~/.loadout/config.json (0600)
 4. loadout apply            # 自动检测已装的客户端（codex/claude/cursor）
    → 逐个写入 bridge 配置（带标记块，幂等）
 5. 重启 Codex/Claude/Cursor → 工具全部出现 → 直接用
@@ -370,8 +370,8 @@ CREATE TABLE teams        (id, name, owner_id, shared_balance, ...);
 ### 9.1 端点与传输
 
 - 协议：MCP **Streamable HTTP**（`application/json` POST 请求-响应；无状态）。
-- 每个请求：`new StreamableHTTPTransport({sessionIdGenerator: undefined})` + 新建低层 `Server` 实例 → `handleRequest(req.raw, reply.raw, req.body)` → 连接关闭时销毁。
-- 鉴权在 Fastify preHandler 层完成（解析 Bearer → tokens 表 → req.user），未过鉴权根本不进 MCP 层。
+- 网关使用官方 Go MCP SDK 的无状态 Streamable HTTP handler；具体选项随实现时锁定的 SDK 验证，禁止自行拼接协议。
+- 鉴权在 Go HTTP middleware 层完成（解析 Bearer → tokens 表 → request context），未过鉴权根本不进 MCP 层。
 
 ### 9.2 工具注册与命名
 
@@ -387,8 +387,8 @@ CREATE TABLE teams        (id, name, owner_id, shared_balance, ...);
 | kind | 连接方式 | 生命周期 |
 |---|---|---|
 | builtin | 进程内函数 | 常驻 |
-| http | MCP SDK Client + StreamableHTTPClientTransport(url, headers) | 懒加载，按 rowId 缓存；config 变更签名比对后重建 |
-| stdio | MCP SDK Client + StdioClientTransport(command, args, env) | 同上；**P1 且默认 disabled**（安全，见 §13） |
+| http | Go MCP SDK Client + Streamable HTTP transport | 懒加载，按 rowId 缓存；config 变更签名比对后重建 |
+| stdio | Go MCP SDK Client + stdio transport | 同上；**P1 且默认 disabled**（安全，见 §13） |
 
 上游故障策略：listTools 失败 → 跳过该 server 并记日志（不拖垮整个列表）；callTool 失败 → 断开缓存连接、下次重建、向用户返回 `isError` + 错误摘要。
 
@@ -431,7 +431,7 @@ tools/call 到达
 loadout login [--server URL] [--token ldt_xxx]   # 登录：校验并保存凭证
 loadout logout                                   # 清除本地凭证
 loadout status                                   # 当前账号/余额/已配置客户端
-loadout doctor                                   # 体检：node 版本/凭证/客户端检测/配置状态
+loadout doctor                                   # 体检：服务连通性（M0.0）；凭证/客户端检测/配置状态（M0）
 loadout apply [--clients codex,claude,cursor]    # 写入配置（默认自动检测全部）
               [--direct]                         # 强制 direct 模式（默认 bridge）
               [--remove]                         # 移除已写入的配置
@@ -453,8 +453,8 @@ loadout version
 ```toml
 # --- loadout begin ---
 [mcp_servers.loadout]
-command = "C:\\Program Files\\nodejs\\node.exe"
-args = ["C:\\Users\\me\\...\\loadout\\cli\\dist\\bridge.js"]
+command = "C:\\Users\\me\\.local\\bin\\loadout.exe"
+args = ["bridge"]
 env = { LOADOUT_CONFIG = "C:\\Users\\me\\.loadout\\config.json" }
 # --- loadout end ---
 ```
@@ -464,8 +464,8 @@ env = { LOADOUT_CONFIG = "C:\\Users\\me\\.loadout\\config.json" }
 ```json
 { "mcpServers": { "loadout": {
     "type": "stdio",
-    "command": "C:\\Program Files\\nodejs\\node.exe",
-    "args": ["C:\\...\\bridge.js"],
+    "command": "C:\\Users\\me\\.local\\bin\\loadout.exe",
+    "args": ["bridge"],
     "env": { "LOADOUT_CONFIG": "C:\\Users\\me\\.loadout\\config.json" } } } }
 ```
 
@@ -473,8 +473,8 @@ env = { LOADOUT_CONFIG = "C:\\Users\\me\\.loadout\\config.json" }
 
 ```json
 { "mcpServers": { "loadout": {
-    "command": "C:\\Program Files\\nodejs\\node.exe",
-    "args": ["C:\\...\\bridge.js"],
+    "command": "C:\\Users\\me\\.local\\bin\\loadout.exe",
+    "args": ["bridge"],
     "env": { "LOADOUT_CONFIG": "C:\\Users\\me\\.loadout\\config.json" } } } }
 ```
 
@@ -500,11 +500,8 @@ bearer_token_env_var = "LOADOUT_TOKEN"
   - 已有 `# --- loadout begin --- ... # --- loadout end ---` → 整块替换；
   - 没有 → 文件末尾追加（TOML 表声明放末尾恒合法）；
   - 检测到无标记的 `[mcp_servers.loadout]` → **拒绝写入并提示人工处理**（防误覆盖用户手写配置）。
-  - 字符串值用 JSON.stringify 转义（与 TOML basic string 兼容）。
-- bridge 命令解析：
-  - dist 运行 → `[node, <abs>/dist/bridge.js]`；
-  - 源码 tsx 开发态 → `[node, <tsx/cli.mjs>, <abs>/src/bridge.ts]`。
-  - 写绝对路径（进程路径），规避 Windows 下 `.cmd` shim 与 spawn 兼容问题。
+  - 字符串值使用 Rust TOML 序列化库编码，测试覆盖转义、Unicode 和 Windows 路径。
+- bridge 命令解析：Rust `std::env::current_exe()` 获取绝对二进制路径，参数固定为 `bridge`，避免 PATH、Node shim 与脚本路径依赖。
 
 ### 10.5 bridge 进程设计
 
@@ -527,13 +524,13 @@ stdin/stdout (JSON-RPC over stdio, MCP 协议)
 
 ## 11. 网页控制台设计
 
-P0：纯静态（HTML + 原生 JS + CSS，Fastify 托管，零构建、零 npm 依赖）；P1 升级 Vite + React（目录预留）。
+P0 起使用 React + TypeScript + Vite、Tailwind CSS、shadcn/ui、TanStack Query、Zod 和 Lucide。开发期代理 Go API；生产静态产物由 Go 托管。深色开发者工具风格，前端规范见 [FRONTEND.md](FRONTEND.md)。
 
 ### 11.1 用户端（`/`，index.html）
 
 | 区域 | 内容 |
 |---|---|
-| 登录页 `/login.html` | 用户名/密码 + 注册切换 |
+| 登录页 `/login` | 用户名/密码 + 注册切换 |
 | 概览卡片 | 当前余额、今日调用、本月消耗、token 数 |
 | 令牌管理 | 列表（名称/前缀/末次使用/状态）；「创建」弹窗 → **明文只展示一次** + 复制按钮 + CLI 用法提示（`loadout login --token ldt_xxx`）；吊销按钮（二次确认） |
 | 用量明细 | 表格：时间 / 工具 / 状态 / 耗时 / 消耗（分页） |
@@ -602,64 +599,57 @@ P0：纯静态（HTML + 原生 JS + CSS，Fastify 托管，零构建、零 npm �
 
 ## 14. 技术选型与理由
 
-| 层 | 选型 | 理由 | 备选与放弃原因 |
-|---|---|---|---|
-| 语言/运行时 | TypeScript + Node 22 | MCP 官方 SDK 一等公民；前后端 CLI 三端同语言共享类型 | Go：单二进制分发爽，但 MCP SDK 生态弱；Python：同理 + 打包烦 |
-| Web 框架 | Fastify 5 | 轻、快、原生 TS 友好、middleware 模型清晰 | Express（老）、Nest（重） |
-| DB | SQLite（better-sqlite3）→ P2 PostgreSQL | P0 单机零运维，同步 API 写起来最省；表结构向后兼容迁移 | 一开始 PG 会拖慢 M0 |
-| ORM | P0 手写 SQL；P2 Drizzle | P0 表少，SQL 直观可控 | — |
-| MCP | @modelcontextprotocol/sdk（官方） | 网关低层 Server + Client 组合自由度最大，不受 zod schema 约束 | — |
-| CLI | commander | 标准选择 | — |
-| 前端 | P0 原生静态；P1 Vite+React | M0 零构建零依赖，验证 API 优先 | — |
-| 分发 | npm（`npm i -g loadout` / `npx loadout`） | 目标用户全有 node | P3 Tauri 桌面壳 |
+| 层 | 选型 | 理由 |
+|---|---|---|
+| 后端 | 最新稳定 Go、net/http、slog | 标准库优先，原生二进制、明确 HTTP 生命周期 |
+| 数据库 | M0 SQLite → 后续 PostgreSQL | 在持久化任务引入驱动和迁移，基建不伪造数据 |
+| MCP | 官方 Go SDK；客户端官方 Rust rmcp | 协议复用官方实现；在 MCP 任务锁定最新稳定版 |
+| 本地端 | 最新稳定 Rust、clap、reqwest、serde | 无 Node 运行依赖；CLI 与未来桌面共享 Rust 逻辑 |
+| 前端 | 最新稳定 React / TypeScript / Vite | 从第一天使用正式组件工程 |
+| UI | Tailwind CSS / shadcn/ui / Lucide | 语义 token、可访问组件、统一图标 |
+| 状态与契约 | TanStack Query / Zod | 请求生命周期、重试和运行时边界校验 |
+| 测试 | Go testing / cargo test / Vitest / Testing Library / Node 内置测试运行器 | 完整 TDD，真实三端集成 harness |
+| 质量 | Biome / gofmt + go vet / rustfmt + clippy | CI 与本地同一检查入口 |
+| 分发 | 原生二进制；Go + Web 单容器 | CLI 不依赖 npm 安装；后续考虑 Tauri |
 
----
+“最新”指搭建时查询官方发布源的最新稳定版并锁定，更新走 PR 和完整 harness；不跟随 beta/rc，不在 CI 浮动升级。当前具体版本以 manifests、工具链文件和锁文件为准。
 
 ## 15. 代码仓库结构
 
-```
+```text
 loadout/
-├── docs/
-│   └── PLAN.md                 # 本文档
-├── server/                     # 服务端（Fastify）
-│   ├── src/
-│   │   ├── index.ts            # 入口：组装 + 启动横幅
-│   │   ├── config.ts           # 环境变量
-│   │   ├── db/index.ts         # SQLite 初始化 + schema
-│   │   ├── auth.ts             # scrypt / session-jwt / 网关 token
-│   │   ├── routes/
-│   │   │   ├── auth.ts         # register/login
-│   │   │   ├── account.ts      # me/usage/tokens/verify
-│   │   │   └── admin.ts        # users/balance/tools/usage
-│   │   └── gateway/
-│   │       ├── index.ts        # /mcp 端点（stateless）
-│   │       ├── registry.ts     # 工具池快照 + 上游连接缓存
-│   │       ├── builtin.ts      # time_now / echo
-│   │       └── meter.ts        # 计量扣费
-│   ├── scripts/smoke.ts        # 端到端冒烟（见 §16 M0 验收）
-│   └── seed.ts                 # 初始 admin/demo 用户与 builtin 工具
-├── cli/                        # 本地端
-│   ├── src/
-│   │   ├── index.ts            # commander 入口
-│   │   ├── config.ts           # ~/.loadout 读写
-│   │   ├── writers.ts          # codex/claude/cursor 配置写入（标记块）
-│   │   └── bridge.ts           # stdio→HTTP 转发进程
-├── web/public/                 # P0 静态控制台
-│   ├── login.html / index.html
-│   ├── app.js / styles.css
-├── package.json                # npm workspaces 根
-└── .env.example                # PORT / MCPBOX→LOADOUT_* 环境变量样例
+├── .agents/skills/             # 固定版本的三套技能，随仓库共享
+├── .github/workflows/          # 与本地一致的 CI
+├── docs/PLAN.md                # 产品总体方案
+├── docs/HARNESS.md             # RED/GREEN/REFACTOR 与验证入口
+├── docs/FRONTEND.md            # React 开发规范
+├── server/
+│   ├── cmd/loadout-server/     # Go 进程入口
+│   └── internal/              # 当前 config/httpapi；业务模块按需增加
+├── cli/
+│   ├── src/                   # Rust CLI；后续 bridge/config writers
+│   └── tests/                 # CLI 黑盒行为测试
+├── web/src/                   # React、API、components/ui、设计 token
+├── tests/                    # Node 标准库：真实 HTTP / CLI 与进程集成
+├── Makefile                   # dev/test/check/build
+├── pnpm-workspace.yaml        # JS 工具和 Web 工作区
+├── rust-toolchain.toml        # Rust 固定稳定工具链
+└── .env.example               # 当前已实现的环境变量
 ```
 
-环境变量：`PORT`(8787)、`LOADOUT_DB`(data/loadout.db)、`LOADOUT_JWT_SECRET`、`LOADOUT_PUBLIC_URL`、`LOADOUT_INITIAL_BALANCE`(1000)。
+M0.0 环境变量：`LOADOUT_ADDR`（默认 `127.0.0.1:8787`）、`LOADOUT_WEB_DIR`（默认 `web/dist`，相对服务工作目录）。数据库、会话密钥和额度配置随对应业务任务增加，不在基建接收无效选项。
 
 ---
 
 ## 16. 里程碑与验收标准
 
-### M0 —— 端到端骨架（目标 1 周）
+### M0.0 —— 工程基建（当前交付）
 
-范围：server（账号/令牌/网关/builtin 工具/计量扣费/静态控制台）+ CLI（login/apply/bridge/status/doctor）。
+React 状态页 → Go 健康 API ← Rust doctor；完整 TDD / harness、三套开发技能、固定依赖、CI、容器定义。详细范围见 [基建设计](superpowers/specs/2026-09-10-foundation-design.md)。不等同于下面的 M0 业务验收完成。
+
+### M0 —— 端到端业务链路（目标 1 周）
+
+范围：server（账号/令牌/网关/builtin 工具/计量扣费/React 控制台）+ CLI（login/apply/bridge/status/doctor）。
 
 **验收 = 冒烟脚本全绿**，覆盖：
 
@@ -678,7 +668,7 @@ loadout/
 
 ### M2 —— 商业闭环（2-3 周）
 
-- 支付（Stripe 或国内通道）、套餐、兑换码、充值流水；device-code 登录；Vite+React 控制台改版；用量报表导出。
+- 支付（Stripe 或国内通道）、套餐、兑换码、充值流水；device-code 登录；React 控制台报表扩展；用量报表导出。
 - 验收：真实支付一单 → 额度到账 → 调用扣减 → 对账平。
 
 ### M3 —— 团队版（3-4 周）

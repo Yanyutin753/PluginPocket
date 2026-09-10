@@ -1,0 +1,20 @@
+{
+  "name": "loadout-workspace",
+  "private": true,
+  "packageManager": "pnpm@12.3.4",
+  "engines": {
+    "node": ">=26.8.2"
+  },
+  "scripts": {
+    "dev": "concurrently --kill-others --names server,web 'make dev-server' 'web/node_modules/.bin/vite web --host 127.0.0.1 --strictPort'",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "check": "make check",
+    "test:integration": "make integration"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.13",
+    "@types/node": "22.20.2",
+    "concurrently": "10.0.5"
+  }
+}

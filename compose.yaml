@@ -1,0 +1,12 @@
+services:
+  loadout:
+    build: .
+    ports:
+      - "127.0.0.1:${LOADOUT_PORT:-8787}:8787"
+    environment:
+      LOADOUT_ADDR: 0.0.0.0:8787
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
