@@ -7,7 +7,7 @@ const END: &str = "# --- loadout end ---";
 const ALL: [ClientKind; 3] = [ClientKind::Codex, ClientKind::Claude, ClientKind::Cursor];
 
 impl ClientKind {
-    fn name(self) -> &'static str {
+    pub(crate) fn name(self) -> &'static str {
         match self {
             Self::Codex => "codex",
             Self::Claude => "claude",
@@ -16,17 +16,17 @@ impl ClientKind {
     }
 }
 impl LocalClient {
-    fn client_path(&self, kind: ClientKind) -> PathBuf {
+    pub(crate) fn client_path(&self, kind: ClientKind) -> PathBuf {
         self.home.join(match kind {
             ClientKind::Codex => ".codex/config.toml",
             ClientKind::Claude => ".claude.json",
             ClientKind::Cursor => ".cursor/mcp.json",
         })
     }
-    fn manifest_path(&self) -> PathBuf {
+    pub(crate) fn manifest_path(&self) -> PathBuf {
         self.home.join(".loadout/managed-clients.json")
     }
-    fn manifest(&self) -> Result<Map<String, Value>> {
+    pub(crate) fn manifest(&self) -> Result<Map<String, Value>> {
         match config::read(&self.manifest_path())? {
             Some(bytes) => {
                 serde_json::from_slice(&bytes).map_err(|_| "invalid client management record")
@@ -37,7 +37,7 @@ impl LocalClient {
     pub fn client_states(&self) -> Result<Vec<ClientState>> {
         self.client_states_for(&ALL)
     }
-    fn client_states_for(&self, selected: &[ClientKind]) -> Result<Vec<ClientState>> {
+    pub(crate) fn client_states_for(&self, selected: &[ClientKind]) -> Result<Vec<ClientState>> {
         let manifest = self.manifest()?;
         ALL.iter()
             .filter(|client| selected.contains(*client))
@@ -127,7 +127,7 @@ impl LocalClient {
                     if !output.is_empty() && !output.ends_with('\n') {
                         output.push('\n');
                     }
-                    let block = format!("{BEGIN}\n{}{END}\n", toml_entry(&entry)?);
+                    let block = format!("{BEGIN}\n{}{END}\n", toml_entry("loadout", &entry)?);
                     output.push_str(&block);
                     manifest.insert(client.name().into(), Value::String(block));
                 } else {
@@ -237,7 +237,7 @@ impl LocalClient {
         }
     }
 }
-fn owns(manifest: &Map<String, Value>, name: &str, entry: &Value) -> bool {
+pub(crate) fn owns(manifest: &Map<String, Value>, name: &str, entry: &Value) -> bool {
     manifest.get(name).is_some_and(|record| {
         record == entry
             || record
@@ -246,17 +246,25 @@ fn owns(manifest: &Map<String, Value>, name: &str, entry: &Value) -> bool {
     })
 }
 fn toml_without_managed(text: &str) -> Result<(String, Option<String>)> {
+    toml_splice(text, BEGIN, END, "loadout")
+}
+pub(crate) fn toml_splice(
+    text: &str,
+    begin: &str,
+    end: &str,
+    key: &str,
+) -> Result<(String, Option<String>)> {
     let original = text
         .parse::<DocumentMut>()
         .map_err(|_| "invalid client TOML configuration")?;
-    let begins: Vec<_> = text.match_indices(BEGIN).collect();
-    let ends: Vec<_> = text.match_indices(END).collect();
+    let begins: Vec<_> = text.match_indices(begin).collect();
+    let ends: Vec<_> = text.match_indices(end).collect();
     let managed = !begins.is_empty();
     let mut managed_block = None;
     if managed
         && original
             .get("mcp_servers")
-            .and_then(|i| i.get("loadout"))
+            .and_then(|i| i.get(key))
             .is_none()
     {
         return Err("Loadout markers do not enclose an actual client entry");
@@ -268,7 +276,7 @@ fn toml_without_managed(text: &str) -> Result<(String, Option<String>)> {
             return Err("invalid Loadout configuration markers");
         }
         let start = begins[0].0;
-        let mut end = ends[0].0 + END.len();
+        let mut end = ends[0].0 + end.len();
         if (start > 0 && !text[..start].ends_with('\n'))
             || !text[end..].starts_with(['\n', '\r']) && end != text.len()
         {
@@ -287,14 +295,14 @@ fn toml_without_managed(text: &str) -> Result<(String, Option<String>)> {
         .map_err(|_| "invalid TOML outside Loadout markers")?;
     if document
         .get("mcp_servers")
-        .and_then(|i| i.get("loadout"))
+        .and_then(|i| i.get(key))
         .is_some()
     {
         return Err("existing loadout configuration has no managed markers; resolve it manually");
     }
     Ok((remaining, managed_block))
 }
-fn toml_entry(entry: &Value) -> Result<String> {
+pub(crate) fn toml_entry(key: &str, entry: &Value) -> Result<String> {
     let mut document = DocumentMut::new();
     let mut servers = Table::new();
     servers.set_implicit(true);
@@ -319,7 +327,7 @@ fn toml_entry(entry: &Value) -> Result<String> {
             _ => return Err("invalid client entry"),
         };
     }
-    servers["loadout"] = Item::Table(loadout);
+    servers[key] = Item::Table(loadout);
     document["mcp_servers"] = Item::Table(servers);
     Ok(document.to_string())
 }

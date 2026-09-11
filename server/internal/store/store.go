@@ -38,6 +38,9 @@ type Call struct {
 //go:embed migrations/*.sql
 var migrations embed.FS
 
+//go:embed migrations_sqlite/*.sql
+var migrationsSQLite embed.FS
+
 func Open(ctx context.Context, rawURL string) (*Store, error) {
 	cfg, err := pgxpool.ParseConfig(rawURL)
 	if err != nil {

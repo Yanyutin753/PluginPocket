@@ -341,6 +341,24 @@ Codex(用户按 F5 调用 time_now)
 
 上游故障策略：listTools 失败 → 跳过该 server 并记日志（不拖垮整个列表）；callTool 失败 → 断开缓存连接、下次重建、向用户返回 `isError` + 错误摘要。
 
+### 9.3a 插件市场（2026-09-11 增补）
+
+- **定位**：服务端维护的 MCP 插件目录，运营方浏览/同步/一键装入预设池；用户经 CLI 浏览并本地直连安装。
+- **只收录 HTTP MCP**：市场安装接口拒绝非 http 传输；stdio 仍属部署者受控能力（工具管理 + `LOADOUT_STDIO_COMMANDS` 允许名单），不进入市场。
+- **目录来源**：
+  - curated：随迁移种子的精选公共端点（DeepWiki、Context7、Microsoft Learn），已知 endpoint 可默认直装；
+  - github：管理员触发同步 GitHub Search（`mcp-server in:name topic:mcp-server` 按星标，可选 `LOADOUT_GITHUB_TOKEN` 提额）；同步失败目录保持原样。
+- **双通道产品语义**：
+  - **服务端池**（计量）：管理员市场安装 → `tools` 行 + 密封配置 → 网关目录 → 全部客户端经 bridge 受益；
+  - **本地直连**（不经计量）：`loadout install <slug>` 把公共 HTTP 端点直接写进客户端配置（`loadout-<slug>` 托管条目，独立标记与备份），不写入任何凭证。
+- **元数据覆盖**：`tool_metadata_overrides` 按 (tool_id, remote_name) 覆盖上游工具的描述与参数 InputSchema（目录构建时应用，无效 schema 整体忽略）；管理员可在工具页实时发现上游工具并编辑覆盖。
+- **服务端即插件市场源（2026-09-11 终态，产品主线）**："登录即武装"完整闭环——运营方在服务端定制插件（**网关独享 MCP**（`transport=gateway`，凭证密封、按次计量）+ 技能 + 装备组），服务端在 `/marketplace.git` 以哑 HTTP git 裸仓**实时**渲染官方 Codex 插件市场（`internal/marketplace/{exporter,gitrepo,registry}.go`，懒构建+变更失效缓存），`/plugins` 提供对外 SEO 目录页（服务端直出 HTML）。用户：`codex plugin marketplace add <origin>/marketplace.git` → `codex plugin add <插件>`——独享 MCP 以 **stdio bridge 条目**（`{"command":"loadout","args":["bridge"]}`）进入插件 mcp.json，经登录凭证走网关计量；CLI `loadout install <slug>` 对 gateway 成员自动确保 bridge、不落直连条目。仍可用 `build/loadout-export` 导出目录树推 git 仓库（公共策展源路径）。全部经真实 Codex CLI 0.153.4 验证：服务端源接入/列目录/安装/stdio mcp 接受/独享工具经 bridge 真实扣费。
+- **生态三件套（2026-09-11 晚增补）**：市场条目分 `kind`——
+  - `mcp`：HTTP MCP 插件（池内计量安装 / CLI 本地直连安装）；
+  - `skill`：Agent Skill（SKILL.md 及配套文件）；来源 inline（目录内维护）或 github (repo, path)（服务端经 contents API 解析，CLI 只连 Loadout：`GET /api/v1/marketplace/{slug}/files`）；CLI 写入 `~/.codex/skills/<slug>/`、`~/.claude/skills/<slug>/`，清单登记文件集，目录含外来文件时拒绝卸载；
+  - `bundle` 装备组：mcp/skill 成员集合，`loadout install <bundle>` 一条命令复刻专家配置（普通用户的核心场景）；不允许嵌套。
+  发布（管理员导入）与消费（用户安装）分离；文件路径安全校验（拒 `..`/绝对路径/控制字符，≤32 文件、单文件 ≤256KB）。
+
 ### 9.4 计量与扣费（核心）
 
 ```

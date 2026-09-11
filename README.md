@@ -20,6 +20,16 @@ loadout apply --clients codex,claude,cursor
 
 重启客户端，整套预设好的 MCP 工具直接可用。所有调用经过统一网关：**鉴权、计量、扣额度，后台看得见每一次调用**。
 
+服务端提供**插件市场**（只收录 HTTP MCP）：管理员在后台同步 GitHub 热门 MCP 仓库、一键装入预设池并可覆盖工具描述与参数说明；本地也能把公共插件直连装进客户端——
+
+```bash
+loadout market                       # 浏览市场：MCP 插件 / 技能 / 装备组
+loadout install expert-pack          # 一条命令复刻专家配置：MCP 直连条目 + 技能目录
+loadout uninstall expert-pack
+```
+
+市场条目三种：**mcp**（HTTP 插件，服务端池计量或本地直连零密钥）、**skill**（Agent Skill 写入 `~/.codex/skills/`、`~/.claude/skills/`，可从 GitHub 仓库导入由服务端代取）、**bundle** 装备组（一键复刻专家整套配置）。**服务端本身就是 Codex 插件市场源**：运营方在后台定制插件（网关独享 MCP + 技能 + 装备组，独享工具凭证密封、按次计量），服务端在 `/marketplace.git` 实时渲染官方插件格式并直出 SEO 目录页 `/plugins`；用户 `codex plugin marketplace add <服务地址>/marketplace.git` 一行接入，独享工具以本地 bridge 形态进插件、走鉴权计量——登录即武装的完整闭环。
+
 ## 架构一览
 
 ```
@@ -40,7 +50,7 @@ Codex / Claude Code / Cursor
 
 ## 项目状态
 
-已实现账号与令牌、MCP 网关、事务额度账本、运营后台、套餐/兑换码、团队共享额度、设备授权、Rust CLI 和 Tauri 桌面端。React 控制台采用 AI 装备工坊风格，支持中英文与浅色/深色/跟随系统，手机、平板和桌面共用 API 与功能。GitHub/邮箱通过部署配置启用；外部支付按本次范围仅预留接口，不产生虚假支付成功。
+已实现账号与令牌、MCP 网关、事务额度账本、运营后台、套餐/兑换码、团队共享额度、设备授权、Rust CLI 和 Tauri 桌面端；插件市场收录 HTTP MCP（GitHub 热门同步 + 精选直装 + 上游工具描述/参数覆盖 + CLI 本地直连安装）。React 控制台采用 AI 装备工坊风格，支持中英文与浅色/深色/跟随系统，手机、平板和桌面共用 API 与功能。GitHub/邮箱通过部署配置启用；外部支付按本次范围仅预留接口，不产生虚假支付成功。
 
 管理员可在“系统配置”页热更新注册赠送额度、GitHub登录与SMTP邮件参数；配置版本化保存在数据库，密钥加密且不回显，多个副本的新请求同时生效。部署连接和安全边界参数仍由环境变量管理，详见 [环境配置](docs/ENVIRONMENT.md)。
 

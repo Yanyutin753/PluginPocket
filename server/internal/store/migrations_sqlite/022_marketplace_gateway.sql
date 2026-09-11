@@ -1,0 +1,1 @@
+-- 已并入 SQLite 基线 017（transport CHECK 含 gateway；SQLite 不支持 ALTER 约束，且本轨道仅新库直建）。

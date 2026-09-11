@@ -37,3 +37,14 @@
 ### 最终结果
 
 最新完整 make check（data-pagination-complete-check-3.log）退出1：Go gateway 的边界/目录测试和store.TestDistributedConcurrentFirstMigrations失败；后者实际seed tools=5、期望2。此时工作区另有后端网关/种子数据改动，未修改其业务逻辑或弱化断言。不能声称最终全仓harness通过，上一轮完整成功也不替代此结果。前端110测试、客户端7测试、两端构建与当前前端Biome均通过；最后仅修正横排生成按钮对齐，追加web build再次验证。临时UI参数已恢复中文/深色，正式页面保留可检查。
+
+
+## 继续细化：筛选操作与完整验收
+
+- 用量/额度审计筛选按钮置于同一 flex 组，8px间距，与输入底边对齐；窄屏允许操作组自然换行，保留44px触控高度。
+- 额度审计补充清除筛选；复用既有 URL 驱动的表单/分页重置，不添加状态或依赖。
+- TDD：pnpm --dir web exec vitest run src/Pagination.test.tsx，ledger-clear-red.log 因缺少清除按钮失败（1失败5通过）；实现后同组及 ExportFilterReset.test.tsx，ledger-clear-green.log 8通过。初次命令因PATH转义失败不计作RED。
+- 浏览器实际检查390手机浅/深、1440桌面筛选组，清除后URL和输入恢复，页面无横向溢出。兑换码两个输入与生成按钮bottom同为369.58px。恢复中文深色、自然视口和/admin/users。
+- 独立审查无阻断；按建议将测试名称改为实际覆盖的URL/表单恢复。当前Biome error-on-warnings及git diff --check通过。
+
+- 本轮完整 `make check`：`.loadout/polish-complete-check.log`，进程退出0。Go race全包、CLI、Web111测试、客户端7组件测试及Rust/bridge、生产/开发Web E2E、Linux deb构建、进程生命周期、最终4项集成检查全部通过。已包含本轮功能与样式改动；初始lint之后改动的文件另执行全仓Biome及diff检查通过。测试改名后聚焦6例再次通过（ledger-clear-final.log）。这份新结果取代上一轮因旧内置工具数量预期失败的最终状态；本轮没有修改后端逻辑或降低后端断言。

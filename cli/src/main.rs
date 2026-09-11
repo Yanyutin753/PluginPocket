@@ -65,6 +65,28 @@ enum Commands {
         #[arg(long, value_enum, value_delimiter = ',')]
         clients: Vec<Client>,
     },
+    /// Browse the plugin marketplace (HTTP MCP directory).
+    Market,
+    /// Install a marketplace plugin directly into client configurations.
+    Install {
+        slug: String,
+        /// HTTP endpoint override for plugins without a known address.
+        #[arg(long)]
+        url: Option<String>,
+        #[arg(long, value_enum, value_delimiter = ',')]
+        clients: Vec<Client>,
+    },
+    /// Refresh all managed plugins and skills to the latest server content.
+    Update {
+        #[arg(long, value_enum, value_delimiter = ',')]
+        clients: Vec<Client>,
+    },
+    /// Remove an installed plugin from client configurations.
+    Uninstall {
+        slug: String,
+        #[arg(long, value_enum, value_delimiter = ',')]
+        clients: Vec<Client>,
+    },
     /// Run the MCP stdio bridge.
     Bridge,
     /// Print the installed version.
@@ -164,6 +186,46 @@ fn run(command: Commands) -> Result<()> {
         }
         Commands::Remove { clients } => {
             print_clients(&local.remove(&clients.into_iter().map(Into::into).collect::<Vec<_>>())?);
+        }
+        Commands::Market => {
+            for item in local.market()? {
+                let location = if item.endpoint.is_empty() {
+                    item.repo_url.as_str()
+                } else {
+                    item.endpoint.as_str()
+                };
+                let pool = if item.installed {
+                    "\tin server pool"
+                } else {
+                    ""
+                };
+                match item.kind.as_str() {
+                    "skill" => println!("{}\t{}\tskill\t{}", item.slug, item.name, location),
+                    "bundle" => println!("{}\t{}\tbundle\t{}", item.slug, item.name, location),
+                    _ => println!("{}\t{}\tmcp\t{}{}", item.slug, item.name, location, pool),
+                }
+            }
+        }
+        Commands::Install { slug, url, clients } => {
+            let clients: Vec<_> = clients.into_iter().map(Into::into).collect();
+            local.install(&slug, url.as_deref(), &clients)?;
+            println!("Installed {slug}; restart your clients to activate");
+        }
+        Commands::Update { clients } => {
+            let clients: Vec<_> = clients.into_iter().map(Into::into).collect();
+            let updated = local.update(&clients)?;
+            if updated.is_empty() {
+                println!("Nothing managed to update; run loadout install first");
+            } else {
+                for slug in updated {
+                    println!("Updated {slug}");
+                }
+            }
+        }
+        Commands::Uninstall { slug, clients } => {
+            let clients: Vec<_> = clients.into_iter().map(Into::into).collect();
+            local.uninstall(&slug, &clients)?;
+            println!("Removed {slug}");
         }
         Commands::Bridge => {
             return tokio::runtime::Runtime::new()

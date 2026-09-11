@@ -28,6 +28,10 @@ type Config struct {
 	GitHubClientID         string
 	GitHubClientSecret     string
 	GitHubOrg              string
+	GitHubAPIURL           string
+	GitHubToken            string
+	RateTokenPerMinute     int64
+	RateUserPerDay         int64
 	SMTPAddress            string
 	SMTPFrom               string
 	SMTPUsername           string
@@ -118,6 +122,10 @@ func Load() (Config, error) {
 	cfg.GitHubClientID = os.Getenv("LOADOUT_GITHUB_CLIENT_ID")
 	cfg.GitHubClientSecret = os.Getenv("LOADOUT_GITHUB_CLIENT_SECRET")
 	cfg.GitHubOrg = os.Getenv("LOADOUT_GITHUB_ORG")
+	cfg.GitHubAPIURL = os.Getenv("LOADOUT_GITHUB_API")
+	cfg.GitHubToken = os.Getenv("LOADOUT_GITHUB_TOKEN")
+	cfg.RateTokenPerMinute, _ = strconv.ParseInt(os.Getenv("LOADOUT_RATE_TOKEN_PER_MINUTE"), 10, 64)
+	cfg.RateUserPerDay, _ = strconv.ParseInt(os.Getenv("LOADOUT_RATE_USER_PER_DAY"), 10, 64)
 	if (cfg.GitHubClientID == "") != (cfg.GitHubClientSecret == "") || (cfg.GitHubClientID != "" && cfg.PublicURL == "") {
 		return Config{}, fmt.Errorf("GitHub login requires client id, secret, and public URL")
 	}

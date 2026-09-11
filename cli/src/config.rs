@@ -30,6 +30,71 @@ pub(crate) fn root_url(server: &str) -> Result<Url> {
     }
     Ok(url)
 }
+pub(crate) fn parse_url(raw: &str) -> Result<Url> {
+    let url = Url::parse(raw).map_err(|_| "endpoint must be an HTTP(S) URL")?;
+    if !matches!(url.scheme(), "http" | "https") || url.host_str().is_none() {
+        return Err("endpoint must be an HTTP(S) URL");
+    }
+    Ok(url)
+}
+pub(crate) fn market(server: &str, token: &str) -> Result<Vec<crate::MarketItem>> {
+    let mut url = root_url(server)?;
+    url.set_path("/api/v1/marketplace");
+    let response = http()?
+        .get(url)
+        .bearer_auth(token)
+        .send()
+        .map_err(|error| {
+            if error.is_timeout() {
+                "connection timed out; check the server and retry"
+            } else {
+                "could not connect; check the server and retry"
+            }
+        })?;
+    if !response.status().is_success() {
+        return Err("marketplace request failed; check the server and token");
+    }
+    #[derive(Deserialize)]
+    struct Payload {
+        items: Vec<crate::MarketItem>,
+    }
+    let payload: Payload = response
+        .json()
+        .map_err(|_| "server returned an invalid marketplace response")?;
+    if payload.items.len() > 500
+        || payload
+            .items
+            .iter()
+            .any(|item| item.slug.is_empty() || item.slug.chars().any(char::is_control))
+    {
+        return Err("server returned an invalid marketplace response");
+    }
+    Ok(payload.items)
+}
+pub(crate) fn skill_files(
+    server: &str,
+    token: &str,
+    slug: &str,
+) -> Result<std::collections::BTreeMap<String, String>> {
+    let mut url = root_url(server)?;
+    url.set_path(&format!("/api/v1/marketplace/{slug}/files"));
+    let response = http()?
+        .get(url)
+        .bearer_auth(token)
+        .send()
+        .map_err(|_| "could not connect; check the server and retry")?;
+    if !response.status().is_success() {
+        return Err("skill files request failed; check the server and token");
+    }
+    #[derive(Deserialize)]
+    struct Payload {
+        files: std::collections::BTreeMap<String, String>,
+    }
+    let payload: Payload = response
+        .json()
+        .map_err(|_| "server returned an invalid skill files response")?;
+    Ok(payload.files)
+}
 pub(crate) fn validate_token(token: &str) -> Result<()> {
     if !token.starts_with("ldt_")
         || token.len() <= 4

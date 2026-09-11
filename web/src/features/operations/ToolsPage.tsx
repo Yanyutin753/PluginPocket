@@ -13,6 +13,8 @@ import { ApiError, number, request } from '../account/api';
 import { ErrorNotice, Heading, Loading } from '../account/shared';
 import { usePagedList } from '../account/usePagedList';
 import { type Tool, toolSchema } from './api';
+import MarketplacePanel from './MarketplacePanel';
+import ToolMetadataPanel from './ToolMetadataPanel';
 
 function ToolEditor({ item, close }: { item: Tool | null; close: () => void }) {
   const { t } = useI18n();
@@ -30,6 +32,10 @@ function ToolEditor({ item, close }: { item: Tool | null; close: () => void }) {
         2,
       ),
       config: '',
+      settlement:
+        item?.settlement && Object.keys(item.settlement).length
+          ? JSON.stringify(item.settlement, null, 2)
+          : '',
     },
   });
   const kind = form.watch('kind');
@@ -39,18 +45,36 @@ function ToolEditor({ item, close }: { item: Tool | null; close: () => void }) {
       const value = form.getValues();
       let input_schema: unknown;
       let config: unknown;
+      let settlement: unknown;
       try {
         input_schema = JSON.parse(value.input_schema);
         config = value.config.trim() ? JSON.parse(value.config) : undefined;
+        settlement = value.settlement.trim()
+          ? JSON.parse(value.settlement)
+          : undefined;
       } catch {
         throw new ApiError(400, 'invalid_json');
       }
       const object = z.record(z.string(), z.unknown());
       if (
         !object.safeParse(input_schema).success ||
-        (config !== undefined && !object.safeParse(config).success)
+        (config !== undefined && !object.safeParse(config).success) ||
+        (settlement !== undefined && !object.safeParse(settlement).success)
       )
         throw new ApiError(400, 'invalid_json');
+      // 前端预检：脚本语法用 new Function 只编译不执行，坏脚本不出本机。
+      const script =
+        settlement && typeof settlement === 'object'
+          ? (settlement as { script?: unknown }).script
+          : undefined;
+      if (typeof script === 'string' && script.length > 0) {
+        try {
+          // eslint-disable-next-line no-new-func
+          new Function('result', script);
+        } catch {
+          throw new ApiError(400, 'invalid_settlement_script');
+        }
+      }
       await request(
         `/admin/tools${item ? `/${item.id}` : ''}`,
         z.object({ item: toolSchema }),
@@ -65,6 +89,7 @@ function ToolEditor({ item, close }: { item: Tool | null; close: () => void }) {
             units_per_call: Number(value.units_per_call),
             input_schema,
             ...(config !== undefined ? { config } : {}),
+            ...(settlement !== undefined ? { settlement } : {}),
           }),
         },
       );
@@ -146,6 +171,24 @@ function ToolEditor({ item, close }: { item: Tool | null; close: () => void }) {
           </Field>
           {kind !== 'builtin' && (
             <Field>
+              <FieldLabel htmlFor="tool-settlement">
+                {t('结算策略（JSON，可选）')}
+              </FieldLabel>
+              <textarea
+                id="tool-settlement"
+                rows={3}
+                {...form.register('settlement')}
+                aria-describedby="settlement-help"
+              />
+              <p id="settlement-help">
+                {t(
+                  '留空按协议结果扣费；{"content":{"path":"code","equals":0}} 按业务码判定（equals 可为数组），{"content":{"pattern":"^OK"}} 按文本匹配，或 {"script":"return JSON.parse(result.text).code === 0"} 写 JS（沙箱，入参 result={isError,text}，返回真值才扣费），未通过即退款。',
+                )}
+              </p>
+            </Field>
+          )}
+          {kind !== 'builtin' && (
+            <Field>
               <FieldLabel htmlFor="tool-config">
                 {t('连接配置（JSON）')}
               </FieldLabel>
@@ -172,6 +215,9 @@ function ToolEditor({ item, close }: { item: Tool | null; close: () => void }) {
           <ErrorNotice error={save.error} />
           <div className="action-row">
             <Button type="submit" disabled={save.isPending}>
+              {save.isPending && (
+                <span className="button-spinner" aria-hidden="true" />
+              )}
               {save.isPending ? t('正在保存…') : t('保存工具')}
             </Button>
             <Button
@@ -227,6 +273,7 @@ export default function ToolsPage({ admin = false }: { admin?: boolean }) {
       {admin && editing === undefined && (
         <Button onClick={() => setEditing(null)}>{t('添加工具')}</Button>
       )}
+      {admin && <MarketplacePanel />}
       {editing !== undefined && (
         <ToolEditor item={editing} close={() => setEditing(undefined)} />
       )}
@@ -268,9 +315,12 @@ export default function ToolsPage({ admin = false }: { admin?: boolean }) {
                 {t('查看参数')}
               </Button>
               {expanded === item.id && (
-                <pre className="schema-code">
-                  <code>{JSON.stringify(item.input_schema, null, 2)}</code>
-                </pre>
+                <>
+                  <pre className="schema-code">
+                    <code>{JSON.stringify(item.input_schema, null, 2)}</code>
+                  </pre>
+                  {admin ? <ToolMetadataPanel tool={item} /> : null}
+                </>
               )}
             </div>
             {admin && (

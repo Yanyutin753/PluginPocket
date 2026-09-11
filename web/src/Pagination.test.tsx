@@ -181,3 +181,49 @@ it('omits inactive pagination controls for an empty filtered result', async () =
     screen.queryByRole('navigation', { name: '调用明细分页' }),
   ).not.toBeInTheDocument();
 });
+
+it('clears ledger filters from the URL and form', async () => {
+  localStorage.clear();
+  const user = userEvent.setup();
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((raw: string) => {
+      const url = new URL(raw, 'http://localhost');
+      if (url.pathname.endsWith('/account/me'))
+        return Response.json({
+          user: {
+            id: 1,
+            username: 'admin',
+            role: 'admin',
+            balance: 100,
+            enabled: true,
+          },
+          summary: { today_calls: 0, month_cost: 0, token_count: 0 },
+        });
+      if (url.pathname.endsWith('/admin/ledger'))
+        return Response.json({ items: [], next_cursor: '' });
+      return Response.json({ items: [], next_cursor: '' });
+    }),
+  );
+  window.history.replaceState({}, '', '/admin/ledger?user_id=42');
+  render(
+    <QueryClientProvider
+      client={
+        new QueryClient({
+          defaultOptions: { queries: { retry: false, gcTime: 0 } },
+        })
+      }
+    >
+      <App />
+    </QueryClientProvider>,
+  );
+  expect(await screen.findByLabelText('用户编号')).toHaveValue(42);
+  await user.click(screen.getByRole('button', { name: '清除筛选' }));
+  await waitFor(() =>
+    expect(screen.getByLabelText('用户编号')).toHaveValue(null),
+  );
+  expect(window.location.search).toBe('');
+  expect(
+    screen.queryByRole('button', { name: '清除筛选' }),
+  ).not.toBeInTheDocument();
+});

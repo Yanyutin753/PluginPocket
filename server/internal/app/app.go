@@ -7,6 +7,7 @@ import (
 
 	"github.com/Yanyutin753/loadout/server/internal/auth"
 	"github.com/Yanyutin753/loadout/server/internal/gateway"
+	"github.com/Yanyutin753/loadout/server/internal/marketplace"
 	"github.com/Yanyutin753/loadout/server/internal/settings"
 	"github.com/Yanyutin753/loadout/server/internal/store"
 )
@@ -18,6 +19,9 @@ type Options struct {
 	EncryptionKey  []byte
 	SecureCookies  bool
 	Origin         string
+	Marketplace    marketplace.Options
+	// MarketplaceRegistry 非 nil 时，市场内容变更会即时刷新 /marketplace.git。
+	MarketplaceRegistry *marketplace.GitRegistry
 }
 type application struct {
 	s       *store.Store
@@ -45,6 +49,20 @@ func New(s *store.Store, options Options) http.Handler {
 	mux.HandleFunc("GET /api/v1/admin/tools", a.listTools)
 	mux.HandleFunc("POST /api/v1/admin/tools", a.saveTool)
 	mux.HandleFunc("PATCH /api/v1/admin/tools/{id}", a.saveTool)
+	mux.HandleFunc("GET /plugins", a.pluginDirectory)
+	mux.HandleFunc("GET /plugins/{slug}", a.pluginDetail)
+	mux.HandleFunc("GET /api/v1/admin/marketplace", a.listMarketplace)
+	mux.HandleFunc("GET /api/v1/marketplace", a.publicMarketplace)
+	mux.HandleFunc("GET /api/v1/marketplace/{slug}/files", a.marketplaceFiles)
+	mux.HandleFunc("POST /api/v1/admin/marketplace/tools", a.publishPoolTool)
+	mux.HandleFunc("POST /api/v1/admin/marketplace/skills", a.createSkill)
+	mux.HandleFunc("POST /api/v1/admin/marketplace/bundles", a.createBundle)
+	mux.HandleFunc("POST /api/v1/admin/marketplace/sync", a.syncMarketplace)
+	mux.HandleFunc("POST /api/v1/admin/marketplace/install", a.installMarketplace)
+	mux.HandleFunc("POST /api/v1/admin/marketplace/uninstall", a.uninstallMarketplace)
+	mux.HandleFunc("GET /api/v1/admin/tools/{id}/upstream", a.upstreamTools)
+	mux.HandleFunc("PUT /api/v1/admin/tools/{id}/metadata", a.saveMetadata)
+	mux.HandleFunc("DELETE /api/v1/admin/tools/{id}/metadata/{name}", a.deleteMetadata)
 	mux.HandleFunc("GET /api/v1/admin/usage", a.globalUsage)
 	mux.HandleFunc("GET /api/v1/admin/usage/export", a.globalUsage)
 	mux.HandleFunc("POST /api/v1/admin/users/{id}/balance", a.adjustBalance)

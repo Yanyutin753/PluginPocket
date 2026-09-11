@@ -5,13 +5,16 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/Yanyutin753/loadout/server/internal/cache"
 	"github.com/Yanyutin753/loadout/server/internal/store"
+	"github.com/dop251/goja"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/singleflight"
@@ -23,11 +26,16 @@ type Options struct {
 	EncryptionKey []byte
 	StdioCommands map[string]string
 	Timeout       time.Duration
+	// TokenPerMinute/UserPerDay 覆盖默认限流（60/分钟/令牌、10000/日/用户），
+	// 0 表示保持默认；大流量部署按容量调整。
+	TokenPerMinute int64
+	UserPerDay     int64
 }
 type Gateway struct {
 	store           *store.Store
 	options         Options
 	mu              sync.Mutex
+	scripts         sync.Map // settlement 脚本编译缓存：源码 → *goja.Program
 	catalog         []toolBinding
 	catalogUntil    time.Time
 	catalogVersion  uint64
@@ -47,6 +55,7 @@ type toolRow struct {
 	Key, Name, Description, Kind string
 	Cost                         int64
 	Schema, Config               json.RawMessage
+	Settlement                   json.RawMessage
 }
 type toolBinding struct {
 	row        toolRow
@@ -157,6 +166,130 @@ func toolJSON(value any) *mcp.CallToolResult {
 	}
 	return toolText(string(encoded))
 }
+
+// settleResult 是扣费结算中间件：true 才扣费，false 触发 finish 的退款路径。
+// 空/非法 settlement 保持默认语义（上游 isError 即失败）。
+func (g *Gateway) settleResult(settlement json.RawMessage, result *mcp.CallToolResult) bool {
+	if result.IsError || len(settlement) == 0 {
+		return !result.IsError
+	}
+	text := ""
+	for _, block := range result.Content {
+		if t, ok := block.(*mcp.TextContent); ok {
+			text += t.Text
+		}
+	}
+	var policy struct {
+		Script  string `json:"script"`
+		Content *struct {
+			Path    string          `json:"path"`
+			Equals  json.RawMessage `json:"equals"`
+			Pattern string          `json:"pattern"`
+		} `json:"content"`
+	}
+	if json.Unmarshal(settlement, &policy) != nil {
+		return true
+	}
+	if policy.Script != "" {
+		return g.runSettlementScript(policy.Script, text, result.IsError)
+	}
+	if policy.Content == nil {
+		return true
+	}
+	if policy.Content.Pattern != "" {
+		matched, err := regexp.MatchString(policy.Content.Pattern, text)
+		return err == nil && matched
+	}
+	if policy.Content.Path == "" || len(policy.Content.Equals) == 0 {
+		return true
+	}
+	var document any
+	if json.Unmarshal([]byte(text), &document) != nil {
+		return false
+	}
+	current := document
+	for _, segment := range strings.Split(policy.Content.Path, ".") {
+		object, ok := current.(map[string]any)
+		if !ok {
+			return false
+		}
+		current, ok = object[segment]
+		if !ok {
+			return false
+		}
+	}
+	var expected any
+	if json.Unmarshal(policy.Content.Equals, &expected) != nil {
+		return false
+	}
+	values := []any{expected}
+	if list, ok := expected.([]any); ok {
+		values = list
+	}
+	for _, candidate := range values {
+		if number, ok := current.(float64); ok {
+			if want, ok := candidate.(float64); ok && number == want {
+				return true
+			}
+			continue
+		}
+		if fmt.Sprintf("%v", current) == fmt.Sprintf("%v", candidate) {
+			return true
+		}
+	}
+	return false
+}
+
+// runSettlementScript 在 goja 沙箱里执行管理员脚本：无任何宿主绑定（无 I/O），
+// 200ms 中断上限；编译结果按源码缓存。脚本异常、超时或非真值都判失败（退款侧）。
+func (g *Gateway) runSettlementScript(source, text string, isError bool) bool {
+	program, ok := g.scripts.Load(source)
+	if !ok {
+		compiled, err := goja.Compile("settlement", settlementScriptWrapper(source), true)
+		if err != nil {
+			return false
+		}
+		program = compiled
+		g.scripts.Store(source, compiled)
+	}
+	vm := goja.New()
+	if err := vm.Set("result", map[string]any{"isError": isError, "text": text}); err != nil {
+		return false
+	}
+	timer := time.AfterFunc(200*time.Millisecond, func() { vm.Interrupt("settlement script timeout") })
+	defer timer.Stop()
+	value, err := vm.RunProgram(program.(*goja.Program))
+	return err == nil && value != nil && value.ToBoolean()
+}
+
+// settlementScriptWrapper 把管理员脚本包成接收 result 的函数体：
+// ES 禁止顶层 return，包装后支持 return/多语句/循环。
+func settlementScriptWrapper(source string) string {
+	return "(function (result) {\n" + source + "\n})(result)"
+}
+
+// ValidateSettlementScript 供保存侧校验：大小上限 + 可编译（严格模式）。
+func ValidateSettlementScript(source string) error {
+	if len(source) == 0 || len(source) > 8192 {
+		return errors.New("settlement script must be 1-8192 bytes")
+	}
+	_, err := goja.Compile("settlement", settlementScriptWrapper(source), true)
+	return err
+}
+
+// markUnsettled 在保持上游内容可见的同时标记失败并说明已退款。
+func markUnsettled(result *mcp.CallToolResult) {
+	if result.IsError {
+		return
+	}
+	result.IsError = true
+	for _, block := range result.Content {
+		if text, ok := block.(*mcp.TextContent); ok && !strings.HasPrefix(text.Text, "[loadout]") {
+			text.Text = "[loadout] 结算检查未通过，本次不扣费：" + text.Text
+		}
+	}
+}
+
 func (g *Gateway) accountUsage(ctx context.Context, p store.Principal, args json.RawMessage) *mcp.CallToolResult {
 	var input struct {
 		Limit *int `json:"limit"`
@@ -224,9 +357,14 @@ func (g *Gateway) call(parent context.Context, p store.Principal, binding toolBi
 	}
 	started := time.Now()
 	result := g.execute(ctx, p, binding, args)
+	// 结算中间件：默认仅协议层 isError 判失败；配置了 content 规则时叠加业务体检查。
+	settled := g.settleResult(binding.row.Settlement, result)
+	if !settled {
+		markUnsettled(result)
+	}
 	finishCtx, finishCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer finishCancel()
-	if err = g.store.Finish(finishCtx, call.ID, !result.IsError, time.Since(started)); err != nil {
+	if err = g.store.Finish(finishCtx, call.ID, settled, time.Since(started)); err != nil {
 		return toolError("调用结算待恢复，请查看用量记录，勿重复执行有副作用的操作")
 	}
 	return result
@@ -339,14 +477,14 @@ func (g *Gateway) tools(ctx context.Context) ([]toolBinding, error) {
 			names := make(map[string]bool)
 			var after int64
 			for {
-				rows, err := g.store.Pool.Query(ctx, "SELECT id,key,name,description,kind,cost,input_schema,config FROM tools WHERE enabled AND id>$1 ORDER BY id LIMIT 128", after)
+				rows, err := g.store.Pool.Query(ctx, "SELECT id,key,name,description,kind,cost,input_schema,config,settlement FROM tools WHERE enabled AND id>$1 ORDER BY id LIMIT 128", after)
 				if err != nil {
 					return nil, err
 				}
 				var configured []toolRow
 				for rows.Next() {
 					var row toolRow
-					if err = rows.Scan(&row.ID, &row.Key, &row.Name, &row.Description, &row.Kind, &row.Cost, &row.Schema, &row.Config); err != nil {
+					if err = rows.Scan(&row.ID, &row.Key, &row.Name, &row.Description, &row.Kind, &row.Cost, &row.Schema, &row.Config, &row.Settlement); err != nil {
 						rows.Close()
 						return nil, err
 					}
@@ -379,6 +517,7 @@ func (g *Gateway) tools(ctx context.Context) ([]toolBinding, error) {
 						if err != nil {
 							return nil
 						}
+						g.applyOverrides(discovery, row.ID, definitions)
 						for _, tool := range definitions {
 							definition := *tool
 							// Escaping every provider underscore makes the first double
@@ -454,13 +593,83 @@ func (g *Gateway) tools(ctx context.Context) ([]toolBinding, error) {
 	}
 }
 
+// UpstreamTools 发现某个 http/stdio 上游当前暴露的原始工具定义（含 Redis 缓存，
+// 不应用 tool_metadata_overrides；覆盖态由 app 层另行合并展示）。
+func (g *Gateway) UpstreamTools(ctx context.Context, toolID int64) ([]*mcp.Tool, error) {
+	if err := g.ctx.Err(); err != nil {
+		return nil, err
+	}
+	var row toolRow
+	err := g.store.Pool.QueryRow(ctx, "SELECT id,key,name,description,kind,cost,input_schema,config,settlement FROM tools WHERE id=$1 AND enabled AND kind IN ('http','stdio')", toolID).Scan(&row.ID, &row.Key, &row.Name, &row.Description, &row.Kind, &row.Cost, &row.Schema, &row.Config, &row.Settlement)
+	if err != nil {
+		return nil, err
+	}
+	g.mu.Lock()
+	revision := g.catalogRevision
+	g.mu.Unlock()
+	return g.remoteTools(ctx, row, revision)
+}
+
+// applyOverrides 按 (tool_id, remote_name) 用后台维护的描述/参数 schema 覆盖上游定义。
+// 无效 schema 的覆盖整体忽略；空描述表示仅覆盖 schema。失败时保持上游定义，目录可用性优先。
+func (g *Gateway) applyOverrides(ctx context.Context, toolID int64, definitions []*mcp.Tool) {
+	rows, err := g.store.Pool.Query(ctx, "SELECT remote_name,description,input_schema FROM tool_metadata_overrides WHERE tool_id=$1", toolID)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	type override struct {
+		description string
+		schema      []byte
+	}
+	byName := map[string]override{}
+	for rows.Next() {
+		var name, description string
+		var schema []byte
+		if rows.Scan(&name, &description, &schema) != nil {
+			return
+		}
+		byName[name] = override{description, schema}
+	}
+	if rows.Err() != nil {
+		return
+	}
+	for _, tool := range definitions {
+		o, ok := byName[tool.Name]
+		if !ok {
+			continue
+		}
+		if len(o.schema) > 0 {
+			if ValidateToolSchema(o.schema) != nil {
+				continue
+			}
+			var parsed any
+			if json.Unmarshal(o.schema, &parsed) != nil {
+				continue
+			}
+			tool.InputSchema = parsed
+		}
+		if o.description != "" {
+			tool.Description = o.description
+		}
+	}
+}
+
 func (g *Gateway) admit(ctx context.Context, p store.Principal) bool {
+	tokenPerMinute := g.options.TokenPerMinute
+	if tokenPerMinute <= 0 {
+		tokenPerMinute = 60
+	}
+	userPerDay := g.options.UserPerDay
+	if userPerDay <= 0 {
+		userPerDay = 10000
+	}
 	for _, limit := range []struct {
 		scope   string
 		id      int64
 		seconds int64
 		max     int64
-	}{{"token", p.TokenID, 60, 60}, {"user", p.UserID, 86400, 10000}} {
+	}{{"token", p.TokenID, 60, tokenPerMinute}, {"user", p.UserID, 86400, userPerDay}} {
 		allowed, err := g.store.AllowRequest(ctx, limit.scope, limit.id, limit.seconds, limit.max)
 		if err != nil || !allowed {
 			return false

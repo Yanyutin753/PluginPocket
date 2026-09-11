@@ -93,9 +93,20 @@ export default function LedgerPage() {
               ]}
             />
           </Field>
-          <Button type="submit" variant="outline">
-            {t('筛选流水')}
-          </Button>
+          <div className="filter-actions">
+            <Button type="submit" variant="outline">
+              {t('筛选流水')}
+            </Button>
+            {filter.size > 0 && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setParams(new URLSearchParams())}
+              >
+                {t('清除筛选')}
+              </Button>
+            )}
+          </div>
         </FieldGroup>
       </form>
       <ErrorNotice error={ledger.error} retry={() => void ledger.retry()} />

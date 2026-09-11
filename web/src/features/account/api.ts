@@ -65,6 +65,8 @@ const messages: Record<string, string> = {
   username_taken: '用户名已被使用，请换一个用户名。',
   invalid_credentials: '用户名或密码不正确，请重新输入。',
   invalid_request: '提交内容不符合要求，请检查后重试。',
+  invalid_settlement: '结算策略无效：检查 JSON、业务码路径或正则。',
+  invalid_settlement_script: '结算脚本语法有误，请修正后再保存。',
   forbidden: '没有权限执行此操作。',
   forbidden_origin: '请求来源未通过验证，请从本站重新打开页面。',
   insufficient_balance: '可用额度不足，请检查调整金额。',

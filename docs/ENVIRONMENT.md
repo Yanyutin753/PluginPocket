@@ -39,6 +39,10 @@ Node .env支持引号，Shell `source`还会进行命令/变量展开。`kubectl
 | `LOADOUT_ALLOW_PRIVATE_UPSTREAMS` | `false`，布尔值 | 默认只允许HTTPS公网HTTP上游；true放宽私网/本地HTTP访问，只有受控网络才启用。各副本保持一致，配合出站网络策略 |
 | `LOADOUT_STDIO_COMMANDS` | 空，或名称→绝对可执行路径的JSON对象 | `{}`表示禁用；例如`{"search":"/opt/tools/search"}`。所有副本同白名单/运行时；默认scratch镜像无工具程序，需要专用镜像。不是执行任意管理端命令的开关 |
 | `LOADOUT_GITHUB_CLIENT_ID` | 空；与secret配对，启用时PUBLIC_URL必填 | OAuth回调固定为`PUBLIC_URL/api/v1/auth/github/callback`；所有副本一致 |
+| `LOADOUT_GITHUB_API` | 空；覆盖 GitHub API 根地址（代理/自托管网关用） | 插件市场同步源；空时使用 `https://api.github.com` |
+| `LOADOUT_RATE_TOKEN_PER_MINUTE` | 空；每令牌每分钟调用上限 | 默认 60；网关容量调优/压测时按机器能力放大 |
+| `LOADOUT_RATE_USER_PER_DAY` | 空；每用户每日调用上限 | 默认 10000；与上同理，所有副本一致 |
+| `LOADOUT_GITHUB_TOKEN` | 空；可选 Bearer 令牌 | 提升插件市场同步的 GitHub 搜索限流额度；绝不能是用户令牌 |
 | `LOADOUT_GITHUB_CLIENT_SECRET` | 空；与client ID配对 | Secret；未配置则GitHub登录明确不可用 |
 | `LOADOUT_GITHUB_ORG` | 空不限组织；非空1–39个字母/数字/连字符 | 仅约束GitHub登录用户组织资格，不关闭独立用户名密码登录 |
 | `LOADOUT_SMTP_ADDRESS` | 空；host:port，与FROM及PUBLIC_URL配套 | 邮箱验证可选。服务使用STARTTLS，常用587；不支持把465隐式TLS地址当作STARTTLS端口 |

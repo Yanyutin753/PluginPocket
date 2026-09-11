@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -25,7 +26,62 @@ type Tool struct {
 	Enabled     bool            `json:"enabled"`
 	Units       int64           `json:"units_per_call"`
 	Schema      json.RawMessage `json:"input_schema"`
+	Settlement  json.RawMessage `json:"settlement,omitempty"`
 	Configured  *bool           `json:"configured,omitempty"`
+}
+
+// validSettlement：空（默认）或 {"content":{"path","equals"}} / {"content":{"pattern"}}。
+func validSettlement(raw json.RawMessage) bool {
+	if len(raw) == 0 || string(raw) == "null" || string(raw) == "{}" {
+		return true
+	}
+	var policy struct {
+		Script  string `json:"script"`
+		Content *struct {
+			Path    string          `json:"path"`
+			Equals  json.RawMessage `json:"equals"`
+			Pattern string          `json:"pattern"`
+		} `json:"content"`
+	}
+	if json.Unmarshal(raw, &policy) != nil {
+		return false
+	}
+	if policy.Script != "" {
+		// 脚本与声明式规则互斥；语法与大小由网关的 goja 编译器把关。
+		return policy.Content == nil && gateway.ValidateSettlementScript(policy.Script) == nil
+	}
+	if policy.Content == nil {
+		return false
+	}
+	content := policy.Content
+	if content.Pattern != "" {
+		if content.Path != "" || len(content.Equals) > 0 || len(content.Pattern) > 256 {
+			return false
+		}
+		_, err := regexp.Compile(content.Pattern)
+		return err == nil
+	}
+	if content.Path == "" || len(content.Path) > 64 || len(content.Equals) == 0 {
+		return false
+	}
+	var expected any
+	if json.Unmarshal(content.Equals, &expected) != nil {
+		return false
+	}
+	if list, ok := expected.([]any); ok {
+		// 数组表示多个可接受成功码，成员必须是标量。
+		if len(list) == 0 || len(list) > 16 {
+			return false
+		}
+		for _, item := range list {
+			switch item.(type) {
+			case string, float64, bool:
+			default:
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func (a *application) setUserEnabled(w http.ResponseWriter, r *http.Request) {
@@ -109,7 +165,7 @@ func (a *application) listTools(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	rows, e := a.s.Pool.Query(r.Context(), "SELECT id,key,name,description,kind,enabled,cost,input_schema,config<>'{}'::jsonb FROM tools WHERE ($1::boolean OR enabled) AND ($2::bigint=0 OR id<$2) ORDER BY id DESC LIMIT $3", admin, cursor, limit+1)
+	rows, e := a.s.Pool.Query(r.Context(), "SELECT id,key,name,description,kind,enabled,cost,input_schema,settlement,config<>'{}'::jsonb FROM tools WHERE ($1::boolean OR enabled) AND ($2::bigint=0 OR id<$2) ORDER BY id DESC LIMIT $3", admin, cursor, limit+1)
 	if e != nil {
 		fail(w, 500, "internal_error")
 		return
@@ -119,7 +175,7 @@ func (a *application) listTools(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var item Tool
 		var configured bool
-		if e = rows.Scan(&item.ID, &item.Key, &item.Name, &item.Description, &item.Kind, &item.Enabled, &item.Units, &item.Schema, &configured); e != nil {
+		if e = rows.Scan(&item.ID, &item.Key, &item.Name, &item.Description, &item.Kind, &item.Enabled, &item.Units, &item.Schema, &item.Settlement, &configured); e != nil {
 			fail(w, 500, "internal_error")
 			return
 		}
@@ -152,6 +208,7 @@ func (a *application) saveTool(w http.ResponseWriter, r *http.Request) {
 		Units       int64           `json:"units_per_call"`
 		Schema      json.RawMessage `json:"input_schema"`
 		Config      json.RawMessage `json:"config"`
+		Settlement  json.RawMessage `json:"settlement"`
 	}
 	if !decode(w, r, &in) {
 		return
@@ -185,6 +242,10 @@ func (a *application) saveTool(w http.ResponseWriter, r *http.Request) {
 			fail(w, 500, "internal_error")
 			return
 		}
+	}
+	if !validSettlement(in.Settlement) {
+		fail(w, 400, "invalid_settlement")
+		return
 	}
 	switch in.Kind {
 	case "builtin":
@@ -221,10 +282,14 @@ func (a *application) saveTool(w http.ResponseWriter, r *http.Request) {
 	if _, ok := currentUserQuery(w, r, true, tx); !ok {
 		return
 	}
+	settlement := []byte(in.Settlement)
+	if len(settlement) == 0 || string(settlement) == "null" {
+		settlement = []byte("{}")
+	}
 	if id == 0 {
-		e = tx.QueryRow(r.Context(), "INSERT INTO tools(key,name,description,kind,enabled,cost,input_schema,config) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id", in.Key, in.Name, in.Description, in.Kind, in.Enabled, in.Units, []byte(in.Schema), config).Scan(&id)
+		e = tx.QueryRow(r.Context(), "INSERT INTO tools(key,name,description,kind,enabled,cost,input_schema,config,settlement) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id", in.Key, in.Name, in.Description, in.Kind, in.Enabled, in.Units, []byte(in.Schema), config, settlement).Scan(&id)
 	} else {
-		_, e = tx.Exec(r.Context(), "UPDATE tools SET key=$1,name=$2,description=$3,kind=$4,enabled=$5,cost=$6,input_schema=$7,config=$8,updated_at=now() WHERE id=$9", in.Key, in.Name, in.Description, in.Kind, in.Enabled, in.Units, []byte(in.Schema), config, id)
+		_, e = tx.Exec(r.Context(), "UPDATE tools SET key=$1,name=$2,description=$3,kind=$4,enabled=$5,cost=$6,input_schema=$7,config=$8,settlement=$9,updated_at=now() WHERE id=$10", in.Key, in.Name, in.Description, in.Kind, in.Enabled, in.Units, []byte(in.Schema), config, settlement, id)
 	}
 	if e != nil {
 		var pe *pgconn.PgError
@@ -243,7 +308,7 @@ func (a *application) saveTool(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	configured := in.Kind != "builtin"
-	item = Tool{ID: id, Key: in.Key, Name: in.Name, Description: in.Description, Kind: in.Kind, Enabled: in.Enabled, Units: in.Units, Schema: in.Schema, Configured: &configured}
+	item = Tool{ID: id, Key: in.Key, Name: in.Name, Description: in.Description, Kind: in.Kind, Enabled: in.Enabled, Units: in.Units, Schema: in.Schema, Settlement: settlement, Configured: &configured}
 	if a.options.Gateway != nil {
 		a.options.Gateway.Invalidate()
 	}

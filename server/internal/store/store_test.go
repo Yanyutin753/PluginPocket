@@ -327,3 +327,43 @@ func TestReservationRechecksMembershipAfterWalletLockWait(t *testing.T) {
 		t.Fatal("reservation stuck")
 	}
 }
+
+// BenchmarkManyWallets 测网关真实负载面：不同钱包并发 Reserve→Finish，
+// 无热点行争用时的事务吞吐（池上限 20 连接）。
+func BenchmarkManyWallets(b *testing.B) {
+	s := testStore(b)
+	ctx := context.Background()
+	type account struct{ user, wallet, token int64 }
+	accounts := make([]account, 64)
+	for i := range accounts {
+		var a account
+		if e := s.Pool.QueryRow(ctx, "INSERT INTO users(username,password_hash) VALUES ($1,'hash') RETURNING id", fmt.Sprintf("bench%d", i)).Scan(&a.user); e != nil {
+			b.Fatal(e)
+		}
+		if e := s.Pool.QueryRow(ctx, "INSERT INTO wallets(user_id,balance) VALUES ($1,1000000000000) RETURNING id", a.user).Scan(&a.wallet); e != nil {
+			b.Fatal(e)
+		}
+		if e := s.Pool.QueryRow(ctx, "INSERT INTO tokens(user_id,wallet_id,name,prefix,token_hash) VALUES ($1,$2,'t','ldt_b',$3) RETURNING id", a.user, a.wallet, fmt.Sprintf("h%d", i)).Scan(&a.token); e != nil {
+			b.Fatal(e)
+		}
+		accounts[i] = a
+	}
+	var seq atomic.Int64
+	b.ReportAllocs()
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		a := accounts[int(seq.Add(1))%len(accounts)]
+		var n int64
+		for pb.Next() {
+			n++
+			call, e := s.Reserve(ctx, a.user, a.token, a.wallet, "echo", 1, fmt.Sprintf("k%d-%d", a.token, n))
+			if e != nil {
+				b.Error(e)
+				return
+			}
+			if e = s.Finish(ctx, call.ID, true, 0); e != nil {
+				b.Error(e)
+			}
+		}
+	})
+}

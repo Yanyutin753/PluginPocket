@@ -161,6 +161,9 @@ test-e2e: database-check redis-check build build-desktop ## 真实 Web（生产/
 benchmark: database-check ## PostgreSQL 同钱包串行/并发扣费基准（不含网络上游延迟）
 	cd server && go test ./internal/store -run '^$$' -bench BenchmarkReserveFinish -benchmem -benchtime=2s -count=3
 
+load-test: database-check build-server ## 真实子进程端到端压测（QPS/分位数/计量一致性），需 LOADOUT_SERVER_BINARY
+	cd server && LOADOUT_SERVER_BINARY="$(CURDIR)/build/loadout-server" go test -tags load -count=1 -run TestLoadGatewayQPS -timeout 8m -v ./cmd/loadout-server
+
 db-up: ## 仅启动本地 PostgreSQL，供源码开发
 	docker compose up -d db
 

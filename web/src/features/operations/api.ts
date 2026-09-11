@@ -10,9 +10,39 @@ export const toolSchema = z.object({
   enabled: z.boolean(),
   units_per_call: z.number().int(),
   input_schema: z.record(z.string(), z.unknown()),
+  settlement: z.record(z.string(), z.unknown()).optional(),
   configured: z.boolean().optional(),
 });
 export type Tool = z.infer<typeof toolSchema>;
+export const marketplaceItemSchema = z.object({
+  id: z.number().int(),
+  slug: z.string(),
+  name: z.string(),
+  description: z.string(),
+  kind: z.enum(['mcp', 'skill', 'bundle']).default('mcp'),
+  source: z.enum(['curated', 'github']),
+  repo_url: z.string(),
+  homepage: z.string(),
+  transport: z.enum(['http', 'stdio', 'unknown']),
+  endpoint: z.string(),
+  package: z.string(),
+  stars: z.number().int(),
+  synced_at: timestamp.nullable(),
+  installed: z.boolean(),
+});
+export type MarketplaceItem = z.infer<typeof marketplaceItemSchema>;
+export const upstreamToolSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  input_schema: z.unknown(),
+});
+export type UpstreamTool = z.infer<typeof upstreamToolSchema>;
+export const metadataOverrideSchema = z.object({
+  remote_name: z.string(),
+  description: z.string(),
+  input_schema: z.unknown().optional(),
+});
+export type MetadataOverride = z.infer<typeof metadataOverrideSchema>;
 export const planSchema = z.object({
   id: z.number().int(),
   name: z.string(),

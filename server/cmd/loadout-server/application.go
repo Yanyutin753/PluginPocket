@@ -14,6 +14,7 @@ import (
 	"github.com/Yanyutin753/loadout/server/internal/gateway"
 	"github.com/Yanyutin753/loadout/server/internal/httpapi"
 	"github.com/Yanyutin753/loadout/server/internal/identity"
+	"github.com/Yanyutin753/loadout/server/internal/marketplace"
 	"github.com/Yanyutin753/loadout/server/internal/observability"
 	"github.com/Yanyutin753/loadout/server/internal/settings"
 	"github.com/Yanyutin753/loadout/server/internal/store"
@@ -55,13 +56,13 @@ func applicationHandler(ctx context.Context, cfg config.Config, logger *slog.Log
 			return nil, nil, err
 		}
 	}
-	g := gateway.New(database, gateway.Options{Cache: sharedCache, AllowPrivate: cfg.AllowPrivateUpstreams, EncryptionKey: cfg.EncryptionKey, StdioCommands: cfg.StdioCommands})
+	g := gateway.New(database, gateway.Options{Cache: sharedCache, AllowPrivate: cfg.AllowPrivateUpstreams, EncryptionKey: cfg.EncryptionKey, StdioCommands: cfg.StdioCommands, TokenPerMinute: cfg.RateTokenPerMinute, UserPerDay: cfg.RateUserPerDay})
 	runtime := &settings.Manager{Pool: database.Pool, Key: cfg.EncryptionKey, Origin: cfg.PublicURL, Defaults: settings.Values{
 		InitialCredits: cfg.InitialCredits,
 		GitHubEnabled:  cfg.GitHubClientID != "", GitHubClientID: cfg.GitHubClientID, GitHubClientSecret: cfg.GitHubClientSecret, GitHubOrg: cfg.GitHubOrg,
 		SMTPEnabled: cfg.SMTPAddress != "", SMTPAddress: cfg.SMTPAddress, SMTPFrom: cfg.SMTPFrom, SMTPUsername: cfg.SMTPUsername, SMTPPassword: cfg.SMTPPassword,
 	}}
-	options := app.Options{Runtime: runtime, InitialCredits: &cfg.InitialCredits, Origin: cfg.PublicURL, SecureCookies: strings.HasPrefix(cfg.PublicURL, "https://"), Gateway: g, EncryptionKey: cfg.EncryptionKey}
+	options := app.Options{Runtime: runtime, InitialCredits: &cfg.InitialCredits, Origin: cfg.PublicURL, SecureCookies: strings.HasPrefix(cfg.PublicURL, "https://"), Gateway: g, EncryptionKey: cfg.EncryptionKey, Marketplace: marketplace.Options{BaseURL: cfg.GitHubAPIURL, Token: cfg.GitHubToken}, MarketplaceRegistry: marketplace.NewGitRegistry(database.Pool, marketplace.Options{BaseURL: cfg.GitHubAPIURL, Token: cfg.GitHubToken})}
 	identityOptions := identity.Options{Runtime: runtime, Origin: cfg.PublicURL, SecureCookies: options.SecureCookies, SMTPAllowLocalInsecure: cfg.SMTPAllowLocalInsecure}
 	identityHandler := identity.New(database, identityOptions)
 	mux := http.NewServeMux()
@@ -71,7 +72,27 @@ func applicationHandler(ctx context.Context, cfg config.Config, logger *slog.Log
 		mux.Handle(path, identityHandler)
 	}
 	mux.Handle("/api/v1/health", base)
-	mux.Handle("/api/v1/", app.New(database, options))
+	appHandler := app.New(database, options)
+	mux.Handle("/api/v1/", appHandler)
+	mux.Handle("/plugins", appHandler)
+	mux.Handle("/plugins/", appHandler)
+	// 服务端即插件市场源：哑 HTTP git 裸仓，codex plugin marketplace add <origin>/marketplace.git
+	mux.HandleFunc("/marketplace.git/", func(w http.ResponseWriter, r *http.Request) {
+		files, err := options.MarketplaceRegistry.Files(r.Context())
+		if err != nil {
+			http.Error(w, "marketplace unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		path := strings.TrimPrefix(r.URL.Path, "/marketplace.git/")
+		content, ok := files[path]
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/octet-stream")
+		w.Header().Set("Cache-Control", "no-store")
+		_, _ = w.Write(content)
+	})
 	mux.Handle("/mcp", g)
 	mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, r *http.Request) {
 		ready, done := context.WithTimeout(r.Context(), time.Second)

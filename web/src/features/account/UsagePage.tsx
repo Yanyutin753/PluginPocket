@@ -106,21 +106,23 @@ export default function UsagePage({
               />
             </Field>
           )}
-          <Button type="submit" variant="outline">
-            {t('应用筛选')}
-          </Button>
-          {filter.size > 0 && (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                exporter.reset();
-                setParams(new URLSearchParams());
-              }}
-            >
-              {t('清除筛选')}
+          <div className="filter-actions">
+            <Button type="submit" variant="outline">
+              {t('应用筛选')}
             </Button>
-          )}
+            {filter.size > 0 && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  exporter.reset();
+                  setParams(new URLSearchParams());
+                }}
+              >
+                {t('清除筛选')}
+              </Button>
+            )}
+          </div>
         </FieldGroup>
       </form>
       {(admin || team) && (

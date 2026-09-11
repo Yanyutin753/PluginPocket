@@ -1,13 +1,15 @@
 pub mod bridge;
-mod clients;
+pub(crate) mod clients;
 mod config;
 mod device;
+pub mod plugins;
 pub use device::DevicePrompt;
+pub use plugins::MarketItem;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 pub type Result<T> = std::result::Result<T, &'static str>;
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "lowercase")]
 pub enum ClientKind {
     Codex,
