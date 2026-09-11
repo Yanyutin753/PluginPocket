@@ -31,8 +31,9 @@ export default function OverviewPage() {
       <section className="workshop-hero overview-hero">
         <div className="workshop-intro">
           <div className="workshop-note" aria-hidden="true">
-            Tools for
-            <br />a brighter you.
+            {t('工欲善其事，')}
+            <br />
+            {t('必先利其器。')}
           </div>
           <h1>{t('给你的 AI，装上超能力。')}</h1>
           <p>{t('一次接入，让工具进入你的工作流。')}</p>

@@ -5,10 +5,54 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	_ "modernc.org/sqlite"
 )
+
+func TestSQLiteUpgradeOriginalFileLimitPreservesGitReferences(t *testing.T) {
+	db, err := sql.Open("sqlite", filepath.Join(t.TempDir(), "upgrade.db")+"?_pragma=foreign_keys(1)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+	entries, err := migrationsSQLite.ReadDir("migrations_sqlite")
+	if err != nil {
+		t.Fatal(err)
+	}
+	hash := strings.Repeat("a", 64)
+	for _, entry := range entries {
+		raw, err := migrationsSQLite.ReadFile("migrations_sqlite/" + entry.Name())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if entry.Name() == "028_file_objects.sql" {
+			raw = []byte(strings.ReplaceAll(string(raw), "16777216", "8388608"))
+		}
+		if _, err = db.Exec(string(raw)); err != nil {
+			t.Fatalf("%s: %v", entry.Name(), err)
+		}
+		if entry.Name() == "029_git_file_objects.sql" {
+			if _, err = db.Exec("INSERT INTO file_objects(sha256,size,content) VALUES(?,1,x'ff')", hash); err != nil {
+				t.Fatal(err)
+			}
+			if _, err = db.Exec("INSERT INTO marketplace_git_files(path,content,file_sha256,file_size) VALUES('objects/existing',x'',?,1)", hash); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if _, err = db.Exec("INSERT INTO file_objects(sha256,size,content) VALUES(?,8388609,zeroblob(8388609))", strings.Repeat("b", 64)); err != nil {
+		t.Fatalf("old 8MiB limit not upgraded: %v", err)
+	}
+	var got string
+	if err = db.QueryRow("SELECT file_sha256 FROM marketplace_git_files WHERE path='objects/existing'").Scan(&got); err != nil || got != hash {
+		t.Fatalf("existing Git reference lost: %v", err)
+	}
+	if _, err = db.Exec("DELETE FROM file_objects WHERE sha256=?", hash); err == nil {
+		t.Fatal("upgraded foreign key missing")
+	}
+}
 
 // sqliteMigrate 在临时 SQLite 库上按文件名序执行 SQLite 迁移轨道。
 // 这是 ADR 0002 阶段 2 的地基验证：轨道必须可从零建出与 PG 等价的库。
@@ -66,6 +110,56 @@ func TestSQLiteMarketChangeInvalidatesSharedGit(t *testing.T) {
 	var content []byte
 	if err := database.QueryRow("SELECT content FROM marketplace_git_files WHERE path='objects/ab/cd'").Scan(&content); err != nil || len(content) != 3 {
 		t.Fatalf("git object persistence: %v", err)
+	}
+}
+
+func TestSQLiteFileObjectsPreserveBytesAndEnforceMetadata(t *testing.T) {
+	database := sqliteMigrate(t)
+	hash := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	if _, err := database.Exec("INSERT INTO file_objects(sha256,size,content) VALUES(?,?,?)", hash, 3, []byte{0, 255, 128}); err != nil {
+		t.Fatal(err)
+	}
+	var got []byte
+	if err := database.QueryRow("SELECT content FROM file_objects WHERE sha256=?", hash).Scan(&got); err != nil || len(got) != 3 || got[1] != 255 {
+		t.Fatalf("binary storage %x %v", got, err)
+	}
+	for _, query := range []string{
+		"UPDATE file_objects SET size=4",
+		"UPDATE file_objects SET content=NULL",
+		"UPDATE file_objects SET sha256='invalid'",
+		"UPDATE file_objects SET bucket='private'",
+	} {
+		if _, err := database.Exec(query); err == nil {
+			t.Fatalf("invalid metadata accepted: %s", query)
+		}
+	}
+	if _, err := database.Exec("UPDATE file_objects SET content=NULL,bucket='private',object_key='files/key',region='auto',endpoint='https://storage.example.com'"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSQLiteGitFileObjectReferences(t *testing.T) {
+	db := sqliteMigrate(t)
+	hash := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	if _, err := db.Exec("INSERT INTO file_objects(sha256,size,content) VALUES(?,?,?)", hash, 3, []byte{0, 255, 128}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec("INSERT INTO marketplace_git_files(path,content,file_sha256,file_size) VALUES('objects/test',?,?,3)", []byte{}, hash); err != nil {
+		t.Fatal(err)
+	}
+	for _, query := range []string{
+		"UPDATE marketplace_git_files SET content=x'01'",
+		"UPDATE marketplace_git_files SET file_size=NULL",
+		"UPDATE marketplace_git_files SET file_size=16777217",
+		"UPDATE marketplace_git_files SET file_sha256=NULL",
+		"UPDATE marketplace_git_files SET file_sha256='missing'",
+	} {
+		if _, err := db.Exec(query); err == nil {
+			t.Fatalf("invalid Git file reference accepted: %s", query)
+		}
+	}
+	if _, err := db.Exec("INSERT INTO marketplace_git_files(path,content) VALUES('HEAD',x'00')"); err != nil {
+		t.Fatal(err)
 	}
 }
 

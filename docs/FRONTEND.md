@@ -1,6 +1,12 @@
 # 前端开发规范
 
-工具图标只通过 img 展示，上传最多64 KiB的静态SVG/PNG/JPEG/WebP，不能插入不可信内联SVG。图标、规则由API持久化到共享数据库。ToolEditor使用分区表单，SettlementEditor以服务端同引擎试算，禁止浏览器执行用户脚本；修改试算输入后清除旧结果。
+SidePanel统一支持全屏/还原，保持内容挂载以保留草稿；Escape在全屏时先还原，普通尺寸仍遵守locked关闭保护与原有焦点返回。
+
+技能文件工作区复用 SidePanel 的可访问对话框，专用宽度1280px，目录可折叠，700px以下分栏预览上下布局。文件路径作为按钮名称，选中态带 aria-pressed，编辑文本以路径标注。文件标签只关闭视图，不丢草稿；CodeMirror会话按文件保留撤销记录。Escape优先关闭编辑器查找/补全，再退出全屏或关闭面板。UTF-8文本通过files_v2保存并保留执行位；附件读取期间禁止编辑以避免异步覆盖草稿；读取和高亮加载失败可重试。
+
+编辑器、预览器和各语言包按需加载。Markdown预览禁原始HTML，仅加载技能包内图片，外部链接限HTTP(S)，相对链接跳转包内文件；删除的附件不再预览。图片失败提供可访问提示，替换内容后重试；其他二进制展示信息与下载，下载优先当前草稿。JSDOM补充Range几何接口仅供编辑器行为测试，不代表桌面/移动端视觉已验收。
+
+工具图标只通过 img 展示：PNG/JPEG/WebP 原图最多5 MiB、2000万像素，浏览器自动等比缩小至最长256px并编码WebP（不支持时回退PNG），目标16 KiB、最终最多64 KiB；静态SVG仍最多64 KiB，不能插入不可信内联SVG。处理期间阻止保存，显示保存大小，失败保留旧图；图标、规则由API持久化到共享数据库。ToolEditor使用分区表单，SettlementEditor以服务端同引擎试算，禁止浏览器执行用户脚本；修改试算输入后清除旧结果。
 
 本项目使用 React + TypeScript + Vite。全部直接依赖锁定搭建时最新稳定版，版本见 `web/package.json`、`pnpm-lock.yaml`；不手写成熟库已经解决的基础能力。
 
@@ -14,6 +20,8 @@
 | 服务端状态 | TanStack Query | queryKey、取消信号、错误/重试集中管理，不在 useEffect 手写请求状态机 |
 | 边界验证 | Zod | API unknown → schema.parse；禁止 `as Foo` 跳过验证 |
 | 图标 | Lucide | 统一图标，装饰图标 aria-hidden；按钮必须有可访问名称 |
+| 技能文件编辑 | CodeMirror 6 | 行号、查找、撤销由库提供；语言包按文件扩展名加载 |
+| Markdown预览 | react-markdown、remark-gfm | 禁原始HTML；链接和图片遵循技能包预览边界 |
 | 变体与 class 合并 | CVA、cn（shadcn 当前官方默认） | 组件变体集中定义，禁止复制多套按钮样式 |
 | 单元与组件测试 | Vitest、Testing Library、user-event | 验证用户行为、语义 role，不绑定 DOM 结构 |
 | 跨端集成 | Node 内置 test runner、assert、fetch、child_process | 真实 Go API、生产资源与 Rust 二进制 |
@@ -66,6 +74,8 @@ Web 的 index.html 提供中文初始标题、产品描述、theme-color 与 col
 
 
 ## 有数据后的列表规范
+
+管理员市场列表使用紧凑名称/类型、说明、标识/来源三层，右侧只放编辑或工具池操作；不逐行展示 CLI 安装教程。公共市场继续提供安装指引。
 
 主列表采用usePagedList + Pagination，默认10条，可选20/50；基于API真实next_cursor，返回上一页使用Query缓存，当前范围按实际已加载条数计算，不显示未知总数。筛选/容量变化回第一页，失败保留当前页且可重试；空结果不显示无效翻页控件。翻页成功后通过显式listRef滚动至列表开头并转移阅读焦点；令牌团队候选与成员交接候选仍保留已加载选项集合。导出筛选清除时reset mutation，不能沿用旧下载与游标。
 

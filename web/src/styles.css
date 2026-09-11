@@ -949,6 +949,11 @@
     color: var(--muted-foreground);
     font-size: 12px;
   }
+  .hint-text {
+    font-size: 13px;
+    line-height: 1.75;
+    color: var(--muted-foreground);
+  }
   .secret-panel,
   .adjustment-panel {
     background: var(--card);

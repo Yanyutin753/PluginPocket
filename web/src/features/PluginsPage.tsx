@@ -400,7 +400,7 @@ export default function PluginsPage({
       </main>
       <footer className="landing-footer">
         <span className="brand-wordmark">Loadout</span>
-        <span>Your AI, fully loaded.</span>
+        <span>{t('你的 AI，准备就绪。')}</span>
         <Link className="inline-action" to="/health">
           {t('服务状态')}
         </Link>

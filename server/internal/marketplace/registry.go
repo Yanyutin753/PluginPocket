@@ -8,6 +8,8 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/Yanyutin753/loadout/server/internal/filestore"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -19,6 +21,9 @@ type GitRegistry struct {
 }
 
 func NewGitRegistry(pool *pgxpool.Pool, options Options) *GitRegistry {
+	if options.Files == nil {
+		options.Files, _ = filestore.New(pool, filestore.Options{})
+	}
 	return &GitRegistry{pool: pool, options: options}
 }
 
@@ -55,7 +60,9 @@ func (g *GitRegistry) ensureBuilt(ctx context.Context) error {
 	if fresh {
 		return tx.Commit(ctx)
 	}
-	entries, _, err := LoadExportInputs(ctx, tx, g.options)
+	fileOptions := g.options
+	fileOptions.Files = g.options.Files.WithTx(tx)
+	entries, _, err := LoadExportInputs(ctx, tx, fileOptions)
 	if err != nil {
 		return err
 	}
@@ -63,7 +70,8 @@ func (g *GitRegistry) ensureBuilt(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	encoded, err := json.Marshal(tree)
+	modes := ExportExecutableFiles(entries)
+	encoded, err := json.Marshal([]any{tree, modes})
 	if err != nil {
 		return err
 	}
@@ -75,13 +83,23 @@ func (g *GitRegistry) ensureBuilt(ctx context.Context) error {
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			return err
 		}
-		built, err := BuildGitMarketplace(tree, gitTip(map[string][]byte{"info/refs": refs}))
+		built, err := BuildGitMarketplace(tree, gitTip(map[string][]byte{"info/refs": refs}), modes)
 		if err != nil {
 			return err
 		}
 		batch := &pgx.Batch{}
 		for path, content := range built {
-			batch.Queue("INSERT INTO marketplace_git_files(path,content) VALUES($1,$2) ON CONFLICT(path) DO UPDATE SET content=EXCLUDED.content WHERE marketplace_git_files.content IS DISTINCT FROM EXCLUDED.content", path, content)
+			var sha *string
+			var size *int64
+			if len(content) > filestore.DefaultInlineMaxBytes {
+				ref, err := fileOptions.Files.Put(ctx, content)
+				if err != nil {
+					return err
+				}
+				sha, size = &ref.SHA256, &ref.Size
+				content = []byte{}
+			}
+			batch.Queue("INSERT INTO marketplace_git_files(path,content,file_sha256,file_size) VALUES($1,$2,$3,$4) ON CONFLICT(path) DO UPDATE SET content=EXCLUDED.content,file_sha256=EXCLUDED.file_sha256,file_size=EXCLUDED.file_size WHERE (marketplace_git_files.content,marketplace_git_files.file_sha256) IS DISTINCT FROM (EXCLUDED.content,EXCLUDED.file_sha256)", path, content, sha, size)
 		}
 		if err = tx.SendBatch(ctx, batch).Close(); err != nil {
 			return err
@@ -95,9 +113,8 @@ func (g *GitRegistry) ensureBuilt(ctx context.Context) error {
 
 // File reads only the requested file; immutable objects outlive updates.
 func (g *GitRegistry) File(ctx context.Context, path string) ([]byte, error) {
-	var content []byte
 	if strings.HasPrefix(path, "objects/") {
-		err := g.pool.QueryRow(ctx, "SELECT content FROM marketplace_git_files WHERE path=$1", path).Scan(&content)
+		content, err := g.readFile(ctx, path)
 		if err == nil {
 			return content, nil
 		}
@@ -108,8 +125,21 @@ func (g *GitRegistry) File(ctx context.Context, path string) ([]byte, error) {
 	if err := g.ensureBuilt(ctx); err != nil {
 		return nil, err
 	}
-	err := g.pool.QueryRow(ctx, "SELECT content FROM marketplace_git_files WHERE path=$1", path).Scan(&content)
-	return content, err
+	return g.readFile(ctx, path)
+}
+
+func (g *GitRegistry) readFile(ctx context.Context, path string) ([]byte, error) {
+	var content []byte
+	var sha *string
+	var size *int64
+	err := g.pool.QueryRow(ctx, "SELECT content,file_sha256,file_size FROM marketplace_git_files WHERE path=$1", path).Scan(&content, &sha, &size)
+	if err != nil {
+		return nil, err
+	}
+	if sha != nil && size != nil {
+		return g.options.Files.Get(ctx, filestore.Ref{SHA256: *sha, Size: *size})
+	}
+	return content, nil
 }
 
 // Files provides the complete persisted repository for clone checks.
@@ -117,19 +147,36 @@ func (g *GitRegistry) Files(ctx context.Context) (map[string][]byte, error) {
 	if err := g.ensureBuilt(ctx); err != nil {
 		return nil, err
 	}
-	rows, err := g.pool.Query(ctx, "SELECT path,content FROM marketplace_git_files")
+	rows, err := g.pool.Query(ctx, "SELECT path,content,file_sha256,file_size FROM marketplace_git_files")
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	files := map[string][]byte{}
+	refs := map[string]filestore.Ref{}
 	for rows.Next() {
 		var path string
 		var content []byte
-		if err = rows.Scan(&path, &content); err != nil {
+		var sha *string
+		var size *int64
+		if err = rows.Scan(&path, &content, &sha, &size); err != nil {
+			return nil, err
+		}
+		if sha != nil && size != nil {
+			refs[path] = filestore.Ref{SHA256: *sha, Size: *size}
+		}
+		files[path] = content
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	rows.Close()
+	for path, ref := range refs {
+		content, err := g.options.Files.Get(ctx, ref)
+		if err != nil {
 			return nil, err
 		}
 		files[path] = content
 	}
-	return files, rows.Err()
+	return files, nil
 }

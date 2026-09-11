@@ -108,6 +108,31 @@ describe('account console', () => {
       ),
     ).not.toBeInTheDocument();
   });
+  it('gives every navigation entry a distinct icon', async () => {
+    network((url) =>
+      url.endsWith('/account/me')
+        ? Response.json({
+            ...account,
+            user: { ...account.user, role: 'admin' },
+          })
+        : undefined,
+    );
+    mount();
+    await screen.findByRole('heading', { name: '账号概览' });
+    const nav = screen.getByRole('navigation', { name: '主导航' });
+    const links = within(nav).getAllByRole('link');
+    expect(
+      within(nav).getByRole('link', { name: '市场管理' }),
+    ).toBeInTheDocument();
+    const icons = links.map(
+      (link) => link.querySelector('svg')?.getAttribute('class') ?? '',
+    );
+    expect(icons.every(Boolean)).toBe(true);
+    const duplicates = icons.filter(
+      (name, index) => icons.indexOf(name) !== index,
+    );
+    expect(duplicates).toEqual([]);
+  });
   it('logs in with keyboard and shows account values; logout removes account data', async () => {
     let signedIn = false;
     network((url) => {
@@ -462,7 +487,7 @@ describe('recovery and navigation', () => {
     await user.click(await screen.findByRole('button', { name: '账号菜单' }));
     await user.click(screen.getByRole('menuitem', { name: '退出登录' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      '暂时无法完成请求',
+      '服务内部错误，请稍后重试',
     );
     expect(screen.getByText('4,200')).toBeVisible();
     expect(screen.queryByText('secret-server-path')).not.toBeInTheDocument();
@@ -524,7 +549,7 @@ describe('recovery and navigation', () => {
     await screen.findByText('time_now');
     await user.click(screen.getByRole('button', { name: '下一页' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      '暂时无法完成请求',
+      '服务内部错误，请稍后重试',
     );
     expect(screen.getByText('time_now')).toBeVisible();
     const table = screen.getByRole('region', { name: '调用明细表格' });

@@ -14,7 +14,7 @@ import { shell } from './i18n/shell';
 import { toolEditor } from './i18n/tool-editor';
 import { toolIcons } from './i18n/tool-icons';
 
-type Locale = 'zh-CN' | 'en';
+export type Locale = 'zh-CN' | 'en';
 type Theme = 'light' | 'dark' | 'system';
 type Values = Record<string, string | number>;
 const english = {

@@ -2,7 +2,8 @@
 
 ## 技能与装备组管理
 
-- `POST /api/v1/admin/marketplace/skills`：管理员创建/更新同 slug 技能，输入 `slug,name,description,source`；inline 使用 `files`，github 使用 `repo,path`。GitHub 同步保存已验证的文件快照，读取和导出优先快照。新建 201、更新 200、跨 kind 冲突 409。文件约束仍为 32 文件、每文件 256 KiB；请求体最多 50 MiB（容纳 JSON 转义），默认其他接口上限不变。文件内容变化推进技能和引用装备组的 patch 版本。
+- `POST /api/v1/admin/marketplace/skills`：管理员创建/更新同 slug 技能，输入 `slug,name,description,source`；inline 使用文本 `files` 或二进制 `files_v2:{path:{encoding:"base64",content,executable}}`（按路径更新，未提交附件保留），显式删除用 `delete_files:string[]`；github 使用 `repo,path`。必须保留有效UTF-8的SKILL.md。单文件8MiB、32文件/共32MiB；请求体最多50MiB，路径跨平台安全。先保存原始内容并校验，再以 `spec.file_manifest:{path:{sha256,size,executable}}` 发布引用；`spec.files`至少保留SKILL.md供文本编辑。新建201、更新200、跨kind冲突409；变化推进技能及引用装备组版本，失败不发布半成品。文件存储不可用返回503 `upstream_unavailable`；上传读取上限60秒、响应写入上限120秒。
+- `GET /api/v1/marketplace/{slug}/files?format=2`：登录用户下载，返回 `{files:{path:{encoding:"base64",content,sha256,size,executable}}}`，摘要是原始字节SHA-256。缺省旧格式仅返回可无损表示的文本 `{files:{path:string}}`，遇二进制返回400 `invalid_request`，需升级CLI。响应写入上限120秒，文件存储不可用返回503 `upstream_unavailable`。客户端先验证全部文件摘要/大小/路径和配额，再按字节安装；新CLI兼容旧服务文本响应。附件和Git对象的存储配置见 [文件存储](FILE_STORAGE.md)。
 - `POST /api/v1/admin/marketplace/bundles`：输入 `slug,name,description,includes`，1–32 个唯一技能或可安装 MCP（gateway 或带端点的 HTTP），不支持嵌套装备组。新建 201、同类型更新 200、跨类型冲突 409、非法成员 400。重复无变化提交保留版本。
 - `GET /api/v1/admin/marketplace`：包含 `kind,version,spec`，供管理表单编辑；公开目录不返回管理配置。
 
@@ -80,6 +81,7 @@
 | transport_required | 400 | 缺少上游传输配置 |
 | unauthorized | 401 | 未登录或凭据失效 |
 | upstream_unavailable | 502/503 | 上游服务不可用 |
+| username_taken | 409 | 用户名已被使用 |
 
 ## 健康、能力与运维
 

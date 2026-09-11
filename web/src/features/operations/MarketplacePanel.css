@@ -1,16 +1,75 @@
+.panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+.panel-heading h2 {
+  font-size: 17px;
+  font-weight: 650;
+}
 .market-actions,
 .market-filters {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-block: 16px;
+}
+/* 节奏：组内 8px，标题到动作 20px，创建与筛选两组之间 24px。 */
+.market-actions {
+  margin-top: 20px;
+}
+.market-filters {
+  margin-top: 24px;
 }
 .market-panel > input {
   max-width: 640px;
+  margin-top: 8px;
+}
+.market-panel > :is([role="status"], .error-notice) {
+  margin-top: 12px;
+}
+.market-panel > :is(.record-list, .empty-state, .loading-skeleton) {
+  margin-top: 16px;
 }
 .market-panel .record-main {
   min-width: 0;
   overflow-wrap: anywhere;
+}
+.market-records > li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px 24px;
+  padding: 16px 20px;
+}
+.market-record-title,
+.market-record-meta {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.market-record-title > span,
+.market-record-meta {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.market-records .record-main h3 {
+  font-size: 15px;
+  margin: 0;
+}
+.market-records .record-main > p {
+  font-size: 13px;
+  margin-block: 4px 6px;
+}
+.market-record-actions {
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+.market-record-actions > button {
+  white-space: nowrap;
 }
 .market-components {
   display: grid;
@@ -40,8 +99,11 @@
 }
 @media (max-width: 600px) {
   .market-records > li {
-    flex-direction: column;
-    align-items: stretch;
+    gap: 12px;
+    padding: 16px;
+  }
+  .market-record-actions > button {
+    padding-inline: 12px;
   }
   .market-actions > button {
     flex: 1 1 auto;

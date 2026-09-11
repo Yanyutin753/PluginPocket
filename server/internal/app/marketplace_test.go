@@ -226,6 +226,28 @@ func githubContentsFixture(t *testing.T, entries string) *httptest.Server {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
+		if strings.Contains(r.URL.Path, "/git/") {
+			var files []struct {
+				Path     string `json:"path"`
+				Content  string `json:"content"`
+				Encoding string `json:"encoding"`
+			}
+			if err := json.Unmarshal([]byte(entries), &files); err != nil {
+				t.Error(err)
+				return
+			}
+			if strings.Contains(r.URL.Path, "/git/blobs/") {
+				_ = json.NewEncoder(w).Encode(files[0])
+				return
+			}
+			tree := []map[string]any{}
+			for _, file := range files {
+				raw, _ := base64.StdEncoding.DecodeString(file.Content)
+				tree = append(tree, map[string]any{"path": file.Path, "mode": "100644", "type": "blob", "sha": "1111111111111111111111111111111111111111", "size": len(raw)})
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{"tree": tree})
+			return
+		}
 		_, _ = w.Write([]byte(entries))
 	}))
 	t.Cleanup(server.Close)

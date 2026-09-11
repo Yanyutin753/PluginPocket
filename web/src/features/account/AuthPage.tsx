@@ -210,7 +210,7 @@ export default function AuthPage({ register = false }: { register?: boolean }) {
           </Link>
         </section>
       </div>
-      <p className="auth-tagline">Your AI, fully loaded.</p>
+      <p className="auth-tagline">{t('你的 AI，准备就绪。')}</p>
     </main>
   );
 }

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ToolIcon, ToolIconEditor } from './features/operations/ToolIcon';
 
 const url = 'https://example.com/icon.png';
@@ -14,6 +14,129 @@ function Editor({ initial = '', disabled = false }) {
   );
 }
 describe('custom tool icons', () => {
+  it('allows removal of a malformed stored image without crashing', async () => {
+    render(<Editor initial="data:invalid" />);
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: '移除图标' }));
+    expect(screen.getByLabelText('图标地址或 SVG')).toBeValid();
+  });
+  afterEach(() => vi.unstubAllGlobals());
+  it('keeps saving blocked during compression and ignores a result after removal', async () => {
+    let finish!: (value: unknown) => void;
+    vi.stubGlobal(
+      'createImageBitmap',
+      vi.fn(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }),
+      ),
+    );
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      drawImage: vi.fn(),
+    } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue(
+      'data:image/webp;base64,eA==',
+    );
+    const close = vi.fn();
+    render(<Editor initial={url} />);
+    const user = userEvent.setup();
+    await user.upload(
+      screen.getByLabelText('上传图标'),
+      new File(['image'], 'photo.png', { type: 'image/png' }),
+    );
+    expect(screen.getByLabelText('图标地址或 SVG')).toBeInvalid();
+    await user.click(screen.getByRole('button', { name: '移除图标' }));
+    finish({ width: 100, height: 100, close });
+    await waitFor(() => expect(close).toHaveBeenCalled());
+    expect(
+      screen.queryByRole('img', { name: '图标预览' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText('图标地址或 SVG')).toBeValid();
+  });
+  it('reduces dimensions again when the encoded output is still too large', async () => {
+    vi.stubGlobal(
+      'createImageBitmap',
+      vi.fn().mockResolvedValue({ width: 800, height: 800, close: vi.fn() }),
+    );
+    const draw = vi.fn();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      drawImage: draw,
+    } as unknown as CanvasRenderingContext2D);
+    const small = 'data:image/png;base64,eA==';
+    vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL')
+      .mockReturnValueOnce(`data:image/png;base64,${btoa('x'.repeat(70000))}`)
+      .mockReturnValue(small);
+    render(<Editor />);
+    await userEvent
+      .setup()
+      .upload(
+        screen.getByLabelText('上传图标'),
+        new File(['image'], 'photo.png', { type: 'image/png' }),
+      );
+    await waitFor(() =>
+      expect(screen.getByRole('img', { name: '图标预览' })).toHaveAttribute(
+        'src',
+        small,
+      ),
+    );
+    expect(draw).toHaveBeenLastCalledWith(expect.anything(), 0, 0, 128, 128);
+  });
+  it('compresses a large photo before previewing and saving it', async () => {
+    const close = vi.fn();
+    vi.stubGlobal(
+      'createImageBitmap',
+      vi.fn().mockResolvedValue({ width: 1200, height: 600, close }),
+    );
+    const draw = vi.fn();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      drawImage: draw,
+    } as unknown as CanvasRenderingContext2D);
+    const small = `data:image/webp;base64,${btoa('x'.repeat(1024))}`;
+    vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue(small);
+    render(<Editor initial={url} />);
+    await userEvent
+      .setup()
+      .upload(
+        screen.getByLabelText('上传图标'),
+        new File(['x'.repeat(100000)], 'photo.png', { type: 'image/png' }),
+      );
+    await waitFor(() =>
+      expect(screen.getByRole('img', { name: '图标预览' })).toHaveAttribute(
+        'src',
+        small,
+      ),
+    );
+    expect(draw).toHaveBeenCalledWith(expect.anything(), 0, 0, 256, 128);
+    expect(close).toHaveBeenCalled();
+    expect(screen.getByText('保存大小：1.0 KiB')).toBeVisible();
+    expect(screen.getByLabelText('图标地址或 SVG')).toBeValid();
+  });
+  it('keeps the old icon when decoding fails and can recover with SVG', async () => {
+    vi.stubGlobal(
+      'createImageBitmap',
+      vi.fn().mockRejectedValue(new Error('bad image')),
+    );
+    render(<Editor initial={url} />);
+    const user = userEvent.setup();
+    await user.upload(
+      screen.getByLabelText('上传图标'),
+      new File(['broken'], 'bad.png', { type: 'image/png' }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent('图片处理失败');
+    expect(screen.getByRole('img', { name: '图标预览' })).toHaveAttribute(
+      'src',
+      url,
+    );
+    await user.upload(
+      screen.getByLabelText('上传图标'),
+      new File([svg], 'safe.svg', { type: 'image/svg+xml' }),
+    );
+    await waitFor(() =>
+      expect(screen.getByLabelText('图标地址或 SVG')).toBeValid(),
+    );
+  });
   it('offers upload first in the keyboard flow', async () => {
     const user = userEvent.setup();
     render(<Editor />);
@@ -154,7 +277,9 @@ describe('custom tool icons', () => {
   });
   it.each([
     new File(['bad'], 'icon.html', { type: 'text/html' }),
-    new File(['x'.repeat(65537)], 'icon.png', { type: 'image/png' }),
+    new File(['x'.repeat(5 * 1024 * 1024 + 1)], 'icon.png', {
+      type: 'image/png',
+    }),
     new File(['<svg onload="bad()"/>'], 'icon.svg', { type: 'image/svg+xml' }),
   ])(
     'rejects invalid or oversized uploads and allows recovery',

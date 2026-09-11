@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom/vitest';
+import './editor-geometry';
 import { onlineManager } from '@tanstack/react-query';
 import { cleanup, configure } from '@testing-library/react';
 import { afterEach, vi } from 'vitest';

@@ -3,7 +3,7 @@
   "info": {
     "title": "Loadout HTTP API",
     "version": "0.2.0",
-    "description": "实际Go app/identity/运维路由。网页会话与ldt_网关令牌分离；业务写请求校验Origin；外部支付目前不可用。Body总大小app默认16KiB、技能发布50MiB（另验32文件/单文件256KiB）、identity4KiB；字符串长度限制以Go UTF-8字节校验为准，JSON Schema maxLength仅作客户端提示。"
+    "description": "实际Go app/identity/运维路由。网页会话与ldt_网关令牌分离；业务写请求校验Origin；外部支付目前不可用。Body总大小app默认16KiB、技能发布50MiB（另验32文件/单文件8MiB/共32MiB）、identity4KiB；字符串长度限制以Go UTF-8字节校验为准，JSON Schema maxLength仅作客户端提示。"
   },
   "servers": [
     {
@@ -3285,7 +3285,7 @@
             "description": "SDK已接受通知，无响应体"
           },
           "400": {
-            "description": "HTTP传输、鉴权或SDK错误；不保证为REST Error结构。",
+            "description": "HTTP 传输/鉴权层错误返回统一 REST Error 结构；SDK JSON-RPC 协议错误不保证为 REST Error 结构。",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3300,7 +3300,7 @@
             }
           },
           "401": {
-            "description": "HTTP传输、鉴权或SDK错误；不保证为REST Error结构。",
+            "description": "HTTP 传输/鉴权层错误，返回统一 REST Error 结构 {\"error\":\"stable_code\"}；进入 SDK 后的协议错误遵循 JSON-RPC 形状。",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3315,7 +3315,7 @@
             }
           },
           "403": {
-            "description": "HTTP传输、鉴权或SDK错误；不保证为REST Error结构。",
+            "description": "HTTP 传输/鉴权层错误返回统一 REST Error 结构；SDK JSON-RPC 协议错误不保证为 REST Error 结构。",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3330,7 +3330,7 @@
             }
           },
           "405": {
-            "description": "HTTP传输、鉴权或SDK错误；不保证为REST Error结构。",
+            "description": "HTTP 传输/鉴权层错误，返回统一 REST Error 结构 {\"error\":\"stable_code\"}；进入 SDK 后的协议错误遵循 JSON-RPC 形状。",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3345,7 +3345,7 @@
             }
           },
           "413": {
-            "description": "HTTP传输、鉴权或SDK错误；不保证为REST Error结构。",
+            "description": "HTTP 传输/鉴权层错误返回统一 REST Error 结构；SDK JSON-RPC 协议错误不保证为 REST Error 结构。",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3360,7 +3360,7 @@
             }
           },
           "503": {
-            "description": "HTTP传输、鉴权或SDK错误；不保证为REST Error结构。",
+            "description": "HTTP 传输/鉴权层错误，返回统一 REST Error 结构 {\"error\":\"stable_code\"}；进入 SDK 后的协议错误遵循 JSON-RPC 形状。",
             "content": {
               "text/plain": {
                 "schema": {
@@ -4005,7 +4005,7 @@
     "/api/v1/admin/marketplace/skills": {
       "post": {
         "summary": "Create or update skills",
-        "description": "Administrator only. New entries return 201; same-kind updates return 200; conflicting kinds return 409. GitHub skills store validated file snapshots. Bundle members must be installable.",
+        "description": "管理员按路径更新文件，delete_files显式删除；32文件、单文件8MiB、共32MiB，必须包含有效UTF-8 SKILL.md。二进制以原字节存储和SHA256清单发布，未提交附件保留。",
         "responses": {
           "200": {
             "description": "Updated item"
@@ -4024,6 +4024,61 @@
           },
           "502": {
             "description": "GitHub synchronization failed"
+          },
+          "503": {
+            "description": "文件存储未配置、不可用或对象缺失；不会发布不完整内容"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["slug", "name", "source"],
+                "properties": {
+                  "slug": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "source": {
+                    "enum": ["inline", "github"]
+                  },
+                  "repo": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "string"
+                  },
+                  "files": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  },
+                  "files_v2": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "$ref": "#/components/schemas/FileUpload"
+                    }
+                  },
+                  "delete_files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -4096,6 +4151,81 @@
           }
         ]
       }
+    },
+    "/api/v1/marketplace/{slug}/files": {
+      "get": {
+        "summary": "下载技能原始文件",
+        "description": "format=2支持原始二进制、SHA256及执行位。缺省返回旧文本字典；二进制不能降级，返回400 invalid_request。",
+        "security": [
+          {
+            "CookieSession": []
+          },
+          {
+            "GatewayToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["2"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "文件字典",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["files"],
+                  "properties": {
+                    "files": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "$ref": "#/components/schemas/FileTransfer"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "非法路径/文件或旧客户端请求二进制技能"
+          },
+          "401": {
+            "description": "需要登录"
+          },
+          "404": {
+            "description": "技能不存在"
+          },
+          "502": {
+            "description": "上游或文件读取失败"
+          },
+          "503": {
+            "description": "文件存储未配置、不可用或对象缺失；不会发布不完整内容"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4125,7 +4255,62 @@
           "error": {
             "type": "string",
             "minLength": 1,
-            "description": "稳定错误码；没有原始响应或内部凭证。"
+            "description": "稳定错误码；完整注册表见 docs/API.md 错误码注册表与 server/internal/httpapi/codes.go；没有原始响应或内部凭证。",
+            "enum": [
+              "already_installed",
+              "already_member",
+              "already_redeemed",
+              "auth_busy",
+              "authorization_pending",
+              "cannot_disable_self",
+              "config_required",
+              "directory_unavailable",
+              "email_unavailable",
+              "expired_token",
+              "forbidden",
+              "forbidden_origin",
+              "gateway_unavailable",
+              "github_failed",
+              "github_unavailable",
+              "idempotency_conflict",
+              "insufficient_balance",
+              "internal_error",
+              "invalid_credentials",
+              "invalid_device_code",
+              "invalid_grant",
+              "invalid_icon",
+              "invalid_request",
+              "invalid_settlement",
+              "invalid_state",
+              "invalid_token",
+              "invite_expired",
+              "invite_used",
+              "key_taken",
+              "last_admin",
+              "last_owner",
+              "marketplace_unavailable",
+              "method_not_allowed",
+              "not_found",
+              "not_installed",
+              "organization_required",
+              "payment_unavailable",
+              "rate_limit_unavailable",
+              "rate_limited",
+              "registration_unavailable",
+              "seats_in_use",
+              "settings_conflict",
+              "settings_encryption_unavailable",
+              "settings_unavailable",
+              "slow_down",
+              "team_full",
+              "temporarily_unavailable",
+              "tool_disabled",
+              "transport_not_supported",
+              "transport_required",
+              "unauthorized",
+              "upstream_unavailable",
+              "username_taken"
+            ]
           }
         },
         "required": ["error"]
@@ -5624,6 +5809,51 @@
               "input_truncated",
               "output_truncated"
             ]
+          }
+        ]
+      },
+      "FileReference": {
+        "type": "object",
+        "required": ["sha256", "size", "executable"],
+        "properties": {
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 8388608
+          },
+          "executable": {
+            "type": "boolean"
+          }
+        }
+      },
+      "FileUpload": {
+        "type": "object",
+        "required": ["encoding", "content"],
+        "properties": {
+          "encoding": {
+            "const": "base64"
+          },
+          "content": {
+            "type": "string",
+            "contentEncoding": "base64"
+          },
+          "executable": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "FileTransfer": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/FileReference"
+          },
+          {
+            "$ref": "#/components/schemas/FileUpload"
           }
         ]
       }

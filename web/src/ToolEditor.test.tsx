@@ -116,7 +116,7 @@ it('keeps field errors and entered values actionable across invalid JSON and sav
   await user.type(screen.getByLabelText('成功值（JSON）'), '0');
   await user.click(screen.getByRole('button', { name: '保存工具' }));
   expect(await screen.findByRole('alert')).toHaveTextContent(
-    '暂时无法完成请求',
+    '服务内部错误，请稍后重试',
   );
   expect(screen.getByLabelText('成功值（JSON）')).toHaveValue('0');
   await user.click(screen.getByRole('button', { name: '保存工具' }));

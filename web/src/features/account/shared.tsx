@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/i18n';
+import { errorText } from '@/i18n/errors';
+import { ApiError } from './api';
 
 export function Heading({
   title,
@@ -61,11 +63,15 @@ export function ErrorNotice({
   error: Error | null;
   retry?: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   if (!error) return null;
   return (
     <div className="error-notice">
-      <p role="alert">{t(error.message)}</p>
+      <p role="alert">
+        {error instanceof ApiError
+          ? errorText(error.code, locale)
+          : t(error.message)}
+      </p>
       {retry && (
         <Button variant="outline" onClick={retry}>
           {t('重试')}

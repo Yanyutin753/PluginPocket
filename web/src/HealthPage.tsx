@@ -180,7 +180,7 @@ export default function HealthPage() {
           <a href="/overview" className="inline-action">
             {t('进入控制台')}
           </a>
-          <p>Your AI, fully loaded.</p>
+          <p>{t('你的 AI，准备就绪。')}</p>
         </footer>
       </main>
     </div>

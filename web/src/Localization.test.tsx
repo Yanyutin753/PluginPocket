@@ -86,7 +86,7 @@ it.each([
 it('translates safe API errors and allows keyboard retry in English', async () => {
   const recover = mount('/tools', true);
   expect(await screen.findByRole('alert')).toHaveTextContent(
-    'Unable to complete the request',
+    'The service hit an internal error',
   );
   expect(screen.queryByText('private-server-detail')).not.toBeInTheDocument();
   recover();
@@ -95,6 +95,18 @@ it('translates safe API errors and allows keyboard retry in English', async () =
   await userEvent.setup().keyboard('{Enter}');
   expect(await screen.findByText('No tools available')).toBeVisible();
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+});
+
+it('falls back to the generic message for unknown or non-JSON errors', async () => {
+  mount('/tools', false, (url) =>
+    url.startsWith('/api/v1/tools')
+      ? new Response('upstream exploded', { status: 502 })
+      : undefined,
+  );
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Unable to complete the request',
+  );
+  expect(screen.queryByText('upstream exploded')).not.toBeInTheDocument();
 });
 
 it('keeps user-provided names intact and updates token dates when switching language', async () => {

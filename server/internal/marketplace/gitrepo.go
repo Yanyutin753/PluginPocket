@@ -17,7 +17,7 @@ import (
 // BuildGitMarketplace 返回 裸仓相对路径 → 文件内容 的全集。
 // parent 非空时形成真实提交链，远端 pull 才能识别增量（否则全新根提交会被
 // 判为"已是最新"）；进程首次构建无 parent。
-func BuildGitMarketplace(tree map[string][]byte, parent *[20]byte) (map[string][]byte, error) {
+func BuildGitMarketplace(tree map[string][]byte, parent *[20]byte, executable ...map[string]bool) (map[string][]byte, error) {
 	repo := map[string][]byte{}
 	store := func(objectType string, content []byte) [20]byte {
 		full := append([]byte(fmt.Sprintf("%s %d\x00", objectType, len(content))), content...)
@@ -41,7 +41,7 @@ func BuildGitMarketplace(tree map[string][]byte, parent *[20]byte) (map[string][
 			}
 			node = child
 		}
-		node.files[parts[len(parts)-1]] = gitBlob{content: content}
+		node.files[parts[len(parts)-1]] = gitBlob{content: content, executable: len(executable) > 0 && executable[0][path]}
 	}
 	treeSHA := writeGitTree(root, store)
 	timestamp := time.Now().UTC().Unix()
@@ -64,9 +64,10 @@ func BuildGitMarketplace(tree map[string][]byte, parent *[20]byte) (map[string][
 }
 
 type gitBlob struct {
-	content []byte
-	sum     [20]byte
-	stored  bool
+	executable bool
+	content    []byte
+	sum        [20]byte
+	stored     bool
 }
 
 type gitTreeNode struct {
@@ -101,7 +102,11 @@ func writeGitTree(node *gitTreeNode, store func(string, []byte) [20]byte) [20]by
 				blob.stored = true
 				node.files[name] = blob
 			}
-			serialized.WriteString("100644 " + name + "\x00")
+			mode := "100644"
+			if blob.executable {
+				mode = "100755"
+			}
+			serialized.WriteString(mode + " " + name + "\x00")
 			serialized.Write(blob.sum[:])
 			continue
 		}

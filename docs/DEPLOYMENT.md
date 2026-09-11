@@ -13,7 +13,11 @@ make redis-up
 docker compose exec db createdb -U loadout loadout_test
 ```
 
-根目录的 `make up/dev/restart/status/logs` 和对应 NPM Scripts 自动读取 `.env`，从 IDE 点击启动也适用；已导出的环境变量优先。设置 `LOADOUT_PUBLIC_URL=http://127.0.0.1:5173`，与浏览器实际打开的 Origin 完全一致。修改配置后执行 `make restart`。
+根目录的 `make up/dev/restart/status/logs` 和对应 NPM Scripts 自动读取 `.env`，从 IDE 点击启动也适用；已导出的环境变量优先。本地前端使用相对路径 `/api`，Vite转发后端，`LOADOUT_PUBLIC_URL` 可留空，localhost与127.0.0.1均可同源访问。修改配置后执行 `make restart`。
+
+来源校验使用Go标准库 `http.CrossOriginProtection`：写请求仍必须带Origin；现代浏览器通过Sec-Fetch-Site判断同源，缺少该头时比较Origin与Host（含端口），不依赖固定公开地址，也不信任客户端的X-Forwarded-Host。反代应保留Host、Origin和Sec-Fetch-Site，不能改写跨站来源以绕过校验。生产HTTPS仍配置 `LOADOUT_PUBLIC_URL` 以启用Secure Cookie并生成正确的公开链接与身份回调。
+
+标准库旧浏览器回退只比较主机和端口，不比较HTTP/HTTPS协议，以兼容TLS终止反代；生产入口应强制HTTPS并配置HSTS。参见 [Go标准库说明](https://pkg.go.dev/net/http#CrossOriginProtection)。
 
 单独运行 Go 二进制或完整 `make check` 时仍需显式导出配置。仅对自己检查过的 shell 兼容配置执行 `set -a; . ./.env; set +a`，值包含空格时必须加引号；也可逐项 export。
 

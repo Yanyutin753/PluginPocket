@@ -75,11 +75,13 @@ pub(crate) fn skill_files(
     server: &str,
     token: &str,
     slug: &str,
-) -> Result<std::collections::BTreeMap<String, String>> {
+) -> Result<std::collections::BTreeMap<String, crate::plugins::SkillFile>> {
     let mut url = root_url(server)?;
     url.set_path(&format!("/api/v1/marketplace/{slug}/files"));
+    url.set_query(Some("format=2"));
     let response = http()?
         .get(url)
+        .timeout(Duration::from_secs(60))
         .bearer_auth(token)
         .send()
         .map_err(|_| "could not connect; check the server and retry")?;
@@ -88,10 +90,24 @@ pub(crate) fn skill_files(
     }
     #[derive(Deserialize)]
     struct Payload {
-        files: std::collections::BTreeMap<String, String>,
+        files: std::collections::BTreeMap<String, crate::plugins::SkillFile>,
     }
-    let payload: Payload = response
-        .json()
+    const MAX_RESPONSE: u64 = 45 * 1024 * 1024;
+    if response
+        .content_length()
+        .is_some_and(|size| size > MAX_RESPONSE)
+    {
+        return Err("skill files response exceeds size limit");
+    }
+    let mut bytes = Vec::new();
+    response
+        .take(MAX_RESPONSE + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|_| "could not read skill files response")?;
+    if bytes.len() as u64 > MAX_RESPONSE {
+        return Err("skill files response exceeds size limit");
+    }
+    let payload: Payload = serde_json::from_slice(&bytes)
         .map_err(|_| "server returned an invalid skill files response")?;
     Ok(payload.files)
 }

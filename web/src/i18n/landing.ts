@@ -1,9 +1,5 @@
 export const landing: Record<string, string> = {
   跳至主要内容: 'Skip to main content',
-  'AI 装备工坊': 'AI tool workshop',
-  登录: 'Log in',
-  创建账号: 'Create an account',
-  '给你的 AI，装上超能力。': 'Give your AI superpowers.',
   '把工具接入一个 MCP 网关。让你熟悉的 AI 客户端，带着合适的装备开始工作。':
     'Connect tools through one MCP gateway. Equip the AI clients you already use with the tools they need.',
   '创建账号，开始装备': 'Create an account and get equipped',
@@ -26,10 +22,8 @@ export const landing: Record<string, string> = {
     'Invite members, share team credits and review usage by member. Keep collaboration clear.',
   '三步，进入工作状态。': 'Three steps to get started.',
   '进入你的 Loadout 工作空间。': 'Open your Loadout workspace.',
-  创建网关令牌: 'Create a gateway token',
   '在令牌页创建专属连接凭证。':
     'Create a dedicated credential on the tokens page.',
-  连接客户端: 'Connect your clients',
   '通过 CLI 或桌面端配置 Codex、Claude Code、Cursor。':
     'Configure Codex, Claude Code or Cursor using the CLI or desktop app.',
   '已安装 Loadout CLI？从终端连接。':
@@ -43,7 +37,6 @@ export const landing: Record<string, string> = {
   进入工作空间: 'Open workspace',
   登录后管理工具与用量: 'Log in to manage tools and usage',
   'Loadout 首页': 'Loadout home',
-  主导航: 'Main navigation',
   '薄荷绿色工具箱伙伴打开装满 AI 工具的工作台':
     'A mint toolbox companion opens a workbench full of AI tools',
   连接步骤: 'Connection steps',

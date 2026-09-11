@@ -12,7 +12,6 @@ export const plugins: Record<string, string> = {
   搜索插件: 'Search plugins',
   插件类型: 'Plugin type',
   全部: 'All',
-  网关托管: 'Gateway hosted',
   没有匹配的插件: 'No matching plugins',
   清除筛选: 'Clear filters',
   接入整个市场: 'Connect the marketplace',

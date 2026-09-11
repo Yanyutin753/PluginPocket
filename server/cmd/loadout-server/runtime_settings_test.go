@@ -68,7 +68,7 @@ func TestApplicationReloadsPersistedSettingsWithoutRestart(t *testing.T) {
 	if _, err = s.Pool.Exec(ctx, "INSERT INTO sessions(user_id,session_hash,expires_at) VALUES(1,$1,now()+interval '1 hour')", auth.Digest("admin-session")); err != nil {
 		t.Fatal(err)
 	}
-	patch := httptest.NewRequest("PATCH", "/api/v1/admin/settings", strings.NewReader(`{"revision":0,"initial_credits":73,"github_enabled":false,"github_client_id":"","github_org":"","smtp_enabled":false,"smtp_address":"","smtp_from":"","smtp_username":""}`))
+	patch := httptest.NewRequest("PATCH", cfg.PublicURL+"/api/v1/admin/settings", strings.NewReader(`{"revision":0,"initial_credits":73,"github_enabled":false,"github_client_id":"","github_org":"","smtp_enabled":false,"smtp_address":"","smtp_from":"","smtp_username":""}`))
 	patch.Header.Set("Origin", cfg.PublicURL)
 	patch.AddCookie(&http.Cookie{Name: "loadout_session", Value: "admin-session"})
 	w = httptest.NewRecorder()
@@ -81,7 +81,7 @@ func TestApplicationReloadsPersistedSettingsWithoutRestart(t *testing.T) {
 	if w.Code != 200 || !strings.Contains(w.Body.String(), `"github":false`) {
 		t.Fatalf("application retained environment settings after database save: status=%d body=%s", w.Code, w.Body)
 	}
-	r := httptest.NewRequest("POST", "/api/v1/auth/register", strings.NewReader(`{"username":"runtime-user","password":"correct horse battery"}`))
+	r := httptest.NewRequest("POST", cfg.PublicURL+"/api/v1/auth/register", strings.NewReader(`{"username":"runtime-user","password":"correct horse battery"}`))
 	r.Header.Set("Origin", cfg.PublicURL)
 	w = httptest.NewRecorder()
 	h.ServeHTTP(w, r)

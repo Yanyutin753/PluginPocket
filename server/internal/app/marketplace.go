@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -137,35 +138,30 @@ func (a *application) publicMarketplace(w http.ResponseWriter, r *http.Request) 
 	respond(w, 200, map[string]any{"items": items})
 }
 
-// safeSkillFiles 校验内联技能文件集：必须含 SKILL.md，路径安全，条数与大小受限。
-func safeSkillFiles(files map[string]string) bool {
-	if len(files) == 0 || len(files) > 32 {
-		return false
-	}
-	if _, ok := files["SKILL.md"]; !ok {
-		return false
-	}
-	for name, content := range files {
-		if name == "" || len(name) > 128 || strings.Contains(name, "..") || strings.HasPrefix(name, "/") || strings.ContainsAny(name, "\x00") || strings.ContainsRune(name, '\\') || len(content) > 256*1024 {
-			return false
-		}
-	}
-	return true
-}
-
 func (a *application) createSkill(w http.ResponseWriter, r *http.Request) {
 	if _, ok := a.currentUser(w, r, true); !ok {
 		return
 	}
+	controller := http.NewResponseController(w)
+	if err := controller.SetReadDeadline(time.Now().Add(60 * time.Second)); err != nil && !errors.Is(err, http.ErrNotSupported) {
+		fail(w, 500, "internal_error")
+		return
+	}
+	if err := controller.SetWriteDeadline(time.Now().Add(120 * time.Second)); err != nil && !errors.Is(err, http.ErrNotSupported) {
+		fail(w, 500, "internal_error")
+		return
+	}
 	var in struct {
-		Slug        string            `json:"slug"`
-		Name        string            `json:"name"`
-		Description string            `json:"description"`
-		Source      string            `json:"source"`
-		Version     string            `json:"version"`
-		Repo        string            `json:"repo"`
-		Path        string            `json:"path"`
-		Files       map[string]string `json:"files"`
+		Slug        string                             `json:"slug"`
+		Name        string                             `json:"name"`
+		Description string                             `json:"description"`
+		Source      string                             `json:"source"`
+		Version     string                             `json:"version"`
+		Repo        string                             `json:"repo"`
+		Path        string                             `json:"path"`
+		Files       map[string]string                  `json:"files"`
+		FilesV2     map[string]marketplace.EncodedFile `json:"files_v2"`
+		DeleteFiles []string                           `json:"delete_files"`
 	}
 	if !decodeLimit(w, r, &in, 50<<20) {
 		return
@@ -178,47 +174,90 @@ func (a *application) createSkill(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, "invalid_request")
 		return
 	}
-	spec := map[string]any{"source": in.Source}
-	switch in.Source {
-	case "inline":
-		if !safeSkillFiles(in.Files) {
-			fail(w, 400, "invalid_request")
-			return
-		}
-		spec["files"] = in.Files
-	case "github":
-		ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
-		defer cancel()
-		files, e := marketplace.ResolveSkillFiles(ctx, a.options.Marketplace, in.Repo, in.Path)
-		if e != nil || !safeSkillFiles(files) {
-			fail(w, 502, "upstream_unavailable")
-			return
-		}
-		spec["repo"] = in.Repo
-		spec["path"] = in.Path
-		spec["files"] = files
-	default:
-		fail(w, 400, "invalid_request")
-		return
-	}
-	encoded, e := json.Marshal(spec)
-	if e != nil {
-		fail(w, 500, "internal_error")
-		return
-	}
-	// 正式发版：内容指纹决定版本策略（不变沿用 / 显式发版 / 自动 patch+1）。
 	tx, e := a.s.Pool.Begin(r.Context())
 	if e != nil {
 		fail(w, 500, "internal_error")
 		return
 	}
 	defer func() { _ = tx.Rollback(r.Context()) }()
+	fileOptions := a.options.Marketplace
+	fileOptions.Files = a.options.Files.WithTx(tx)
 	// Serialize authoring before row locks: skill updates also write bundles
 	// and the shared Git invalidation row. One order prevents cross-edit deadlocks.
 	if _, e = tx.Exec(r.Context(), "SELECT pg_advisory_xact_lock(hashtextextended(current_schema() || ':marketplace-publish', 0))"); e != nil {
 		fail(w, 500, "internal_error")
 		return
 	}
+	spec := map[string]any{"source": in.Source}
+	files := map[string]marketplace.SkillFile{}
+	switch in.Source {
+	case "inline":
+		previous, err := readMarketplaceItem(r.Context(), tx, slug)
+		if err == nil && previous.Kind == "skill" {
+			files, err = marketplace.LoadSkillFiles(r.Context(), fileOptions, previous.Spec)
+			if err != nil {
+				fail(w, 503, "upstream_unavailable")
+				return
+			}
+		} else if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			fail(w, 500, "internal_error")
+			return
+		}
+		for name, content := range in.Files {
+			files[name] = marketplace.SkillFile{Content: []byte(content)}
+		}
+		for name, encoded := range in.FilesV2 {
+			if encoded.Encoding != "base64" {
+				fail(w, 400, "invalid_request")
+				return
+			}
+			content, err := base64.StdEncoding.Strict().DecodeString(encoded.Content)
+			if err != nil {
+				fail(w, 400, "invalid_request")
+				return
+			}
+			files[name] = marketplace.SkillFile{Content: content, Executable: encoded.Executable}
+		}
+		for _, name := range in.DeleteFiles {
+			if name == "SKILL.md" || !marketplace.SafeSkillPath(name) {
+				fail(w, 400, "invalid_request")
+				return
+			}
+			delete(files, name)
+		}
+	case "github":
+		ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+		defer cancel()
+		var e error
+		files, e = marketplace.ResolveSkillFilesV2(ctx, a.options.Marketplace, in.Repo, in.Path)
+		if e != nil {
+			fail(w, 502, "upstream_unavailable")
+			return
+		}
+		spec["repo"] = in.Repo
+		spec["path"] = in.Path
+	default:
+		fail(w, 400, "invalid_request")
+		return
+	}
+	if marketplace.ValidateSkillFiles(files) != nil {
+		fail(w, 400, "invalid_request")
+		return
+	}
+	manifest, err := marketplace.StoreSkillFiles(r.Context(), fileOptions.Files, files)
+	if err != nil {
+		fail(w, 503, "upstream_unavailable")
+		return
+	}
+	spec["file_manifest"] = manifest
+	// Keep the editable document available to older admin consoles.
+	spec["files"] = map[string]string{"SKILL.md": string(files["SKILL.md"].Content)}
+	encoded, e := json.Marshal(spec)
+	if e != nil {
+		fail(w, 500, "internal_error")
+		return
+	}
+	// 正式发版：内容指纹决定版本策略（不变沿用 / 显式发版 / 自动 patch+1）。
 	nextHash := contentFingerprint("skill", in.Name, in.Description, string(encoded))
 	var previousVersion, previousHash string
 	var existed bool
@@ -360,6 +399,10 @@ func (a *application) createBundle(w http.ResponseWriter, r *http.Request) {
 
 // marketplaceFiles 返回技能文件集（内联直接返回，GitHub 由服务端解析），CLI 唯一文件来源。
 func (a *application) marketplaceFiles(w http.ResponseWriter, r *http.Request) {
+	if err := http.NewResponseController(w).SetWriteDeadline(time.Now().Add(120 * time.Second)); err != nil && !errors.Is(err, http.ErrNotSupported) {
+		fail(w, 500, "internal_error")
+		return
+	}
 	if header := r.Header.Get("Authorization"); strings.HasPrefix(header, "Bearer ") {
 		if _, e := a.s.AuthToken(r.Context(), strings.TrimPrefix(header, "Bearer ")); e != nil {
 			fail(w, 401, "unauthorized")
@@ -376,42 +419,21 @@ func (a *application) marketplaceFiles(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, "invalid_request")
 		return
 	}
-	var spec struct {
-		Source string            `json:"source"`
-		Files  map[string]string `json:"files"`
-		Repo   string            `json:"repo"`
-		Path   string            `json:"path"`
-	}
-	if e := json.Unmarshal(item.Spec, &spec); e != nil {
-		fail(w, 500, "internal_error")
+	files, err := marketplace.LoadSkillFiles(r.Context(), a.options.Marketplace, item.Spec)
+	if err != nil {
+		fail(w, 502, "upstream_unavailable")
 		return
 	}
-	var files map[string]string
-	switch spec.Source {
-	case "inline":
-		files = spec.Files
-	case "github":
-		if len(spec.Files) > 0 {
-			files = spec.Files
-			break
-		}
-		ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
-		defer cancel()
-		resolved, e := marketplace.ResolveSkillFiles(ctx, a.options.Marketplace, spec.Repo, spec.Path)
-		if e != nil {
-			fail(w, 502, "upstream_unavailable")
-			return
-		}
-		files = resolved
-	default:
+	if r.URL.Query().Get("format") == "2" {
+		respond(w, 200, map[string]any{"files": marketplace.EncodeSkillFiles(files)})
+		return
+	}
+	legacy, err := marketplace.LegacySkillFiles(files)
+	if err != nil {
 		fail(w, 400, "invalid_request")
 		return
 	}
-	if !safeSkillFiles(files) {
-		fail(w, 500, "internal_error")
-		return
-	}
-	respond(w, 200, map[string]any{"files": files})
+	respond(w, 200, map[string]any{"files": legacy})
 }
 
 var versionPattern = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+$`)

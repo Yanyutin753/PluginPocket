@@ -49,6 +49,20 @@ export const marketplaceItemSchema = z.object({
       repo: z.string().optional(),
       path: z.string().optional(),
       files: z.record(z.string(), z.string()).optional(),
+      file_manifest: z
+        .record(
+          z.string(),
+          z.object({
+            sha256: z.string().regex(/^[a-f0-9]{64}$/),
+            size: z
+              .number()
+              .int()
+              .nonnegative()
+              .max(8 * 1024 * 1024),
+            executable: z.boolean(),
+          }),
+        )
+        .optional(),
       includes: z.array(z.string()).optional(),
     })
     .optional(),

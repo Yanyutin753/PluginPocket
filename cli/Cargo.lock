@@ -874,8 +874,10 @@ name = "loadout"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "base64 0.23.1",
  "clap",
  "reqwest",
+ "ring",
  "rmcp",
  "rpassword",
  "serde",

@@ -4,18 +4,25 @@ import {
   ArrowUpRight,
   ChartNoAxesCombined,
   CreditCard,
+  Globe,
   House,
   KeyRound,
-  Layers,
   LogOut,
   Menu,
   Monitor,
   PackageOpen,
   PanelLeftClose,
   PanelLeftOpen,
+  ScrollText,
   Settings,
   ShieldCheck,
+  SlidersHorizontal,
+  Store,
+  Tag,
+  Ticket,
+  UserCog,
   Users,
+  Wrench,
 } from 'lucide-react';
 import { DropdownMenu } from 'radix-ui';
 import { lazy, type ReactNode, Suspense, useEffect, useState } from 'react';
@@ -184,14 +191,14 @@ function Shell({ publicCatalog = false }: { publicCatalog?: boolean }) {
     { to: '/settings', title: '个人设置', icon: Settings },
     ...(account.data.user.role === 'admin'
       ? [
-          { to: '/admin/users', title: '用户管理', icon: Users },
-          { to: '/admin/tools', title: '工具管理', icon: Layers },
-          { to: '/admin/marketplace', title: '市场管理', icon: Layers },
-          { to: '/admin/plans', title: '套餐管理', icon: ChartNoAxesCombined },
-          { to: '/admin/codes', title: '兑换码管理', icon: KeyRound },
-          { to: '/admin/usage', title: '全局用量', icon: ChartNoAxesCombined },
-          { to: '/admin/ledger', title: '额度审计', icon: ChartNoAxesCombined },
-          { to: '/admin/settings', title: '系统配置', icon: Settings },
+          { to: '/admin/users', title: '用户管理', icon: UserCog },
+          { to: '/admin/tools', title: '工具管理', icon: Wrench },
+          { to: '/admin/marketplace', title: '市场管理', icon: Store },
+          { to: '/admin/plans', title: '套餐管理', icon: Tag },
+          { to: '/admin/codes', title: '兑换码管理', icon: Ticket },
+          { to: '/admin/usage', title: '全局用量', icon: Globe },
+          { to: '/admin/ledger', title: '额度审计', icon: ScrollText },
+          { to: '/admin/settings', title: '系统配置', icon: SlidersHorizontal },
         ]
       : []),
   ];
@@ -387,7 +394,7 @@ function Shell({ publicCatalog = false }: { publicCatalog?: boolean }) {
                 height="28"
               />
               <span className="brand-wordmark">Loadout</span>
-              <span className="footer-tagline">Your AI, fully loaded.</span>
+              <span className="footer-tagline">{t('你的 AI，准备就绪。')}</span>
             </div>
             <Link to="/health" className="footer-status">
               <Activity aria-hidden="true" />

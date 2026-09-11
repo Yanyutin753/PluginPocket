@@ -3,8 +3,6 @@ export const toolEditor: Record<string, string> = {
     'Overrides only the descriptions and parameter definitions shown to clients, without changing upstream execution or billing. Parameter fields must match the inputs accepted by the upstream tool.',
   '下面列出服务器发现的实际工具。按工具分别优化说明和参数；清除覆盖后恢复上游定义。连接失败时先检查服务地址、凭证和允许名单，再重试。':
     'These are the actual tools discovered by the server. Customize each description and parameter definition; clearing an override restores the upstream definition. If discovery fails, check the address, credentials and allowlist, then retry.',
-  '图标无效，请使用 HTTPS 图片或不超过 64 KiB 的 PNG、JPEG、WebP、安全 SVG。':
-    'Invalid icon. Use an HTTPS image or a PNG, JPEG, WebP or safe SVG up to 64 KiB.',
   连接类型: 'Connection type',
   结算方式: 'Settlement method',
   协议结算: 'Protocol result',
@@ -13,24 +11,15 @@ export const toolEditor: Record<string, string> = {
   脚本判定: 'Script evaluation',
   自定义规则: 'Custom rule',
   免费调用: 'Free calls',
-  工具标识: 'Tool key',
-  内置工具: 'Built-in tool',
-  'HTTP 服务': 'HTTP service',
-  本地进程: 'Local process',
-  编辑工具: 'Edit tool',
-  添加工具: 'Add tool',
   '先完善工具信息，再连接上游并设置扣费条件。所有配置由服务端保存。':
     'Enter the tool details, connect the upstream service, and set the charging conditions. All settings are saved on the server.',
   基本信息与图标: 'Details and icon',
-  显示名称: 'Display name',
   '例如：文档搜索': 'For example: Document search',
   '标识用于网关调用，需唯一；使用 3–32 位字母、数字、下划线或连字符。内置工具的标识不可更改。':
     'The key identifies the tool in gateway calls and must be unique. Use 3–32 letters, numbers, underscores, or hyphens. Built-in tool keys cannot be changed.',
-  工具说明: 'Tool description',
   '说明工具能做什么、适合何时使用，以及必要的输入。':
     'Describe what the tool does, when to use it, and what input it needs.',
   连接上游: 'Upstream connection',
-  连接方式: 'Connection method',
   '内置工具由 Loadout 执行，无需连接地址。新增仅支持 echo（回声）和 time_now（当前时间）；接入自己的工具请选择 HTTP 服务。':
     'Built-in tools run in Loadout and need no endpoint. Only echo and time_now can be added as built-in tools. Choose HTTP service to connect your own tool.',
   '填写支持 MCP 的 HTTP 端点，不是普通 REST API。服务地址必须符合服务器允许的网络范围。':
@@ -43,7 +32,6 @@ export const toolEditor: Record<string, string> = {
   填写方式: 'Input method',
   引导填写: 'Guided fields',
   '高级 JSON': 'Advanced JSON',
-  '连接配置（JSON）': 'Connection settings (JSON)',
   '这里的示例需要替换为你实际使用的地址或命令；新配置会完整替换旧配置。':
     'Replace the example with your actual address or command. The new configuration replaces the existing configuration in full.',
   'MCP 服务地址': 'MCP service URL',
@@ -62,7 +50,6 @@ export const toolEditor: Record<string, string> = {
     'The schema describes the accepted input. Set type to object, define fields in properties, and list mandatory fields in required.',
   '这里保存工具的参数说明；HTTP 和本地进程的实际可调用工具由上游发现。保存后通过“查看参数”管理上游工具及参数覆盖。':
     'This stores the tool parameter description. Callable tools for HTTP services and local processes are discovered from the upstream service. After saving, use View parameters to manage upstream tools and parameter overrides.',
-  '参数 Schema（JSON）': 'Input schema (JSON)',
   参数填写示例: 'Parameter example',
   '下面是必填文本 query 的示例。description 告诉 AI 应该传什么；required 使用字段名数组，不能写成 true。':
     'This example defines a required text field named query. The description tells the AI what to pass. The required property must be an array of field names, not true.',
@@ -71,14 +58,11 @@ export const toolEditor: Record<string, string> = {
   '填入示例会替换上方内容，保存工具后才生效。':
     'Inserting the example replaces the content above. Changes take effect after you save the tool.',
   额度与结算规则: 'Credits and settlement rules',
-  每次调用额度: 'Credits per call',
   '填 0 表示免费；只能填写非负整数。上游服务暴露多个工具时，每次工具调用按此额度计费。':
     'Enter 0 for free calls. Only non-negative integers are allowed. If the upstream service exposes multiple tools, each tool call uses this credit amount.',
   '内置工具使用协议结果结算，无需额外业务规则。':
     'Built-in tools settle based on the protocol result and need no additional business rules.',
-  保存工具: 'Save tool',
   '正在保存…': 'Saving…',
-  取消: 'Cancel',
   '参数 Schema 必须是 JSON 对象，请检查引号和逗号。':
     'The input schema must be a JSON object. Check the quotation marks and commas.',
   '参数 Schema 的 type 必须为 object。':

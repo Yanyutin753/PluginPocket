@@ -11,33 +11,54 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+
+	"github.com/Yanyutin753/loadout/server/internal/filestore"
 )
 
 type Config struct {
-	RedisURL               string
-	RedisNamespace         string
-	Addr                   string
-	WebDir                 string
-	DatabaseURL            string
-	PublicURL              string
-	EncryptionKey          []byte
-	AdminUsername          string
-	AdminPassword          string
-	AllowPrivateUpstreams  bool
-	StdioCommands          map[string]string
-	GitHubClientID         string
-	GitHubClientSecret     string
-	GitHubOrg              string
-	GitHubAPIURL           string
-	GitHubToken            string
-	RateTokenPerMinute     int64
-	RateUserPerDay         int64
-	SMTPAddress            string
-	SMTPFrom               string
-	SMTPUsername           string
-	SMTPPassword           string
-	SMTPAllowLocalInsecure bool
-	InitialCredits         int64
+	FileStorageEndpoint        string
+	FileStorageRegion          string
+	FileStorageBucket          string
+	FileStorageAccessKeyID     string
+	FileStorageSecretAccessKey string
+	FileStorageSessionToken    string
+	FileStoragePrefix          string
+	FileStoragePathStyle       bool
+	FileStorageAllowHTTP       bool
+	FileStorageInlineMaxBytes  int64
+	RedisURL                   string
+	RedisNamespace             string
+	Addr                       string
+	WebDir                     string
+	DatabaseURL                string
+	PublicURL                  string
+	EncryptionKey              []byte
+	AdminUsername              string
+	AdminPassword              string
+	AllowPrivateUpstreams      bool
+	StdioCommands              map[string]string
+	GitHubClientID             string
+	GitHubClientSecret         string
+	GitHubOrg                  string
+	GitHubAPIURL               string
+	GitHubToken                string
+	RateTokenPerMinute         int64
+	RateUserPerDay             int64
+	SMTPAddress                string
+	SMTPFrom                   string
+	SMTPUsername               string
+	SMTPPassword               string
+	SMTPAllowLocalInsecure     bool
+	InitialCredits             int64
+}
+
+func (cfg Config) FileStorageOptions() filestore.Options {
+	return filestore.Options{
+		Endpoint: cfg.FileStorageEndpoint, Region: cfg.FileStorageRegion, Bucket: cfg.FileStorageBucket,
+		AccessKeyID: cfg.FileStorageAccessKeyID, SecretAccessKey: cfg.FileStorageSecretAccessKey,
+		SessionToken: cfg.FileStorageSessionToken, Prefix: cfg.FileStoragePrefix,
+		PathStyle: cfg.FileStoragePathStyle, AllowHTTP: cfg.FileStorageAllowHTTP, InlineMaxBytes: cfg.FileStorageInlineMaxBytes,
+	}
 }
 
 func Load() (Config, error) {
@@ -150,6 +171,29 @@ func Load() (Config, error) {
 		cfg.SMTPAllowLocalInsecure, err = strconv.ParseBool(raw)
 		if err != nil {
 			return Config{}, fmt.Errorf("LOADOUT_SMTP_ALLOW_LOCAL_INSECURE must be boolean")
+		}
+	}
+
+	cfg.FileStorageEndpoint = os.Getenv("LOADOUT_FILE_STORAGE_ENDPOINT")
+	cfg.FileStorageRegion = os.Getenv("LOADOUT_FILE_STORAGE_REGION")
+	cfg.FileStorageBucket = os.Getenv("LOADOUT_FILE_STORAGE_BUCKET")
+	cfg.FileStorageAccessKeyID = os.Getenv("LOADOUT_FILE_STORAGE_ACCESS_KEY_ID")
+	cfg.FileStorageSecretAccessKey = os.Getenv("LOADOUT_FILE_STORAGE_SECRET_ACCESS_KEY")
+	cfg.FileStorageSessionToken = os.Getenv("LOADOUT_FILE_STORAGE_SESSION_TOKEN")
+	cfg.FileStoragePrefix = os.Getenv("LOADOUT_FILE_STORAGE_PREFIX")
+	cfg.FileStorageInlineMaxBytes = 256 << 10
+	if raw := os.Getenv("LOADOUT_FILE_STORAGE_INLINE_MAX_BYTES"); raw != "" {
+		cfg.FileStorageInlineMaxBytes, err = strconv.ParseInt(raw, 10, 64)
+		if err != nil || cfg.FileStorageInlineMaxBytes < 1 || cfg.FileStorageInlineMaxBytes > 16<<20 {
+			return Config{}, fmt.Errorf("LOADOUT_FILE_STORAGE_INLINE_MAX_BYTES must be between 1 and 16777216")
+		}
+	}
+	for key, target := range map[string]*bool{"LOADOUT_FILE_STORAGE_PATH_STYLE": &cfg.FileStoragePathStyle, "LOADOUT_FILE_STORAGE_ALLOW_HTTP": &cfg.FileStorageAllowHTTP} {
+		if raw := os.Getenv(key); raw != "" {
+			*target, err = strconv.ParseBool(raw)
+			if err != nil {
+				return Config{}, fmt.Errorf("%s must be boolean", key)
+			}
 		}
 	}
 	return cfg, nil

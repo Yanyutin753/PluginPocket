@@ -100,10 +100,15 @@ func TestBrowserLoginWithOneDatabaseConnection(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer pool.Close()
+	if err = pool.Ping(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	emptyAcquires := pool.Stat().EmptyAcquireCount()
 	runtime.Pool = pool
 	h := New(&store.Store{Pool: pool}, Options{Origin: runtime.Origin, Runtime: runtime})
 	for _, endpoint := range []string{"login", "register"} {
-		ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+		// Bound a deadlock without turning real scrypt work under -race into a latency assertion.
+		ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 		body := `{"username":"ordinary","password":"correct horse battery"}`
 		if endpoint == "register" {
 			body = `{"username":"newbrowser","password":"correct horse battery"}`
@@ -112,9 +117,13 @@ func TestBrowserLoginWithOneDatabaseConnection(t *testing.T) {
 		r.Header.Set("Origin", runtime.Origin)
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, r)
+		requestErr := ctx.Err()
 		cancel()
 		if w.Code != 200 && w.Code != 201 {
-			t.Fatalf("%s with one connection: %d %s", endpoint, w.Code, w.Body)
+			t.Fatalf("%s with one connection: %d %s (context: %v)", endpoint, w.Code, w.Body, requestErr)
+		}
+		if got := pool.Stat().EmptyAcquireCount(); got != emptyAcquires {
+			t.Fatalf("%s waited for the single connection: empty acquires %d -> %d", endpoint, emptyAcquires, got)
 		}
 	}
 }

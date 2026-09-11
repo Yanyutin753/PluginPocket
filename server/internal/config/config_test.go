@@ -6,6 +6,37 @@ import (
 	"testing"
 )
 
+func TestFileStorageConfiguration(t *testing.T) {
+	isolateConfig(t)
+	cfg, err := Load()
+	if err != nil || cfg.FileStorageInlineMaxBytes != 256<<10 {
+		t.Fatalf("default inline limit %d %v", cfg.FileStorageInlineMaxBytes, err)
+	}
+	t.Setenv("LOADOUT_FILE_STORAGE_ENDPOINT", "https://storage.example.com")
+	t.Setenv("LOADOUT_FILE_STORAGE_REGION", "auto")
+	t.Setenv("LOADOUT_FILE_STORAGE_BUCKET", "private")
+	t.Setenv("LOADOUT_FILE_STORAGE_ACCESS_KEY_ID", "test-key")
+	t.Setenv("LOADOUT_FILE_STORAGE_SECRET_ACCESS_KEY", "test-secret")
+	t.Setenv("LOADOUT_FILE_STORAGE_PATH_STYLE", "true")
+	cfg, err = Load()
+	if err != nil || cfg.FileStorageEndpoint != "https://storage.example.com" || !cfg.FileStoragePathStyle {
+		t.Fatalf("storage config not loaded: %v", err)
+	}
+
+	opts := cfg.FileStorageOptions()
+	if opts.Endpoint != cfg.FileStorageEndpoint || opts.Region != cfg.FileStorageRegion || opts.Bucket != cfg.FileStorageBucket || opts.AccessKeyID != cfg.FileStorageAccessKeyID || opts.SecretAccessKey != cfg.FileStorageSecretAccessKey || opts.PathStyle != cfg.FileStoragePathStyle || opts.InlineMaxBytes != cfg.FileStorageInlineMaxBytes {
+		t.Fatal("storage options must preserve configured values")
+	}
+	for _, tc := range []struct{ key, value string }{{"INLINE_MAX_BYTES", "-1"}, {"INLINE_MAX_BYTES", "16777217"}, {"INLINE_MAX_BYTES", "no"}, {"PATH_STYLE", "no"}, {"ALLOW_HTTP", "no"}} {
+		t.Run(tc.key+tc.value, func(t *testing.T) {
+			t.Setenv("LOADOUT_FILE_STORAGE_"+tc.key, tc.value)
+			if _, err := Load(); err == nil {
+				t.Fatal("invalid file storage option accepted")
+			}
+		})
+	}
+}
+
 func TestInitialCreditsConfiguration(t *testing.T) {
 	isolateConfig(t)
 	for _, tc := range []struct {

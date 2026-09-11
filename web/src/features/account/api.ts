@@ -1,5 +1,6 @@
 import { queryOptions } from '@tanstack/react-query';
 import { z } from 'zod';
+import { errorText } from '../../i18n/errors';
 
 export const userSchema = z.object({
   id: z.number().int(),
@@ -46,50 +47,12 @@ const accountSchema = z.object({
     token_count: z.number().int(),
   }),
 });
-const messages: Record<string, string> = {
-  settings_conflict: '其他管理员已更新配置，请重新加载后再编辑。',
-  settings_unavailable: '系统配置暂不可用，请检查服务部署后重试。',
-  settings_encryption_unavailable:
-    '部署未配置加密主密钥，暂不能保存新的集成密钥。',
-  payment_unavailable: '在线支付暂未配置，请使用兑换码或联系管理员补充额度。',
-  rate_limited: '请求过于频繁，请稍后再试。',
-  email_unavailable: '邮件服务暂时不可用，请稍后再试。',
-  invalid_token: '验证链接无效或已过期，请重新发送验证邮件。',
-  already_redeemed: '此兑换码已经使用，请核对额度流水。',
-  invalid_json: 'JSON 格式不正确，请检查参数或连接配置后重试。',
-  expired_token: '授权码已过期，请在设备上重新发起登录。',
-  invalid_grant: '授权码无效或已使用，请在设备上重新发起登录。',
-  seat_limit: '团队席位已满，请联系团队所有者。',
-  invite_expired: '邀请码已过期，请联系团队所有者生成新邀请。',
-  invite_used: '邀请码已经使用，请联系团队所有者生成新邀请。',
-  already_member: '你已经是此团队成员。',
-  team_full: '团队席位已满，请联系团队所有者调整席位。',
-  seats_in_use: '席位数量不能少于现有成员人数。',
-  cannot_disable_self: '不能停用当前登录账号。',
-  last_admin: '需要保留至少一位启用的管理员。',
-  invalid_device_code:
-    '设备授权码无效、已使用或已过期，请在设备上重新发起登录。',
-  last_owner: '最后一位团队所有者不能退出。',
-  username_taken: '用户名已被使用，请换一个用户名。',
-  invalid_credentials: '用户名或密码不正确，请重新输入。',
-  invalid_request: '提交内容不符合要求，请检查后重试。',
-  invalid_settlement: '结算策略无效：检查 JSON、业务码路径或正则。',
-  invalid_icon:
-    '图标无效，请使用 HTTPS 图片或不超过 64 KiB 的 PNG、JPEG、WebP、安全 SVG。',
-  invalid_settlement_script: '结算脚本语法有误，请修正后再保存。',
-  forbidden: '没有权限执行此操作。',
-  forbidden_origin: '请求来源未通过验证，请从本站重新打开页面。',
-  insufficient_balance: '可用额度不足，请检查调整金额。',
-  idempotency_conflict: '这次操作与已有记录冲突，请关闭表单并重新核对。',
-  not_found: '记录已不存在，请刷新后重试。',
-  unauthorized: '登录已过期，请重新登录。',
-};
 export class ApiError extends Error {
   constructor(
     public status: number,
     public code: string,
   ) {
-    super(messages[code] ?? '暂时无法完成请求，请检查连接后重试。');
+    super(errorText(code, 'zh-CN'));
   }
 }
 async function fetchOnce(

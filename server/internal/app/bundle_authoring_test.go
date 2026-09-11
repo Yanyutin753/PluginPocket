@@ -32,8 +32,12 @@ func TestBundleAuthoringUpdatesAndKeepsKinds(t *testing.T) {
 
 func TestGitHubSkillSyncPublishesStableSnapshot(t *testing.T) {
 	content := "first"
-	f := marketplaceApp(t, func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = fmt.Fprintf(w, `[{"type":"file","path":"skills/pro/SKILL.md","encoding":"base64","content":%q}]`, base64Of(content))
+	f := marketplaceApp(t, func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/git/trees/") {
+			_, _ = fmt.Fprintf(w, `{"tree":[{"path":"skills/pro/SKILL.md","type":"blob","mode":"100644","sha":"1111111111111111111111111111111111111111","size":%d}]}`, len(content))
+			return
+		}
+		_, _ = fmt.Fprintf(w, `{"encoding":"base64","content":%q}`, base64Of(content))
 	})
 	body := `{"slug":"snapshot-skill","name":"Snapshot","source":"github","repo":"example/skills","path":"skills/pro"}`
 	w := request(f.handler, "POST", "/api/v1/admin/marketplace/skills", body, f.admin)

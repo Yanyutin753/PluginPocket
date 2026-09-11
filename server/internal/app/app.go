@@ -3,9 +3,9 @@ package app
 import (
 	"encoding/json"
 	"net/http"
-	"net/url"
 
 	"github.com/Yanyutin753/loadout/server/internal/auth"
+	"github.com/Yanyutin753/loadout/server/internal/filestore"
 	"github.com/Yanyutin753/loadout/server/internal/gateway"
 	"github.com/Yanyutin753/loadout/server/internal/httpapi"
 	"github.com/Yanyutin753/loadout/server/internal/marketplace"
@@ -14,6 +14,7 @@ import (
 )
 
 type Options struct {
+	Files          *filestore.Store
 	Runtime        *settings.Manager
 	InitialCredits *int64
 	Gateway        *gateway.Gateway
@@ -28,7 +29,15 @@ type application struct {
 }
 
 func New(s *store.Store, options Options) http.Handler {
+	if options.Files == nil {
+		options.Files = options.Marketplace.Files
+	}
+	if options.Files == nil && s != nil {
+		options.Files, _ = filestore.New(s.Pool, filestore.Options{})
+	}
+	options.Marketplace.Files = options.Files
 	a := &application{s: s, options: options}
+	csrf := http.NewCrossOriginProtection()
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("POST /api/v1/auth/register", a.register)
@@ -100,7 +109,7 @@ func New(s *store.Store, options Options) http.Handler {
 	mux.HandleFunc("GET /api/v1/account/teams/{id}/usage/summary", a.teamSummary)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
-		if r.Method != "GET" && r.Method != "HEAD" && r.Method != "OPTIONS" && !a.sameOrigin(r) && r.URL.Path != "/api/v1/device/authorize" && r.URL.Path != "/api/v1/device/token" {
+		if r.Method != "GET" && r.Method != "HEAD" && r.Method != "OPTIONS" && (r.Header.Get("Origin") == "" || csrf.Check(r) != nil) && r.URL.Path != "/api/v1/device/authorize" && r.URL.Path != "/api/v1/device/token" {
 			fail(w, 403, "forbidden_origin")
 			return
 		}
@@ -118,17 +127,6 @@ func New(s *store.Store, options Options) http.Handler {
 		}
 		mux.ServeHTTP(w, r)
 	})
-}
-func (a *application) sameOrigin(r *http.Request) bool {
-	origin := r.Header.Get("Origin")
-	if origin == "" {
-		return false
-	}
-	if a.options.Origin != "" {
-		return origin == a.options.Origin
-	}
-	u, e := url.Parse(origin)
-	return e == nil && u.Host == r.Host && ((r.TLS != nil && u.Scheme == "https") || (r.TLS == nil && u.Scheme == "http"))
 }
 func respond(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")

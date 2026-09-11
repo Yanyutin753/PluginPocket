@@ -12,6 +12,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Yanyutin753/loadout/server/internal/config"
+	"github.com/Yanyutin753/loadout/server/internal/filestore"
 	"github.com/Yanyutin753/loadout/server/internal/marketplace"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -35,7 +37,16 @@ func main() {
 		fail(err)
 	}
 	defer pool.Close()
+	cfg, err := config.Load()
+	if err != nil {
+		fail(err)
+	}
+	files, err := filestore.New(pool, cfg.FileStorageOptions())
+	if err != nil {
+		fail(err)
+	}
 	entries, unresolved, err := marketplace.LoadExportInputs(deadline, pool, marketplace.Options{
+		Files:   files,
 		BaseURL: os.Getenv("LOADOUT_GITHUB_API"),
 		Token:   os.Getenv("LOADOUT_GITHUB_TOKEN"),
 	})
@@ -47,6 +58,7 @@ func main() {
 		fail(err)
 	}
 	written, plugins := 0, 0
+	modes := marketplace.ExportExecutableFiles(entries)
 	for path, content := range tree {
 		if filepath.Base(path) == "plugin.json" {
 			plugins++
@@ -55,7 +67,14 @@ func main() {
 		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 			fail(err)
 		}
-		if err := os.WriteFile(target, content, 0o644); err != nil {
+		mode := os.FileMode(0o644)
+		if modes[path] {
+			mode = 0o755
+		}
+		if err := os.WriteFile(target, content, mode); err != nil {
+			fail(err)
+		}
+		if err := os.Chmod(target, mode); err != nil {
 			fail(err)
 		}
 		written++

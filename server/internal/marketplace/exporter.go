@@ -16,16 +16,18 @@ import (
 
 // ExportInput 是导出输入：市场条目 + 预解析的技能文件（github 源由调用方解析，失败整条跳过）。
 type ExportInput struct {
-	Slug        string
-	Name        string
-	Description string
-	Kind        string // mcp / skill / bundle
-	Transport   string
-	Endpoint    string
-	Version     string // 正式版本（semver）；空则回退内容指纹
-	Spec        json.RawMessage
-	Files       map[string]string            // skill 自身 / bundle 内成员的技能文件
-	MemberFiles map[string]map[string]string // bundle：成员 slug → 文件集
+	ExecutableFiles       map[string]bool
+	MemberExecutableFiles map[string]map[string]bool
+	Slug                  string
+	Name                  string
+	Description           string
+	Kind                  string // mcp / skill / bundle
+	Transport             string
+	Endpoint              string
+	Version               string // 正式版本（semver）；空则回退内容指纹
+	Spec                  json.RawMessage
+	Files                 map[string]string            // skill 自身 / bundle 内成员的技能文件
+	MemberFiles           map[string]map[string]string // bundle：成员 slug → 文件集
 }
 
 // ExportCodexMarketplace 渲染 `.agents/plugins/marketplace.json` 与 `plugins/<slug>/` 树。
@@ -239,30 +241,33 @@ func LoadExportInputs(ctx context.Context, pool interface {
 	if rows.Err() != nil {
 		return nil, nil, rows.Err()
 	}
-	resolveSkill := func(entry ExportInput) map[string]string {
-		var spec struct {
-			Source string            `json:"source"`
-			Files  map[string]string `json:"files"`
-			Repo   string            `json:"repo"`
-			Path   string            `json:"path"`
+	resolveSkill := func(entry ExportInput) (map[string]string, map[string]bool) {
+		files, loadErr := LoadSkillFiles(ctx, o, entry.Spec)
+		if loadErr != nil {
+			var spec struct {
+				Manifest map[string]FileRef `json:"file_manifest"`
+			}
+			if json.Unmarshal(entry.Spec, &spec) == nil && len(spec.Manifest) > 0 {
+				err = fmt.Errorf("skill %s snapshot unavailable: %w", entry.Slug, loadErr)
+			}
+			unresolved = append(unresolved, entry.Slug+":"+loadErr.Error())
+			return nil, nil
 		}
-		if json.Unmarshal(entry.Spec, &spec) != nil {
-			return nil
+		content := map[string]string{}
+		modes := map[string]bool{}
+		for name, file := range files {
+			content[name] = string(file.Content)
+			if file.Executable {
+				modes[name] = true
+			}
 		}
-		if spec.Source == "inline" || (spec.Source == "github" && len(spec.Files) > 0) {
-			return spec.Files
-		}
-		files, err := ResolveSkillFiles(ctx, o, spec.Repo, spec.Path)
-		if err != nil {
-			unresolved = append(unresolved, entry.Slug+":"+err.Error())
-			return nil
-		}
-		return files
+		return content, modes
 	}
+
 	for _, entry := range raw {
 		switch entry.Kind {
 		case "skill":
-			entry.Files = resolveSkill(entry)
+			entry.Files, entry.ExecutableFiles = resolveSkill(entry)
 			if entry.Files == nil {
 				continue
 			}
@@ -274,16 +279,18 @@ func LoadExportInputs(ctx context.Context, pool interface {
 				continue
 			}
 			entry.MemberFiles = map[string]map[string]string{}
+			entry.MemberExecutableFiles = map[string]map[string]bool{}
 			complete := true
 			for _, member := range spec.Includes {
 				for _, candidate := range raw {
 					if candidate.Slug == member && candidate.Kind == "skill" {
-						files := resolveSkill(candidate)
+						files, modes := resolveSkill(candidate)
 						if files == nil {
 							complete = false
 							break
 						}
 						entry.MemberFiles[member] = files
+						entry.MemberExecutableFiles[member] = modes
 					}
 				}
 			}
@@ -293,5 +300,25 @@ func LoadExportInputs(ctx context.Context, pool interface {
 		}
 		entries = append(entries, entry)
 	}
-	return entries, unresolved, nil
+	return entries, unresolved, err
+}
+
+// ExportExecutableFiles mirrors the skill paths emitted by ExportCodexMarketplace.
+func ExportExecutableFiles(entries []ExportInput) map[string]bool {
+	modes := map[string]bool{}
+	for _, entry := range entries {
+		for name, executable := range entry.ExecutableFiles {
+			if executable {
+				modes[fmt.Sprintf("plugins/%s/skills/%s/%s", entry.Slug, entry.Slug, name)] = true
+			}
+		}
+		for member, files := range entry.MemberExecutableFiles {
+			for name, executable := range files {
+				if executable {
+					modes[fmt.Sprintf("plugins/%s/skills/%s/%s", entry.Slug, member, name)] = true
+				}
+			}
+		}
+	}
+	return modes
 }

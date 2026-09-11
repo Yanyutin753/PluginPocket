@@ -12,6 +12,7 @@ import (
 	"github.com/Yanyutin753/loadout/server/internal/app"
 	"github.com/Yanyutin753/loadout/server/internal/cache"
 	"github.com/Yanyutin753/loadout/server/internal/config"
+	"github.com/Yanyutin753/loadout/server/internal/filestore"
 	"github.com/Yanyutin753/loadout/server/internal/gateway"
 	"github.com/Yanyutin753/loadout/server/internal/httpapi"
 	"github.com/Yanyutin753/loadout/server/internal/identity"
@@ -41,6 +42,11 @@ func applicationHandler(ctx context.Context, cfg config.Config, logger *slog.Log
 	if err != nil {
 		return nil, nil, err
 	}
+	files, err := filestore.New(database.Pool, cfg.FileStorageOptions())
+	if err != nil {
+		database.Close()
+		return nil, nil, err
+	}
 	if cfg.AdminUsername != "" {
 		setup, stop := context.WithTimeout(ctx, 10*time.Second)
 		err = app.BootstrapAdmin(setup, database, cfg.AdminUsername, cfg.AdminPassword)
@@ -64,7 +70,7 @@ func applicationHandler(ctx context.Context, cfg config.Config, logger *slog.Log
 		GitHubEnabled:  cfg.GitHubClientID != "", GitHubClientID: cfg.GitHubClientID, GitHubClientSecret: cfg.GitHubClientSecret, GitHubOrg: cfg.GitHubOrg,
 		SMTPEnabled: cfg.SMTPAddress != "", SMTPAddress: cfg.SMTPAddress, SMTPFrom: cfg.SMTPFrom, SMTPUsername: cfg.SMTPUsername, SMTPPassword: cfg.SMTPPassword,
 	}}
-	options := app.Options{Runtime: runtime, InitialCredits: &cfg.InitialCredits, Origin: cfg.PublicURL, SecureCookies: strings.HasPrefix(cfg.PublicURL, "https://"), Gateway: g, EncryptionKey: cfg.EncryptionKey, Marketplace: marketplace.Options{BaseURL: cfg.GitHubAPIURL, Token: cfg.GitHubToken}}
+	options := app.Options{Files: files, Runtime: runtime, InitialCredits: &cfg.InitialCredits, Origin: cfg.PublicURL, SecureCookies: strings.HasPrefix(cfg.PublicURL, "https://"), Gateway: g, EncryptionKey: cfg.EncryptionKey, Marketplace: marketplace.Options{Files: files, BaseURL: cfg.GitHubAPIURL, Token: cfg.GitHubToken}}
 	identityOptions := identity.Options{Runtime: runtime, Origin: cfg.PublicURL, SecureCookies: options.SecureCookies, SMTPAllowLocalInsecure: cfg.SMTPAllowLocalInsecure}
 	identityHandler := identity.New(database, identityOptions)
 	mux := http.NewServeMux()

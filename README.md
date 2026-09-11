@@ -1,6 +1,6 @@
 # Loadout
 
-> **Your AI, fully loaded.** — 登录即武装的 MCP 订阅网关
+> **Your AI, fully loaded.** — 登录即武装的开源自托管 MCP 装备网关（全仓库 MIT）
 
 [![Status](https://img.shields.io/badge/status-implemented-blue)](docs/PLAN.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -50,11 +50,13 @@ Codex / Claude Code / Cursor
 
 ## 项目状态
 
-工具管理支持图片/SVG 上传及共享图标、分区连接配置、常用结算规则表单与服务端试算；试算不调用上游、不扣费，图标与规则在服务副本间共享。
+工具管理支持图片自动缩小压缩/SVG 上传及共享图标、分区连接配置、常用结算规则表单与服务端试算；图标压缩后存数据库（最多64 KiB），多副本共用，无需额外对象存储；试算不调用上游、不扣费。
 
 用量明细支持按次查看网关传入参数和返回内容，个人、团队与管理员按各自权限读取；新调用原样记录，超出每方向 64 KiB 会标注截断，历史未保存内容显示“未记录”。
 
 已实现账号与令牌、MCP 网关、事务额度账本、运营后台、套餐/兑换码、团队共享额度、设备授权、Rust CLI 和 Tauri 桌面端；插件市场收录 HTTP MCP（GitHub 热门同步 + 精选直装 + 上游工具描述/参数覆盖 + CLI 本地直连安装）。React 控制台采用 AI 装备工坊风格，支持中英文与浅色/深色/跟随系统，手机、平板和桌面共用 API 与功能。GitHub/邮箱通过部署配置启用；外部支付按本次范围仅预留接口，不产生虚假支付成功。
+
+项目定位为**开源项目**（全仓库 MIT，2026-09-12 确定）：优先服务自部署与团队自治理——额度、兑换码与计量是治理能力而非商业前置；商业化与外部支付不再是路线图关键路径。
 
 管理员可在“系统配置”页热更新注册赠送额度、GitHub登录与SMTP邮件参数；配置版本化保存在数据库，密钥加密且不回显，多个副本的新请求同时生效。部署连接和安全边界参数仍由环境变量管理，详见 [环境配置](docs/ENVIRONMENT.md)。
 
@@ -78,7 +80,7 @@ make setup
 
 集群部署见 [部署规范与Kubernetes模板](docs/CLUSTER.md)，全部参数见 [环境变量参考](docs/ENVIRONMENT.md)。
 
-先完成 [数据库与部署配置](docs/DEPLOYMENT.md)，导出 `LOADOUT_DATABASE_URL`、`LOADOUT_PUBLIC_URL` 和管理员配置。Linux 桌面构建还需要 GTK/WebKit 开发库，具体命令见该文档。未配置数据库只提供基建健康检查，无法使用账号业务。配置完成后执行 `make up`；若已用旧配置启动，执行 `make restart`。
+先完成 [数据库与部署配置](docs/DEPLOYMENT.md)，配置 `LOADOUT_DATABASE_URL` 和管理员。本地前端通过相对路径 `/api` 反代，`LOADOUT_PUBLIC_URL` 可留空，无需固定localhost或127.0.0.1。Linux 桌面构建还需要 GTK/WebKit 开发库，具体命令见该文档。未配置数据库只提供基建健康检查，无法使用账号业务。配置完成后执行 `make up`；若已用旧配置启动，执行 `make restart`。
 
 打开 **http://127.0.0.1:5173**，页面通过 Vite 代理访问 **http://127.0.0.1:8787** 的 Go 服务。使用 `make down` 关闭后台服务；偏好前台日志时在**仓库根目录**运行 `pnpm run dev`（或 `make dev`），VS Code 选择任务 **Loadout: dev**，Ctrl+C 关闭前后端。不要同时启动后台实例或 `web` 目录的 dev 脚本，否则会占用相同端口。Go 开发服务使用固定版本 Air 自动编译重启，监听 `server/` 的 Go、SQL、go.mod/go.sum；编译失败停止旧程序，修复保存后恢复。首次 `make setup` / `make dev-server` 安装 Air 需要网络。
 
@@ -87,6 +89,8 @@ make setup
 公共市场采用响应式插件卡片，支持搜索、类型筛选和每页 12 项分页；筛选与页码可通过 URL 分享。
 
 管理员从侧栏 **市场管理**（`/admin/marketplace`）创建或编辑技能与装备组。技能支持自定义 Markdown 和 GitHub `owner/repo` + 目录导入；“精选 GitHub 技能”提供逐项及一键全部同步，失败条目可重试。装备组勾选可安装的 MCP 与技能组成，保存后在公共市场展示。GitHub 同步保存已验证文件，重复同步内容变化才升级版本；技能更新也更新引用它的装备组版本。
+
+技能编辑默认打开 `SKILL.md`，支持目录与文件标签、行号和语法高亮、查找与撤销、Markdown分栏预览、图片预览和全屏编辑；可新建文本与上传附件。已有 GitHub 技能可直接修改已发布文件；重新同步作为独立选项，会替换已发布的文件。
 
 日常命令（直接运行 `make` 或 `make help` 查看全部入口）：
 
@@ -154,6 +158,11 @@ make down
 
 ## License
 
-[MIT](LICENSE) © Loadout contributors
+[MIT](LICENSE) © Loadout contributors —— 贡献方式见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 浏览器登录使用 HttpOnly AT/RT，公共页面自动识别登录态；管理员可在系统配置热更新有效期，凭据与配置由共享 PostgreSQL 支持无粘性多副本。首次升级的版本兼容边界见 [集群规范](docs/CLUSTER.md#浏览器-atrt-与有效期热更新)。
+
+
+技能支持二进制附件与可执行权限，上传/同步后以SHA256清单发布；CLI校验后按字节安装。小文件存共享数据库，大文件及Git大对象通过官方AWS SDK接入S3兼容存储，配置参见 [文件存储](docs/FILE_STORAGE.md)。
+
+市场管理的“同步 GitHub”同时同步 MCP 与精选/已导入的 GitHub 技能；显示分类型成功数与失败项，可重试。自定义技能不会被批量覆盖。

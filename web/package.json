@@ -12,16 +12,28 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@codemirror/autocomplete": "6.20.3",
+    "@codemirror/lang-javascript": "6.2.5",
+    "@codemirror/lang-json": "6.0.2",
+    "@codemirror/lang-markdown": "6.5.2",
+    "@codemirror/language": "6.12.4",
+    "@codemirror/search": "6.7.2",
+    "@codemirror/state": "6.7.4",
+    "@codemirror/view": "6.43.11",
+    "@lezer/highlight": "1.2.3",
     "@tanstack/react-query": "5.102.8",
     "class-variance-authority": "0.7.1",
     "cn": "0.2.6",
+    "codemirror": "6.0.2",
     "lucide-react": "1.44.0",
     "radix-ui": "1.6.7",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "react-hook-form": "7.87.0",
+    "react-markdown": "10.1.0",
     "react-router": "8.3.1",
-    "zod": "4.6.1",
-    "react-hook-form": "7.87.0"
+    "remark-gfm": "4.0.1",
+    "zod": "4.6.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.3.3",

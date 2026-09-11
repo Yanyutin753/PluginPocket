@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"sort"
 	"strings"
@@ -96,12 +97,24 @@ func TestErrorCodesContract(t *testing.T) {
 		}
 		return
 	}
-	want, err := os.ReadFile(path)
+	raw, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("contract file missing (run go test ./internal/httpapi -run TestErrorCodesContract -update): %v", err)
 	}
-	if string(want) != string(got) {
-		t.Fatalf("error-code contract out of date (run -update):\nwant:\n%s\ngot:\n%s", want, got)
+	// The contract is semantic: compare parsed values so formatter noise on
+	// the JSON file cannot mask or fake a drift.
+	var wantEntries, gotEntries []struct {
+		Code   string `json:"code"`
+		Status []int  `json:"status"`
+	}
+	if err := json.Unmarshal(raw, &wantEntries); err != nil {
+		t.Fatalf("contract file is not valid JSON: %v", err)
+	}
+	if err := json.Unmarshal(got, &gotEntries); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(wantEntries, gotEntries) {
+		t.Fatalf("error-code contract out of date (run -update):\nwant: %+v\ngot:  %+v", wantEntries, gotEntries)
 	}
 }
 

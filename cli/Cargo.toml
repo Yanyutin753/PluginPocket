@@ -9,6 +9,8 @@ repository = "https://github.com/Yanyutin753/loadout"
 publish = false
 
 [dependencies]
+base64 = "=0.23.1"
+ring = "=0.17.14"
 clap = { version = "=4.6.6", features = ["derive"] }
 reqwest = { version = "=0.13.5", default-features = false, features = ["blocking", "json", "rustls"] }
 serde = { version = "=1.0.229", features = ["derive"] }

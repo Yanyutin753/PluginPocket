@@ -6,13 +6,13 @@ import (
 	"testing"
 )
 
-func TestSkillContentsFetchesFileBody(t *testing.T) {
+func TestSkillTextCompatibilityFetchesFileBody(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
-		case "/repos/example/skills/contents/skills/review":
-			_, _ = w.Write([]byte(`[{"type":"file","name":"SKILL.md","path":"skills/review/SKILL.md"}]`))
-		case "/repos/example/skills/contents/skills/review/SKILL.md":
+		case "/repos/example/skills/git/trees/HEAD":
+			_, _ = w.Write([]byte(`{"tree":[{"type":"blob","mode":"100644","sha":"1111111111111111111111111111111111111111","size":8,"path":"skills/review/SKILL.md"}]}`))
+		case "/repos/example/skills/git/blobs/1111111111111111111111111111111111111111":
 			_, _ = w.Write([]byte(`{"type":"file","path":"skills/review/SKILL.md","encoding":"base64","content":"IyBSZXZpZXc="}`))
 		default:
 			http.NotFound(w, r)

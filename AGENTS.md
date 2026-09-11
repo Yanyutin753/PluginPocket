@@ -10,17 +10,17 @@
 
 ### 模块地图
 
-工具管理支持共享数据库图标（静态SVG/PNG/JPEG/WebP，64 KiB）与管理员结算试算；试算复用网关判定，不执行上游调用、不写账本。
+工具管理支持共享数据库图标（普通图片上传自动缩小压缩，静态SVG保留原格式，最终64 KiB）与管理员结算试算；技能二进制/大Git对象复用 `internal/filestore`（小文件bytea，大文件S3兼容存储），SHA256清单与CLI完整性校验。试算不执行上游调用、不写账本。
 
 | 区域 | 位置 | 要点 |
 |---|---|---|
-| HTTP API / 运营后台 | `server/internal/app` | 账号/令牌/团队/账单/市场/元数据覆盖；HttpOnly AT/RT 会话 + Bearer 双鉴权（期限由共享PG系统配置热更新）；用量详情按本人/团队/管理员范围读取网关输入输出 |
+| HTTP API / 运营后台 | `server/internal/app` + `internal/httpapi` | 账号/令牌/团队/账单/市场/元数据覆盖；HttpOnly AT/RT 会话 + Bearer 双鉴权（期限由共享PG系统配置热更新）；用量详情按本人/团队/管理员范围读取网关输入输出；**错误码注册表** `httpapi/codes.go` 为 wire 契约唯一事实源（源扫描+契约金样测试防漂移） |
 | MCP 网关 | `server/internal/gateway` | `/mcp` 无状态；目录 5s 缓存；预留→执行→**结算中间件**（`tools.settlement`：content path/pattern 或 goja 沙箱 script）→失败退款 |
 | 市场 | `server/internal/marketplace` | GitHub 同步 + 技能代取 + **服务端即 Codex 插件市场源**（`/marketplace.git` 哑 HTTP git 实时渲染，gateway 独享组件→bridge 条目；`/plugins` 公共 React 目录页；`loadout-export` 离线导出） |
 | 存储 | `server/internal/store` | pgx + 事务账本（append-only 触发器）；**SQLite 迁移轨道** `migrations_sqlite/`（ADR 0002 阶段 2 地基，已验证） |
 | CLI | `cli/src` | login/apply/bridge + market/install/uninstall（按 kind 分发；托管标记 + 备份 + 清单） |
 | 桌面发行 | `desktop` + `.github/workflows/release.yml` | Windows x64、macOS/Linux 双架构；独立发布密钥，安装包 bridge 验证 + Minisign 验签后公开；平台受信任证书与 GUI 验收另计 |
-| Web 控制台 | `web/src` | TanStack Query + Zod + shadcn/ui；市场面板、覆盖编辑器、结算策略编辑（前端语法预检） |
+| Web 控制台 | `web/src` | TanStack Query + Zod + shadcn/ui；市场面板、技能文件工作区（目录/标签、CodeMirror、安全预览与全屏）、覆盖编辑器、结算策略编辑（前端语法预检）；错误文案按码双语映射 `i18n/errors.ts`（对齐后端契约 `i18n/error-codes.json`，覆盖测试锁定） |
 | 压测设施 | `server/cmd/loadout-server/load_test.go`（build tag `load`） | QPS / 慢上游 / 内存安全三件套，`make load-test` |
 
 ## 必须使用的技能
@@ -59,8 +59,9 @@
 - Go 标准库优先，不手写 MCP 协议、密码算法或数据库驱动；协议阶段采用官方 SDK（MCP：`modelcontextprotocol/go-sdk`；JS 结算：`goja` 沙箱——零宿主绑定、200ms 中断、脚本 ≤8KB、编译缓存）。
 - CLI stdout 将用于 MCP 协议，bridge 阶段严禁诊断混入 stdout。HTTP 错误不打印原始响应、令牌或包含凭证的 URL。
 - **结算是钱的路径**：预留-结算-退款必须走 store 事务；任何新判定（settlement 规则/脚本）失败侧退款，先测后上；账本 append-only 由双方言触发器保证，禁止绕过。
-- 市场只收 HTTP MCP；stdio 是部署者受控能力（`LOADOUT_STDIO_COMMANDS` 允许名单）。技能文件路径安全（拒 `..`/绝对路径，≤32 文件、单文件 ≤256KB）。
+- 市场只收 HTTP MCP；stdio 是部署者受控能力（`LOADOUT_STDIO_COMMANDS` 允许名单）。技能文件路径跨平台安全（拒逃逸/链接/大小写别名），≤32文件、单文件≤8MiB、总计≤32MiB；SKILL.md为UTF-8，附件保持原字节和可执行位，下载先验SHA256/大小。S3使用官方SDK，不手写签名；云对象和PG引用一起备份。
 - 客户端配置零密钥：bridge 条目不落令牌；本地直连只写公共端点；修改真实客户端配置需用户明确授权。
+- Web `/api` 同源反代按 Go `http.CrossOriginProtection` 校验（保留写请求 Origin 必填），不把 `LOADOUT_PUBLIC_URL` 用作来源白名单；代理保留 Host/Origin/Sec-Fetch-Site，生产公开链接、OAuth/邮件及 Secure Cookie 仍使用规范公开地址。
 - 新业务模块有真实需求才创建；未实现功能不得返回模拟成功、虚构余额或账单。
 - 本地根目录 `pnpm run dev`（VS Code：`Loadout: dev`）运行 Go/Air 自动重载 + Vite；固定 Air 版本在 Makefile，`.env` 修改需重启整个任务。
 - 变更在当前工作区完成，保留无关修改；没有用户指令不 push、发布或修改真实客户端配置。

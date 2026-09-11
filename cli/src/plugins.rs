@@ -3,6 +3,7 @@ use crate::{
     clients::{owns, toml_entry, toml_splice},
     config,
 };
+use base64::{Engine as _, engine::general_purpose::STANDARD};
 use serde::Deserialize;
 use serde_json::{Map, Value, json};
 use std::{collections::HashSet, path::PathBuf};
@@ -42,7 +43,113 @@ pub struct MarketSpec {
     #[serde(default)]
     pub files: Option<std::collections::BTreeMap<String, String>>,
     #[serde(default)]
+    pub file_manifest: Option<std::collections::BTreeMap<String, FileMetadata>>,
+    #[serde(default)]
     pub includes: Option<Vec<String>>,
+}
+#[derive(Debug, Deserialize)]
+pub struct FileMetadata {
+    pub sha256: String,
+    pub size: u64,
+    pub executable: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+pub(crate) enum SkillFile {
+    Text(String),
+    Binary {
+        encoding: String,
+        content: String,
+        #[serde(flatten)]
+        metadata: FileMetadata,
+    },
+}
+
+struct DecodedFile {
+    bytes: Vec<u8>,
+    #[cfg_attr(not(unix), allow(dead_code))]
+    executable: bool,
+}
+
+fn decode_skill_files(
+    files: std::collections::BTreeMap<String, SkillFile>,
+) -> Result<std::collections::BTreeMap<String, DecodedFile>> {
+    const MAX_FILE: usize = 8 * 1024 * 1024;
+    if files.len() > 32 || !files.contains_key("SKILL.md") {
+        return Err("skill must include SKILL.md and stay within 32 files");
+    }
+    let folded: HashSet<String> = files.keys().map(|name| name.to_lowercase()).collect();
+    if folded.len() != files.len() {
+        return Err("skill contains conflicting file names");
+    }
+    for name in files.keys() {
+        if name.is_empty()
+            || name.len() > 128
+            || name.contains("..")
+            || name.contains(['\\', ':', '<', '>', '"', '|', '?', '*'])
+            || name.chars().any(|c| c.is_control())
+            || name.split('/').any(|p| {
+                let lower = p.to_lowercase();
+                let stem = lower
+                    .split('.')
+                    .next()
+                    .unwrap_or_default()
+                    .trim_end_matches(' ');
+                p.is_empty()
+                    || p.ends_with(['.', ' '])
+                    || matches!(stem, "con" | "prn" | "aux" | "nul")
+                    || ((stem.starts_with("com") || stem.starts_with("lpt"))
+                        && stem.len() == 4
+                        && matches!(stem.as_bytes()[3], b'1'..=b'9'))
+            })
+            || name
+                .match_indices('/')
+                .any(|(i, _)| folded.contains(&name[..i].to_lowercase()))
+        {
+            return Err("skill contains an unsafe or conflicting file name");
+        }
+    }
+    let mut decoded = std::collections::BTreeMap::new();
+    let mut total = 0;
+    for (name, file) in files {
+        let (bytes, executable) = match file {
+            SkillFile::Text(content) => (content.into_bytes(), false),
+            SkillFile::Binary {
+                encoding,
+                content,
+                metadata,
+            } => {
+                if encoding != "base64"
+                    || metadata.size > MAX_FILE as u64
+                    || content.len() > MAX_FILE.div_ceil(3) * 4
+                {
+                    return Err("skill contains an unsupported encoding or oversized file");
+                }
+                let bytes = STANDARD
+                    .decode(content)
+                    .map_err(|_| "skill contains invalid base64")?;
+                let hash: String = ring::digest::digest(&ring::digest::SHA256, &bytes)
+                    .as_ref()
+                    .iter()
+                    .map(|b| format!("{b:02x}"))
+                    .collect();
+                if bytes.len() as u64 != metadata.size || hash != metadata.sha256 {
+                    return Err("skill file size or SHA256 does not match");
+                }
+                (bytes, metadata.executable)
+            }
+        };
+        total += bytes.len();
+        if bytes.len() > MAX_FILE || total > 32 * 1024 * 1024 {
+            return Err("skill files exceed size limits");
+        }
+        if name == "SKILL.md" && std::str::from_utf8(&bytes).is_err() {
+            return Err("SKILL.md must be UTF-8");
+        }
+        decoded.insert(name, DecodedFile { bytes, executable });
+    }
+    Ok(decoded)
 }
 /// heal_polluted_block 修复"外部 TOML 段被写进托管块中间"的污染（实测 codex plugin add
 /// 会如此插入 [plugins.*]/[marketplaces.*]）：把块内不属于本条目的段搬到 end 标记之后，
@@ -89,7 +196,7 @@ fn heal_polluted_block(text: &str, begin: &str, end: &str) -> String {
     healed
 }
 
-fn file_names(files: &std::collections::BTreeMap<String, String>) -> Vec<String> {
+fn file_names(files: &std::collections::BTreeMap<String, DecodedFile>) -> Vec<String> {
     files.keys().cloned().collect()
 }
 pub fn validate_slug(slug: &str) -> Result<()> {
@@ -294,28 +401,24 @@ impl LocalClient {
             .iter()
             .find(|item| item.slug == slug)
             .ok_or("plugin not found in marketplace")?;
-        let files = match item.spec.as_ref().filter(|spec| spec.source == "inline") {
-            Some(spec) => spec.files.clone().ok_or("inline skill has no files")?,
+        let files = match item
+            .spec
+            .as_ref()
+            .filter(|spec| spec.source == "inline" && spec.file_manifest.is_none())
+        {
+            Some(spec) => spec
+                .files
+                .clone()
+                .ok_or("inline skill has no files")?
+                .into_iter()
+                .map(|(name, text)| (name, SkillFile::Text(text)))
+                .collect(),
             None => {
                 let credentials = config::load(&self.config_path)?;
                 config::skill_files(&credentials.server, &credentials.token, slug)?
             }
         };
-        if files.len() > 32 || !files.contains_key("SKILL.md") {
-            return Err("skill must include SKILL.md and stay within 32 files");
-        }
-        for (name, content) in &files {
-            if name.is_empty()
-                || name.len() > 128
-                || name.contains("..")
-                || name.starts_with('/')
-                || name.contains('\\')
-                || name.chars().any(|c| c.is_control())
-                || content.len() > 256 * 1024
-            {
-                return Err("skill contains an unsafe file name or oversized file");
-            }
-        }
+        let files = decode_skill_files(files)?;
         let selected: Vec<ClientKind> = if clients.is_empty() {
             self.client_states()?
                 .into_iter()
@@ -326,6 +429,8 @@ impl LocalClient {
             clients.to_vec()
         };
         let mut manifest = self.manifest()?;
+        config::safe_path(&self.manifest_path())?;
+        let mut destinations = Vec::new();
         for client in selected
             .iter()
             .copied()
@@ -342,8 +447,32 @@ impl LocalClient {
             {
                 return Err("existing skill directory is unmanaged; resolve it manually");
             }
+            for name in files.keys() {
+                let path = root.join(name);
+                config::safe_path(&path)?;
+                if path.is_dir() {
+                    return Err("skill file destination is a directory");
+                }
+            }
+            destinations.push((client, root));
+        }
+        for (client, root) in destinations {
             for (name, content) in &files {
-                config::atomic_write(&root.join(name), content.as_bytes())?;
+                let path = root.join(name);
+                config::atomic_write(&path, &content.bytes)?;
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    std::fs::set_permissions(
+                        &path,
+                        std::fs::Permissions::from_mode(if content.executable {
+                            0o755
+                        } else {
+                            0o644
+                        }),
+                    )
+                    .map_err(|_| "could not set skill file permissions")?;
+                }
             }
             manifest.insert(
                 format!("skill:{}:{slug}", client.name()),

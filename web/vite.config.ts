@@ -15,13 +15,17 @@ export default defineConfig({
     proxy: {
       '^/marketplace\\.git(?:/|$|\\?)':
         process.env.LOADOUT_API_ORIGIN ?? 'http://127.0.0.1:8787',
-      '/api': process.env.LOADOUT_API_ORIGIN ?? 'http://127.0.0.1:8787',
+      '/api': {
+        target: process.env.LOADOUT_API_ORIGIN ?? 'http://127.0.0.1:8787',
+        changeOrigin: false,
+      },
       '/healthz': process.env.LOADOUT_API_ORIGIN ?? 'http://127.0.0.1:8787',
       '/readyz': process.env.LOADOUT_API_ORIGIN ?? 'http://127.0.0.1:8787',
       '/mcp': process.env.LOADOUT_API_ORIGIN ?? 'http://127.0.0.1:8787',
     },
   },
   test: {
+    maxWorkers: 4,
     include: ['src/**/*.test.{ts,tsx}'],
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],

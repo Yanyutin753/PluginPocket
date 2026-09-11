@@ -35,6 +35,17 @@ it('serves anonymous plugin documents and git files through the real development
   const runDir = await mkdtemp(join(tmpdir(), 'loadout-proxy-vite-'));
   vi.stubEnv('LOADOUT_RUN_DIR', runDir);
   const upstream = createHTTPServer((req, res) => {
+    if (req.url === '/api/v1/proxy-origin') {
+      res.setHeader('content-type', 'application/json');
+      res.end(
+        JSON.stringify({
+          host: req.headers.host,
+          origin: req.headers.origin,
+          fetchSite: req.headers['sec-fetch-site'],
+        }),
+      );
+      return;
+    }
     res.statusCode = req.url === '/api/v1/plugins/missing' ? 404 : 200;
     res.setHeader('content-type', 'text/plain');
     res.end(`upstream:${req.url}`);
@@ -63,6 +74,23 @@ it('serves anonymous plugin documents and git files through the real development
       const response = await fetch(new URL(path, origin));
       expect(await response.text()).toBe(`upstream:${path}`);
       expect(response.status).toBe(path.endsWith('/missing') ? 404 : 200);
+    }
+    for (const host of ['localhost', '127.0.0.1']) {
+      const url = new URL('/api/v1/proxy-origin', origin);
+      url.hostname = host;
+      for (const requestOrigin of [url.origin, 'https://evil.example']) {
+        const fetchSite =
+          requestOrigin === url.origin ? 'same-origin' : 'cross-site';
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { Origin: requestOrigin, 'Sec-Fetch-Site': fetchSite },
+        });
+        expect(await response.json()).toEqual({
+          host: url.host,
+          origin: requestOrigin,
+          fetchSite,
+        });
+      }
     }
   } finally {
     await vite.close();

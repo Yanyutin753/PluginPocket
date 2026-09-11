@@ -370,3 +370,9 @@
     transition: none;
   }
 }
+:root[data-theme="dark"] .public-catalog,
+:root[data-theme="dark"] .workspace-catalog {
+  --catalog-showcase: #23372e;
+  --catalog-ink: #e4f2e9;
+  --catalog-secondary: #b4cbbd;
+}

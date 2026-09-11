@@ -6,6 +6,7 @@
       "**",
       "!!.agents",
       "!!web/src/components/ui",
+      "!!web/src/i18n/error-codes.json",
       "!!pnpm-lock.yaml"
     ]
   },

@@ -61,10 +61,6 @@ export const en: Record<string, string> = {
   '正在调账…': 'Adjusting…',
   确认调账: 'Confirm adjustment',
   关闭: 'Close',
-  没有管理员权限: 'Administrator access required',
-  '请使用有权限的账号访问此页面。':
-    'Sign in with an authorized account to access this page.',
-  用户管理: 'User management',
   '查看账号与额度，记录每一笔人工调整。':
     'Review accounts, credits, and every manual adjustment.',
   停用: 'Disable',
@@ -81,13 +77,11 @@ export const en: Record<string, string> = {
   用户: 'User',
   角色: 'Role',
   状态: 'Status',
-  可用额度: 'Available credits',
   操作: 'Actions',
   管理员: 'Administrator',
   正常: 'Active',
   已停用: 'Disabled',
   调整余额: 'Adjust balance',
-  网关令牌: 'Gateway tokens',
   '为不同设备分别命名。令牌只显示一次，撤销后立即失效。':
     'Name tokens for each device. Tokens are shown once and become invalid immediately when revoked.',
   令牌名称: 'Token name',
@@ -95,7 +89,6 @@ export const en: Record<string, string> = {
   扣费钱包: 'Billing wallet',
   个人钱包: 'Personal wallet',
   '正在创建…': 'Creating…',
-  创建令牌: 'Create token',
   新令牌: 'New token',
   请立即保存令牌: 'Save your token now',
   '离开此页面或隐藏后，将无法再次查看明文。':
@@ -115,9 +108,7 @@ export const en: Record<string, string> = {
   确认撤销: 'Confirm revocation',
   '撤销 {value1}': 'Revoke {value1}',
   撤销: 'Revoke',
-  全局用量: 'Global usage',
   团队用量: 'Team usage',
-  用量明细: 'Usage details',
   '逐次查看工具调用、执行结果与实际消耗。':
     'Review each tool call, its result, and actual credit usage.',
   工具筛选: 'Filter by tool',
@@ -147,7 +138,6 @@ export const en: Record<string, string> = {
   '正在加载，请稍候…': 'Loading, please wait…',
   '正在加载…': 'Loading…',
   加载更多: 'Load more',
-  额度与账单: 'Billing',
   兑换码: 'Redemption code',
   '正在兑换…': 'Redeeming…',
   兑换额度: 'Redeem code',
@@ -170,7 +160,6 @@ export const en: Record<string, string> = {
   已取消: 'Cancelled',
   失败: 'Failed',
   处理中: 'Processing',
-  兑换码管理: 'Redemption codes',
   '生成单次兑换凭据，查看发放和兑换状态。':
     'Create single-use codes and track their issue and redemption status.',
   '正在生成…': 'Generating…',
@@ -178,7 +167,6 @@ export const en: Record<string, string> = {
   '还没有生成兑换码。': 'No redemption codes yet.',
   '已兑换 · {value1}': 'Redeemed · {value1}',
   未兑换: 'Not redeemed',
-  设备授权: 'Device authorization',
   '将本地 CLI 或桌面客户端连接到你的账号。':
     'Connect a local CLI or desktop client to your account.',
   '请确认下面的授权码与你自己设备上显示的一致。批准后，该设备可以使用你的额度调用工具。':
@@ -188,7 +176,6 @@ export const en: Record<string, string> = {
   设备授权码: 'Device authorization code',
   '正在批准…': 'Approving…',
   批准此设备: 'Approve this device',
-  额度审计: 'Credit audit',
   '按用户、操作人和变动类型核对不可变账本。':
     'Review the immutable ledger by user, actor, and transaction type.',
   用户编号: 'User ID',
@@ -205,7 +192,6 @@ export const en: Record<string, string> = {
   '隐藏或离开页面后，不再显示明文。':
     'The code cannot be viewed again after hiding it or leaving this page.',
   '有效期至 {value1}。': 'Expires {value1}.',
-  已复制: 'Copied',
   '无法自动复制，请选中并手动复制。':
     'Could not copy automatically. Select the code and copy it manually.',
   编辑套餐: 'Edit plan',
@@ -215,14 +201,12 @@ export const en: Record<string, string> = {
   '价格（分）': 'Price (minor units)',
   币种: 'Currency',
   保存套餐: 'Save plan',
-  套餐管理: 'Plan management',
   '套餐额度和价格由你定义。付款能力取决于支付服务配置。':
     'Define plan credits and pricing. Purchases require a configured payment service.',
   '暂时没有套餐。': 'No plans yet.',
   在售: 'Available',
   '编辑 {value1}': 'Edit {value1}',
   编辑: 'Edit',
-  个人设置: 'Account settings',
   '管理账号的联系方式和验证状态。':
     'Manage your contact details and verification status.',
   邮箱验证: 'Email verification',
@@ -245,7 +229,6 @@ export const en: Record<string, string> = {
     'You will become a regular member. Team administration will transfer immediately.',
   确认交接: 'Confirm transfer',
   交接所有权: 'Transfer ownership',
-  我的团队: 'My teams',
   '让成员共用额度，并按成员查看工具调用。':
     'Share credits with your team and review tool calls by member.',
   新建团队: 'New team',
@@ -310,8 +293,6 @@ export const en: Record<string, string> = {
     " Credentials are only for the operator's preset pool.",
   '正在保存…': 'Saving…',
   保存工具: 'Save tool',
-  工具管理: 'Tool management',
-  工具目录: 'Tool catalog',
   '维护预设工具、连接配置和每次调用的额度。':
     'Manage preset tools, connection settings, and credits per call.',
   '查看当前可用的工具与调用成本。':
@@ -366,67 +347,14 @@ export const en: Record<string, string> = {
   失败退款: 'Failure refund',
   异常恢复: 'Recovery',
   从未使用: 'Never used',
-  '在线支付暂未配置，请使用兑换码或联系管理员补充额度。':
-    'Online payments are not configured. Use a redemption code or contact an administrator to add credits.',
-  '请求过于频繁，请稍后再试。': 'Too many requests. Please try again later.',
-  '邮件服务暂时不可用，请稍后再试。':
-    'Email service is temporarily unavailable. Please try again later.',
-  '验证链接无效或已过期，请重新发送验证邮件。':
-    'This verification link is invalid or expired. Request another verification email.',
-  '此兑换码已经使用，请核对额度流水。':
-    'This code has already been redeemed. Check your credit transactions.',
-  'JSON 格式不正确，请检查参数或连接配置后重试。':
-    'Invalid JSON. Check the parameters or connection configuration and try again.',
-  '授权码已过期，请在设备上重新发起登录。':
-    'This authorization code has expired. Start sign-in again on your device.',
-  '授权码无效或已使用，请在设备上重新发起登录。':
-    'This authorization code is invalid or already used. Start sign-in again on your device.',
-  '团队席位已满，请联系团队所有者。':
-    'All team seats are occupied. Contact the team owner.',
-  '邀请码已过期，请联系团队所有者生成新邀请。':
-    'This invitation has expired. Ask the team owner for a new invitation.',
-  '邀请码已经使用，请联系团队所有者生成新邀请。':
-    'This invitation has already been used. Ask the team owner for a new invitation.',
-  '你已经是此团队成员。': 'You are already a member of this team.',
-  '团队席位已满，请联系团队所有者调整席位。':
-    'All team seats are occupied. Ask the team owner to add seats.',
-  '席位数量不能少于现有成员人数。':
-    'The seat limit cannot be lower than the current number of members.',
-  '不能停用当前登录账号。':
-    'You cannot disable the account you are signed in with.',
-  '需要保留至少一位启用的管理员。':
-    'At least one administrator must remain active.',
-  '设备授权码无效、已使用或已过期，请在设备上重新发起登录。':
-    'This device code is invalid, already used, or expired. Start sign-in again on your device.',
-  '最后一位团队所有者不能退出。': 'The last team owner cannot leave the team.',
-  '用户名已被使用，请换一个用户名。':
-    'This username is taken. Choose another username.',
-  '用户名或密码不正确，请重新输入。':
-    'Incorrect username or password. Please try again.',
-  '提交内容不符合要求，请检查后重试。':
-    'Check the submitted information and try again.',
-  '没有权限执行此操作。': 'You do not have permission to perform this action.',
-  '请求来源未通过验证，请从本站重新打开页面。':
-    'The request origin could not be verified. Reopen the page from this site.',
-  '可用额度不足，请检查调整金额。':
-    'Not enough credits. Check the adjustment amount.',
-  '这次操作与已有记录冲突，请关闭表单并重新核对。':
-    'This operation conflicts with an existing record. Close the form and review the details.',
-  '记录已不存在，请刷新后重试。':
-    'This record no longer exists. Refresh and try again.',
-  '登录已过期，请重新登录。': 'Your session has expired. Sign in again.',
-  '暂时无法完成请求，请检查连接后重试。':
-    'Unable to complete the request. Check your connection and try again.',
   '{credits} 额度': '{credits} credits',
   '{credits} 额度 · {price}': '{credits} credits · {price}',
   '{credits} 额度 / 次': '{credits} credits / call',
   '{label}分页': '{label} pagination',
   '第 {start}–{end} 条': 'Records {start}–{end}',
-  '第 {page} 页': 'Page {page}',
   '{count} 条 / 页': '{count} / page',
   上一页: 'Previous',
   下一页: 'Next',
-  清除筛选: 'Clear filters',
   每页条数: 'Rows per page',
   暂无记录: 'No records',
   调用明细: 'Call details',

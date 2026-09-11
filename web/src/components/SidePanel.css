@@ -26,6 +26,17 @@
   padding: 20px 24px;
   border-bottom: 1px solid var(--border);
 }
+.side-panel[data-fullscreen="true"] {
+  inset: 0;
+  width: 100%;
+  box-shadow: none;
+}
+.side-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
 .side-panel-heading h2 {
   font-size: 20px;
   font-weight: 700;

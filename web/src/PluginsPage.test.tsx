@@ -1,9 +1,11 @@
+import { readFileSync } from 'node:fs';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 import App from './App';
 import { ApiError } from './features/account/api';
+import { chooseOption } from './test/select';
 
 const items = [
   {
@@ -36,6 +38,92 @@ function mount(path = '/plugins') {
   );
 }
 beforeEach(() => localStorage.clear());
+
+function luminance(hex: string) {
+  const channels = hex
+    .trim()
+    .slice(1)
+    .match(/.{2}/g)
+    ?.map((part) => {
+      const value = Number.parseInt(part, 16) / 255;
+      return value <= 0.04045
+        ? value / 12.92
+        : ((value + 0.055) / 1.055) ** 2.4;
+    });
+  if (channels?.length !== 3) throw new Error(`Invalid color: ${hex}`);
+  return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+}
+
+it.each([false, true])(
+  'adapts catalog colors when switching themes (authenticated: %s)',
+  async (authenticated) => {
+    const style = document.createElement('style');
+    style.textContent = readFileSync('src/features/PluginsPage.css', 'utf8');
+    document.head.append(style);
+    vi.stubGlobal('fetch', (url: string) =>
+      Promise.resolve(
+        url.endsWith('/account/me')
+          ? authenticated
+            ? Response.json({
+                user: {
+                  id: 7,
+                  username: 'market-user',
+                  role: 'user',
+                  balance: 100,
+                  enabled: true,
+                },
+                summary: { today_calls: 0, month_cost: 0, token_count: 0 },
+              })
+            : Response.json({ error: 'signed_out' }, { status: 401 })
+          : Response.json({ items, origin: '' }),
+      ),
+    );
+    try {
+      const { container } = mount();
+      await screen.findByRole('link', { name: 'DeepWiki' });
+      const surface = container.querySelector(
+        authenticated ? '.workspace-catalog' : '.public-catalog',
+      );
+      if (!surface) throw new Error('Catalog not mounted');
+      const user = userEvent.setup();
+      for (const [label, dark] of [
+        ['深色', true],
+        ['浅色', false],
+      ] as const) {
+        await chooseOption(
+          user,
+          screen.getByRole('combobox', { name: '外观' }),
+          label,
+        );
+        const currentSurface = container.querySelector(
+          authenticated ? '.workspace-catalog' : '.public-catalog',
+        );
+        if (!currentSurface) throw new Error('Catalog not mounted');
+        const computed = getComputedStyle(currentSurface);
+        const artwork = currentSurface.querySelector('.catalog-hero-art');
+        if (!artwork) throw new Error('Catalog artwork not mounted');
+        expect(['', 'none']).toContain(getComputedStyle(artwork).filter);
+        const background = luminance(
+          computed.getPropertyValue('--catalog-showcase'),
+        );
+        if (dark) expect(background).toBeLessThan(0.1);
+        else expect(background).toBeGreaterThan(0.7);
+        for (const token of ['--catalog-ink', '--catalog-secondary']) {
+          const foreground = luminance(computed.getPropertyValue(token));
+          expect(
+            (Math.max(background, foreground) + 0.05) /
+              (Math.min(background, foreground) + 0.05),
+          ).toBeGreaterThanOrEqual(4.5);
+        }
+        expect(
+          screen.getByRole('searchbox', { name: '搜索插件' }),
+        ).toBeEnabled();
+      }
+    } finally {
+      style.remove();
+    }
+  },
+);
 
 it.each(['/plugins', '/plugins/deepwiki'])(
   'keeps the workspace sidebar on authenticated market route %s',

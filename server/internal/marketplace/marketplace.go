@@ -4,7 +4,6 @@ package marketplace
 import (
 	"context"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -14,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Yanyutin753/loadout/server/internal/filestore"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -21,6 +21,7 @@ import (
 const DefaultBaseURL = "https://api.github.com"
 
 type Options struct {
+	Files   *filestore.Store
 	BaseURL string // GitHub API 根地址，默认 https://api.github.com；测试注入 fixture
 	Token   string // 可选 Bearer 令牌，提升搜索限流额度
 }
@@ -137,105 +138,13 @@ func Sync(ctx context.Context, pool *pgxpool.Pool, o Options) (int, error) {
 	return count, nil
 }
 
-// ResolveSkillFiles 把 GitHub 上的技能目录解析为 {相对路径: 内容}。
-// CLI 永远只连 Loadout 服务，GitHub 限流与令牌由服务端统一承担。
+// ResolveSkillFiles is the text-only compatibility API. Binary skills require V2.
 func ResolveSkillFiles(ctx context.Context, o Options, repo, skillPath string) (map[string]string, error) {
-	if !repoPattern.MatchString(repo) || skillPath == "" || strings.Contains(skillPath, "..") || strings.HasPrefix(skillPath, "/") {
-		return nil, errors.New("invalid skill location")
-	}
-	files := map[string]string{}
-	if err := resolveContents(ctx, o, repo, skillPath, skillPath, files, 0); err != nil {
+	files, err := ResolveSkillFilesV2(ctx, o, repo, skillPath)
+	if err != nil {
 		return nil, err
 	}
-	if len(files) == 0 {
-		return nil, errors.New("skill directory is empty")
-	}
-	if _, ok := files["SKILL.md"]; !ok {
-		return nil, errors.New("skill directory has no SKILL.md")
-	}
-	return files, nil
+	return LegacySkillFiles(files)
 }
 
 var repoPattern = regexp.MustCompile(`^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$`)
-
-func resolveContents(ctx context.Context, o Options, repo, dir, root string, files map[string]string, depth int) error {
-	if depth > 3 || len(files) > 32 {
-		return errors.New("skill directory too large")
-	}
-	base := o.BaseURL
-	if base == "" {
-		base = DefaultBaseURL
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+"/repos/"+repo+"/contents/"+strings.TrimPrefix(dir, "/")+"?ref=HEAD", nil)
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("User-Agent", "loadout-marketplace")
-	if o.Token != "" {
-		req.Header.Set("Authorization", "Bearer "+o.Token)
-	}
-	client := &http.Client{Timeout: 10 * time.Second}
-	response, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = response.Body.Close() }()
-	if response.StatusCode != http.StatusOK {
-		return fmt.Errorf("github contents returned %d", response.StatusCode)
-	}
-	var entries []struct {
-		Name     string `json:"name"`
-		Path     string `json:"path"`
-		Type     string `json:"type"`
-		Content  string `json:"content"`
-		Encoding string `json:"encoding"`
-	}
-	if err = json.NewDecoder(http.MaxBytesReader(nil, response.Body, 4<<20)).Decode(&entries); err != nil {
-		return err
-	}
-	for _, entry := range entries {
-		relative := strings.TrimPrefix(entry.Path, strings.TrimSuffix(root, "/")+"/")
-		if relative == "" || relative == entry.Path || strings.Contains(relative, "..") || strings.ContainsAny(relative, "\x00\\") {
-			return errors.New("unsafe file path in skill")
-		}
-		switch entry.Type {
-		case "file":
-			// GitHub directory listings contain metadata, not file bodies.
-			if entry.Encoding == "" {
-				fileReq, requestErr := http.NewRequestWithContext(ctx, http.MethodGet, base+"/repos/"+repo+"/contents/"+entry.Path+"?ref=HEAD", nil)
-				if requestErr != nil {
-					return requestErr
-				}
-				fileReq.Header = req.Header.Clone()
-				fileResponse, requestErr := client.Do(fileReq)
-				if requestErr != nil {
-					return requestErr
-				}
-				decodeErr := func() error {
-					defer func() { _ = fileResponse.Body.Close() }()
-					if fileResponse.StatusCode != http.StatusOK {
-						return fmt.Errorf("github contents returned %d", fileResponse.StatusCode)
-					}
-					return json.NewDecoder(http.MaxBytesReader(nil, fileResponse.Body, 512*1024)).Decode(&entry)
-				}()
-				if decodeErr != nil {
-					return decodeErr
-				}
-			}
-			if entry.Encoding != "base64" || len(files) >= 32 {
-				return errors.New("unsupported or oversized skill file")
-			}
-			raw, err := base64.StdEncoding.DecodeString(strings.ReplaceAll(entry.Content, "\n", ""))
-			if err != nil || len(raw) > 256*1024 {
-				return errors.New("unsupported or oversized skill file")
-			}
-			files[relative] = string(raw)
-		case "dir":
-			if err := resolveContents(ctx, o, repo, entry.Path, root, files, depth+1); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}

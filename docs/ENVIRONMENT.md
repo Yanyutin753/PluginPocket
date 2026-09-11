@@ -21,7 +21,7 @@ Node .env支持引号，Shell `source`还会进行命令/变量展开。`kubectl
 | --- | --- | --- |
 | `LOADOUT_ADDR` | `127.0.0.1:8787`；host:port，端口0–65535 | 同主机副本端口不同；0仅测试。容器/K8s模板固定`0.0.0.0:8787`，由Service/防火墙控制入口 |
 | `LOADOUT_WEB_DIR` | `web/dist`，相对进程工作目录 | 镜像工作目录/app，资源在/app/web/dist；K8s固定此绝对路径。裸二进制需携带构建后的Web资源 |
-| `LOADOUT_PUBLIC_URL` | 空；HTTP(S) origin，不含账号、查询、片段或非根路径 | 生产填最终HTTPS Origin，所有副本一致。影响CSRF、设备授权链接、OAuth回调和Secure Cookie；不支持部署在URL子路径。示例本地值5173不是生产值 |
+| `LOADOUT_PUBLIC_URL` | 空；HTTP(S) origin，不含账号、查询、片段或非根路径 | 本地同源 `/api` 反代可留空，不作为CSRF来源白名单。用于公开链接、设备授权链接、OAuth/邮件回调与Secure Cookie策略；生产HTTPS仍应设置规范地址，所有副本一致。不支持部署在URL子路径 |
 | `LOADOUT_DATABASE_URL` | 空进入仅健康/静态基建模式；postgres/postgresql URL | 产品必填；所有副本同一个可写主库入口、库及schema。凭据属于Secret；生产验证TLS证书，例如sslmode=verify-full。不得接异步只读副本 |
 | `LOADOUT_REDIS_URL` | 空关闭共享缓存；redis/rediss URL，由官方客户端进一步解析 | 集群建议配置同一Redis主入口；故障直接发现，readyz显示degraded。跨不可信网络用rediss。仅支持单端点，不解析Sentinel服务名或Redis Cluster节点列表 |
 | `LOADOUT_REDIS_NAMESPACE` | `loadout`；1–64个字母/数字/下划线/连字符 | 同一DB/schema的副本一致，不同环境/租户部署隔离，例如loadout_prod。不要用冒号或随机Pod名 |
@@ -59,7 +59,7 @@ Node .env支持引号，Shell `source`还会进行命令/变量展开。`kubectl
 
 | 变量 | 消费者 / 缺省 | 用途 |
 | --- | --- | --- |
-| `LOADOUT_DEV_PORT` | Vite与dev.mjs，5173 | 本机Web端口；PUBLIC_URL、API_ORIGIN按实际地址匹配 |
+| `LOADOUT_DEV_PORT` | Vite与dev.mjs，5173 | 本机Web端口；前端相对路径 `/api` 由Vite代理，无需随访问主机名修改PUBLIC_URL |
 | `LOADOUT_API_ORIGIN` | Vite默认http://127.0.0.1:8787；dev.mjs未设置时从ADDR推导 | Vite代理Go地址；与公开PUBLIC_URL不同，不应指回Vite自身 |
 | `LOADOUT_RUN_DIR` | dev.mjs，`.loadout` | 开发主管socket/日志及Vite依赖缓存目录；up/down/status/logs必须使用同一个值；并行开发/集成测试用不同目录，避免预构建缓存互相覆盖 |
 | `LOADOUT_PORT` | Compose，8787 | 应用发布到主机的回环端口，容器内仍8787 |
@@ -118,3 +118,8 @@ Compose固定使用内部`db:5432`与`redis:6379`，不会将根.env里的应用
 GitHub Actions Secrets：`TAURI_SIGNING_PRIVATE_KEY`（独立 Loadout Minisign 私钥或本地私钥路径）、`TAURI_SIGNING_PRIVATE_KEY_PASSWORD`（可选密码）。仅用于 `desktop/tauri.release.conf.json` 发行构建，不传入服务端、前端或安装包；公钥随仓库版本管理。详见 [桌面发行](../desktop/README.md#桌面发行)。
 
 浏览器 AT/RT 秒数在管理端系统配置中热更新（默认900/604800），不是进程环境变量；各副本从共享PG读取，旧RT期限不变。修改DB/Redis地址、PUBLIC_URL与加密主密钥仍需重启/滚动副本。
+
+
+## 通用文件存储
+
+LOADOUT_FILE_STORAGE_* 配置服务器文件存储，详细变量、默认值与六种S3兼容服务配置见 [文件存储](FILE_STORAGE.md)。默认256KiB以内存bytea，大附件必须配置S3；凭据仅部署Secret，所有副本同目标，变更后重启。Compose已透传全部字段，Kubernetes运行时Secret示例已同步。

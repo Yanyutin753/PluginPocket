@@ -1,10 +1,49 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 import App from './App';
+import { editCode } from './test/edit-code';
 
 beforeEach(() => localStorage.clear());
+
+it('keeps skill and bundle rows focused on editing without install tutorials', async () => {
+  const { user } = mount((url) => {
+    if (url === '/api/v1/admin/marketplace')
+      return Response.json({
+        items: ['skill', 'bundle'].map((kind, index) => ({
+          ...market.items[0],
+          id: index + 3,
+          kind,
+          slug: `review-${kind}`,
+          name: `Review ${kind}`,
+          repo_url: '',
+          spec:
+            kind === 'skill'
+              ? { source: 'inline', files: { 'SKILL.md': 'Review' } }
+              : { includes: ['deepwiki'] },
+        })),
+      });
+  }, '/admin/marketplace');
+  await screen.findByText('Review skill');
+  for (const kind of ['skill', 'bundle']) {
+    const row = screen
+      .getByRole('heading', { name: `Review ${kind}` })
+      .closest('li');
+    if (!row) throw new Error(`Missing marketplace row for ${kind}`);
+    expect(row).not.toHaveTextContent(/loadout install|组合安装/);
+    expect(row).toHaveTextContent(`review-${kind}`);
+    const edit = within(row).getByRole('button', {
+      name: `编辑 Review ${kind}`,
+    });
+    edit.focus();
+    await user.keyboard('{Enter}');
+    expect(await screen.findByRole('dialog')).toBeVisible();
+    await user.keyboard('{Escape}');
+    expect(edit).toHaveFocus();
+  }
+  expect(screen.queryByText(/技能保存工作方法/)).not.toBeInTheDocument();
+});
 
 const tools = {
   items: [
@@ -129,11 +168,16 @@ it('lists the marketplace, syncs GitHub, and installs a curated plugin', async (
   await user.click(screen.getByRole('button', { name: '同步 GitHub' }));
   expect(await screen.findByText(/同步了 1/)).toBeInTheDocument();
   expect(synced).toBe(true);
-  await user.click(screen.getByRole('button', { name: '安装 DeepWiki' }));
+  await user.click(
+    screen.getByRole('button', { name: '安装到工具池 DeepWiki' }),
+  );
   const config = await screen.findByLabelText('连接配置（JSON）');
   expect(config).toHaveValue('{"url":"https://mcp.deepwiki.com/mcp"}');
   await user.click(await screen.findByRole('button', { name: '安装到工具池' }));
-  expect(await screen.findByText('已安装')).toBeInTheDocument();
+  expect(await screen.findByText('已加入工具池')).toBeInTheDocument();
+  expect(
+    screen.getByRole('button', { name: '移出工具池 DeepWiki' }),
+  ).toBeVisible();
   expect(
     calls.some((call) => call.url === '/api/v1/admin/marketplace/install'),
   ).toBe(true);
@@ -155,7 +199,7 @@ it('opens market management from navigation and publishes a custom skill', async
   await user.click(await screen.findByRole('button', { name: '创建技能' }));
   await user.type(screen.getByLabelText('名称'), 'Review');
   await user.type(screen.getByLabelText('标识'), 'review');
-  await user.type(screen.getByLabelText('SKILL.md 内容'), '# Review code');
+  await editCode(user, 'SKILL.md 内容', '# Review code');
   await user.click(screen.getByRole('button', { name: '保存技能' }));
   expect(await screen.findByRole('status')).toHaveTextContent('已保存');
   const call = calls.find((c) => c.url.endsWith('/marketplace/skills'));
@@ -267,11 +311,11 @@ it('filters skills, preserves supporting files on edit, and returns keyboard foc
   expect(screen.queryByText('DeepWiki')).not.toBeInTheDocument();
   const edit = screen.getByRole('button', { name: '编辑 Review' });
   await user.click(edit);
-  expect(screen.getByLabelText('SKILL.md 内容')).toHaveValue('original');
+  expect(screen.getByLabelText('SKILL.md 内容')).toHaveTextContent('original');
   await user.keyboard('{Escape}');
   expect(edit).toHaveFocus();
   await user.click(edit);
-  await user.type(screen.getByLabelText('SKILL.md 内容'), ' revised');
+  await editCode(user, 'SKILL.md 内容', 'original revised');
   await user.click(screen.getByRole('button', { name: '保存技能' }));
   expect(await screen.findByRole('status')).toHaveTextContent('已保存');
   expect(
@@ -310,12 +354,12 @@ it('installs a GitHub item once its HTTP endpoint is supplied', async () => {
   await user.click(await screen.findByRole('button', { name: '插件市场' }));
   expect(await screen.findByText('github-mcp-server')).toBeInTheDocument();
   await user.click(
-    screen.getByRole('button', { name: '安装 github-mcp-server' }),
+    screen.getByRole('button', { name: '安装到工具池 github-mcp-server' }),
   );
   const config = await screen.findByLabelText('连接配置（JSON）');
   await user.type(config, '{{"url":"https://mcp.example.com/mcp"}');
   await user.click(await screen.findByRole('button', { name: '安装到工具池' }));
-  expect(await screen.findByText('已安装')).toBeInTheDocument();
+  expect(await screen.findByText('已加入工具池')).toBeInTheDocument();
 });
 
 it('edits and clears an upstream tool description override', async () => {
@@ -410,4 +454,78 @@ it('keeps tool details open until a delayed metadata failure is visible', async 
   expect(screen.getByRole('dialog', { name: 'Remote tools' })).toBeVisible();
   finish(Response.json({ error: 'temporarily_unavailable' }, { status: 503 }));
   expect(await screen.findByRole('alert')).toBeVisible();
+});
+
+it('syncs GitHub skills with MCP, preserves custom skills and retries partial failures', async () => {
+  let fail = true;
+  const entries = [
+    {
+      ...market.items[0],
+      id: 3,
+      kind: 'skill',
+      slug: 'superpowers-debugging',
+      name: 'Custom debugging',
+      spec: { source: 'inline', files: { 'SKILL.md': 'custom' } },
+    },
+    {
+      ...market.items[0],
+      id: 4,
+      kind: 'skill',
+      slug: 'team-review',
+      name: 'Team review',
+      spec: { source: 'github', repo: 'team/skills', path: 'review' },
+    },
+  ];
+  const { user, calls } = mount((url, init) => {
+    if (url === '/api/v1/admin/marketplace')
+      return Response.json({ items: [...market.items, ...entries] });
+    if (url.endsWith('/marketplace/sync'))
+      return fail
+        ? Response.json({ error: 'upstream_unavailable' }, { status: 502 })
+        : Response.json({ synced: 8 });
+    if (url.endsWith('/marketplace/skills')) {
+      const body = JSON.parse(String(init.body));
+      if (fail && body.slug === 'superpowers-tdd')
+        return Response.json(
+          { error: 'upstream_unavailable' },
+          { status: 502 },
+        );
+      return Response.json({
+        item: { ...market.items[0], ...body, kind: 'skill' },
+      });
+    }
+  }, '/admin/marketplace');
+  await screen.findByText('Team review');
+  const button = screen.getByRole('button', { name: '同步 GitHub' });
+  button.focus();
+  await user.keyboard('{Enter}');
+  expect(
+    await screen.findByText('同步了 0 个 MCP、2 个技能；失败 2 项'),
+  ).toBeVisible();
+  expect(screen.getByRole('alert')).toHaveTextContent(
+    'Test Driven Development',
+  );
+  const posts = calls
+    .filter((c) => c.url.endsWith('/marketplace/skills'))
+    .map((c) => JSON.parse(String(c.init.body)));
+  expect(posts.map((p) => p.slug)).toEqual([
+    'superpowers-tdd',
+    'anthropic-frontend-design',
+    'team-review',
+  ]);
+  expect(posts[2]).toMatchObject({
+    source: 'github',
+    repo: 'team/skills',
+    path: 'review',
+    name: 'Team review',
+  });
+  expect(
+    calls.filter((c) => c.url === '/api/v1/admin/marketplace').length,
+  ).toBeGreaterThan(1);
+  fail = false;
+  await user.click(button);
+  expect(
+    await screen.findByText('同步了 8 个 MCP、3 个技能；失败 0 项'),
+  ).toBeVisible();
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 });

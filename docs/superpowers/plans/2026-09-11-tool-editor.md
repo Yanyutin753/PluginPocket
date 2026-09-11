@@ -66,3 +66,14 @@
 
 - 进程测试的两个前台 Vite 实例也改用临时 LOADOUT_RUN_DIR，结束后清理，避免继承日常 .env 中的运行目录。沿用已有真实启动/退出测试验证，不改变生产进程行为。
 - 完整检查曾在进程测试第4项30秒超时；未增加超时或删断言，原测试文件再次运行4/4通过（.loadout/tool-process-diagnostic.log），继续执行最终完整检查。
+
+### 最终验证（2026-09-12 会话恢复后）
+
+- 前一轮 `.loadout/tool-editor-check-complete.log` 中 Go race、192项Web、桌面、真实 TestProductJourney（含多副本）通过，随后进程测试超时，不能称完整check通过。下一轮 `.loadout/tool-editor-check-final.log` 因会话中断收到Hangup。
+- 本次 `node --env-file=.env .loadout/tool-editor-check.mjs`（内部make check）重新运行：格式/类型/Go lint/CLI与桌面静态检查通过；真实PG测试因127.0.0.1:44035连接拒绝失败，日志 `.loadout/tool-editor-check-resumed.log`。原开发环境文档中的 `/tmp/loadout-pg18` 与 `/tmp/loadout-pgdata` 已不存在。未替换业务库、未初始化假数据、未改.env；当前5173服务也已停止。
+- 本次 `make test-web test-process test-dev integration` exit 0：193项Web、4项进程、7项后台/热重载、4项生产HTTP/CLI集成通过，生产Web/Go/CLI构建通过，日志 `.loadout/tool-editor-local-final.log`。
+- 本次 `cd server && go test -run TestSQLite ./internal/store` exit 0。
+- 504修复之前已用真实HTTP确认新旧依赖地址200；本次Vite隔离配置与真实开发进程测试通过。未使用浏览器自动化；桌面/移动视觉仍未人工验收。
+- 为运行完整检查，仅对新错误码字典 `web/src/i18n/error-codes.json` 做Biome格式整理。共享工作区其他任务的变更保留。
+
+交付：上传PNG/JPEG/WebP/静态SVG（64KiB）、HTTPS图标/粘贴SVG、预览/移除；共享数据库跨副本保存；分区连接与规则编辑、样例与真实服务端试算；相关API/迁移/中英文及设计文档已同步。完整make check的当前未通过原因明确为缺失临时PostgreSQL环境；不将历史通过或局部检查拼接成全量成功。

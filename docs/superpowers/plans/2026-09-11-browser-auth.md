@@ -43,3 +43,9 @@ API：POST /api/v1/auth/refresh，无请求体，Cookie RT（旧 session 仅在�
 ## 全量运行与最终待验项
 
 共享工作区唯一全量由工具编辑任务执行：`node --env-file=.env .loadout/tool-editor-check.mjs`（内部运行 `make check`），日志 `.loadout/tool-editor-check-complete.log`。通过lint/TS/Go格式、Go全包race、CLI、Web192项、桌面UI/Rust与构建、真实产品旅程77.931s；其中 `TestProductJourneyWithoutStickySessionsSurvivesReplicaExit` 0.99s通过，生产/开发Web旅程均通过。最后在 `tests/process.test.mjs:150` 的开发子进程失败清理用例超时，退出1，故此次make check不能计为全部通过；对应任务正在排查。SessionBoundary新增逻辑经独立复核未发现新问题。未经实际K8s集群部署/HA演练，未进行本任务桌面/移动人工视觉验收。
+
+### 2026-09-12 最终验证状态更新
+
+后续完整复跑 `.loadout/tool-editor-check-final.log` 在 Go race 阶段收到 Hangup，未完成。再次复跑 `.loadout/tool-editor-check-resumed.log` 在数据库测试阶段因 `127.0.0.1:44035` 连接拒绝失败，make退出2；协调任务确认临时PG18实例目录已不存在。没有改用或修改用户现有PG17.6实例，也没有以跳过数据库测试代替验收。此前通过的鉴权/热更新/真实双副本证据保留，但最终完整 `make check` 未通过，需恢复隔离的PG18测试环境后重跑。
+
+协调任务随后完成 `make test-web test-process test-dev integration`，退出0（`.loadout/tool-editor-local-final.log`）：193项Web、4项进程、7项开发服务、4项生产HTTP/CLI集成通过；`cd server && go test -run TestSQLite ./internal/store` 通过。原进程退出超时已通过独立重跑验证。上述补跑不替代依赖PG18的完整make check；当前开发服务5173已停止，不将前日HTTP200描述为当前在线状态。

@@ -9,7 +9,11 @@ import { useI18n } from '@/i18n';
 import { ApiError, number, request } from '../account/api';
 import { ErrorNotice, Loading } from '../account/shared';
 import { type MarketplaceItem, marketplaceItemSchema } from './api';
-import { MarketplaceEditor, RecommendedSkills } from './MarketplaceEditor';
+import {
+  MarketplaceEditor,
+  RecommendedSkills,
+  recommendations,
+} from './MarketplaceEditor';
 import './MarketplacePanel.css';
 
 function InstallEditor({
@@ -68,9 +72,6 @@ function InstallEditor({
         className="editor-panel"
         aria-label={t('安装 {value1}', { value1: item.name })}
       >
-        <h2>
-          {t('安装')} {item.name}
-        </h2>
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -191,17 +192,60 @@ export default function MarketplacePanel() {
   );
   const sync = useMutation({
     mutationKey: ['marketplace'],
-    mutationFn: () =>
-      request(
-        '/admin/marketplace/sync',
-        z.object({ synced: z.number().int() }),
-        {
-          method: 'POST',
-          body: '{}',
-        },
-      ),
+    mutationFn: async () => {
+      const result = { synced: 0, skills: 0, failed: [] as string[] };
+      try {
+        const data = await request(
+          '/admin/marketplace/sync',
+          z.object({ synced: z.number().int() }),
+          { method: 'POST', body: '{}' },
+        );
+        result.synced = data.synced;
+      } catch {
+        result.failed.push('MCP');
+      }
+      const skills = new Map(
+        recommendations
+          .filter((entry) => !items.some((item) => item.slug === entry.slug))
+          .map((entry) => [entry.slug, entry]),
+      );
+      for (const item of items) {
+        if (
+          item.kind === 'skill' &&
+          item.spec?.source === 'github' &&
+          item.spec.repo &&
+          item.spec.path
+        ) {
+          skills.set(item.slug, {
+            slug: item.slug,
+            name: item.name,
+            description: item.description,
+            repo: item.spec.repo,
+            path: item.spec.path,
+          });
+        }
+      }
+      for (const entry of skills.values()) {
+        try {
+          await request(
+            '/admin/marketplace/skills',
+            z.object({ item: marketplaceItemSchema }),
+            {
+              method: 'POST',
+              body: JSON.stringify({ ...entry, source: 'github' }),
+            },
+          );
+          result.skills++;
+        } catch {
+          result.failed.push(entry.name);
+        }
+      }
+      return result;
+    },
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ['/admin/marketplace'] });
+      void client.invalidateQueries({ queryKey: ['public-plugins'] });
+      void client.invalidateQueries({ queryKey: ['skill-editor-files'] });
     },
   });
   const uninstall = useMutation({
@@ -224,7 +268,7 @@ export default function MarketplacePanel() {
         <h2>{t('插件市场')}</h2>
         <Button
           variant="outline"
-          disabled={sync.isPending}
+          disabled={sync.isPending || !market.isSuccess}
           onClick={() => sync.mutate()}
         >
           {sync.isPending && (
@@ -255,11 +299,6 @@ export default function MarketplacePanel() {
           {t('精选 GitHub 技能')}
         </Button>
       </div>
-      <p className="hint-text">
-        {t(
-          '技能保存工作方法，装备组组合 MCP 与技能。保存后可在公共市场查看并安装。',
-        )}
-      </p>
       <fieldset className="market-filters" aria-label={t('类型筛选')}>
         {['all', 'mcp', 'skill', 'bundle'].map((value) => (
           <Button
@@ -288,12 +327,19 @@ export default function MarketplacePanel() {
       {saved && <p role="status">{t('已保存')}</p>}
       {sync.isSuccess && (
         <p role="status">
-          {t('同步了 {value1} 个插件', {
-            value1: number(sync.data.synced, locale),
+          {t('同步了 {mcp} 个 MCP、{skills} 个技能；失败 {failed} 项', {
+            mcp: number(sync.data.synced, locale),
+            skills: number(sync.data.skills, locale),
+            failed: number(sync.data.failed.length, locale),
           })}
         </p>
       )}
       <ErrorNotice error={market.error} retry={() => void market.refetch()} />
+      {sync.isSuccess && sync.data.failed.length > 0 && (
+        <p role="alert">
+          {t('同步失败，请重试')} · {sync.data.failed.join('、')}
+        </p>
+      )}
       <ErrorNotice error={sync.error} />
       <ErrorNotice error={uninstall.error} />
       {market.isPending && <Loading />}
@@ -304,37 +350,38 @@ export default function MarketplacePanel() {
         {visible.map((item) => (
           <li key={item.id}>
             <div className="record-main">
-              <h3>{item.name}</h3>
-              <p>{item.description}</p>
-              <p>
-                {kindLabel(item.kind, t)} ·{' '}
-                {item.source === 'curated' ? t('精选') : 'GitHub'} ·{' '}
-                {item.kind === 'mcp'
-                  ? transportLabel(item.transport, t)
-                  : item.kind === 'skill'
-                    ? item.spec?.source === 'github'
-                      ? 'GitHub'
-                      : t('自定义内容')
-                    : t('组合安装')}
-                {item.source === 'github'
-                  ? ` · ${t('{credits} 星', { credits: number(item.stars, locale) })}`
-                  : ''}
-                {item.repo_url ? (
-                  <>
-                    {' · '}
-                    <a href={item.repo_url} rel="noreferrer" target="_blank">
-                      {t('仓库')}
-                    </a>
-                  </>
-                ) : (
-                  ''
+              <div className="market-record-title">
+                <h3>{item.name}</h3>
+                <span>{kindLabel(item.kind, t)}</span>
+              </div>
+              {item.description && <p>{item.description}</p>}
+              <div className="market-record-meta">
+                <span>{item.slug}</span>
+                {item.kind === 'mcp' && (
+                  <span>{transportLabel(item.transport, t)}</span>
                 )}
-              </p>
+                {item.source === 'curated' && <span>{t('精选')}</span>}
+                {(item.source === 'github' ||
+                  item.spec?.source === 'github') && <span>GitHub</span>}
+                {item.source === 'github' && (
+                  <span>
+                    {t('{credits} 星', { credits: number(item.stars, locale) })}
+                  </span>
+                )}
+                {item.repo_url && (
+                  <a href={item.repo_url} rel="noreferrer" target="_blank">
+                    {t('仓库')}
+                  </a>
+                )}
+                {item.kind === 'mcp' && item.installed && (
+                  <span>{t('已加入工具池')}</span>
+                )}
+              </div>
             </div>
-            <div className="action-row">
+            <div className="action-row market-record-actions">
               {item.kind !== 'mcp' && (
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   aria-label={t('编辑 {value1}', { value1: item.name })}
                   onClick={() => {
                     setSaved(false);
@@ -347,32 +394,28 @@ export default function MarketplacePanel() {
                   {t('编辑')}
                 </Button>
               )}
-              {item.installed ? (
-                <>
-                  <span>{t('已安装')}</span>
+              {item.kind === 'mcp' &&
+                (item.installed ? (
                   <Button
-                    variant="outline"
+                    variant="ghost"
+                    aria-label={t('移出工具池 {value1}', { value1: item.name })}
                     disabled={uninstall.isPending}
                     onClick={() => uninstall.mutate(item.slug)}
                   >
-                    {t('卸载')}
+                    {t('移出工具池')}
                   </Button>
-                </>
-              ) : item.kind === 'mcp' ? (
-                <Button
-                  aria-label={t('安装 {value1}', { value1: item.name })}
-                  disabled={installing !== null}
-                  onClick={() => setInstalling(item)}
-                >
-                  {t('安装')}
-                </Button>
-              ) : (
-                <span className="hint-text">
-                  {t('用 CLI 安装：loadout install {value1}', {
-                    value1: item.slug,
-                  })}
-                </span>
-              )}
+                ) : (
+                  <Button
+                    variant="outline"
+                    aria-label={t('安装到工具池 {value1}', {
+                      value1: item.name,
+                    })}
+                    disabled={installing !== null}
+                    onClick={() => setInstalling(item)}
+                  >
+                    {t('安装到工具池')}
+                  </Button>
+                ))}
             </div>
           </li>
         ))}

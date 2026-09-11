@@ -140,8 +140,7 @@ export const shell: Record<string, string> = {
   重新加载配置: 'Reload settings',
   '数据库、Redis、监听地址、公开访问地址和加密主密钥由部署配置管理，修改后需要重启。':
     'Database, Redis, listening address, public URL and encryption key are deployment settings. Changes require a restart.',
-  '其他管理员已更新配置，请重新加载后再编辑。':
-    'Another administrator updated the settings. Reload before editing again.',
-  '系统配置暂不可用，请检查服务部署后重试。':
-    'System settings are unavailable. Check the deployment and retry.',
+  '你的 AI，准备就绪。': 'Your AI, fully loaded.',
+  工欲善其事: 'Tools for',
+  必先利其器: 'a brighter you.',
 };

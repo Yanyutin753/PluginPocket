@@ -1,15 +1,19 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { z } from 'zod';
+import { FileAttachments } from '@/components/FileAttachments';
 import { SidePanel } from '@/components/SidePanel';
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { useI18n } from '@/i18n';
+import type { FileUpload } from '@/lib/files';
 import { request } from '../account/api';
 import { ErrorNotice } from '../account/shared';
 import { type MarketplaceItem, marketplaceItemSchema } from './api';
+import { encodeSkillText, SkillFileEditor } from './SkillFileEditor';
+import './SkillFileEditor.css';
 
 export function MarketplaceEditor({
   kind,
@@ -29,11 +33,15 @@ export function MarketplaceEditor({
   const [name, setName] = useState(item?.name ?? '');
   const [slug, setSlug] = useState(item?.slug ?? '');
   const [description, setDescription] = useState(item?.description ?? '');
-  const [source, setSource] = useState(item?.spec?.source ?? 'inline');
+  const [source, setSource] = useState('inline');
   const [repo, setRepo] = useState(item?.spec?.repo ?? '');
   const [path, setPath] = useState(item?.spec?.path ?? '');
   const [content, setContent] = useState(item?.spec?.files?.['SKILL.md'] ?? '');
   const [includes, setIncludes] = useState(item?.spec?.includes ?? []);
+  const [uploads, setUploads] = useState<Record<string, FileUpload>>({});
+  const [deleted, setDeleted] = useState<string[]>([]);
+  const [attachmentsBlocked, setAttachmentsBlocked] = useState(false);
+  const fileManager = useRef<HTMLDetailsElement>(null);
   const save = useMutation({
     mutationKey: ['marketplace'],
     mutationFn: () =>
@@ -52,7 +60,25 @@ export function MarketplaceEditor({
                   source,
                   ...(source === 'github'
                     ? { repo: repo.trim(), path: path.trim() }
-                    : { files: { ...item?.spec?.files, 'SKILL.md': content } }),
+                    : {
+                        files: {
+                          ...Object.fromEntries(
+                            Object.entries(item?.spec?.files ?? {}).filter(
+                              ([name]) =>
+                                !deleted.includes(name) && !uploads[name],
+                            ),
+                          ),
+                          'SKILL.md': content,
+                        },
+                        files_v2: {
+                          ...uploads,
+                          ...(item?.spec?.file_manifest?.['SKILL.md']
+                            ?.executable
+                            ? { 'SKILL.md': encodeSkillText(content, true) }
+                            : {}),
+                        },
+                        delete_files: deleted,
+                      }),
                 }),
           }),
         },
@@ -60,95 +86,168 @@ export function MarketplaceEditor({
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ['/admin/marketplace'] });
       void client.invalidateQueries({ queryKey: ['public-plugins'] });
+      void client.invalidateQueries({ queryKey: ['skill-editor-files'] });
       saved();
       close();
     },
   });
   return (
     <SidePanel
+      className={kind === 'skill' ? 'skill-editor-panel' : ''}
       title={t(
-        item ? '编辑市场条目' : kind === 'skill' ? '创建技能' : '创建装备组',
+        item
+          ? kind === 'skill'
+            ? '编辑技能'
+            : '编辑市场条目'
+          : kind === 'skill'
+            ? '创建技能'
+            : '创建装备组',
       )}
       onClose={close}
       locked={save.isPending}
     >
       <form
+        className={kind === 'skill' ? 'skill-editor-form' : undefined}
         onSubmit={(event) => {
           event.preventDefault();
+          if (
+            kind === 'skill' &&
+            source === 'inline' &&
+            (attachmentsBlocked || !content.trim())
+          )
+            return;
           save.mutate();
         }}
       >
         <FieldGroup>
-          <Field>
-            <FieldLabel htmlFor="entry-name">{t('名称')}</FieldLabel>
-            <Input
-              id="entry-name"
-              required
-              maxLength={80}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="entry-slug">{t('标识')}</FieldLabel>
-            <Input
-              id="entry-slug"
-              required
-              pattern="[a-zA-Z0-9_-]{3,32}"
-              minLength={3}
-              maxLength={32}
-              disabled={!!item}
-              value={slug}
-              onChange={(e) => setSlug(e.target.value)}
-            />
-            <p className="hint-text">
-              {t('3–32 位字母、数字、短横线或下划线，用于安装命令。')}
-            </p>
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="entry-description">{t('描述')}</FieldLabel>
-            <textarea
-              id="entry-description"
-              rows={3}
-              maxLength={2000}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </Field>
-          {kind === 'skill' ? (
-            <>
+          <details className="skill-settings" open={!item || undefined}>
+            <summary>
+              {t('基本信息')}
+              {item ? ` · ${name}` : ''}
+            </summary>
+            <FieldGroup>
               <Field>
-                <FieldLabel htmlFor="entry-source">{t('技能来源')}</FieldLabel>
-                <Select
-                  id="entry-source"
-                  value={source}
-                  onValueChange={(value) =>
-                    setSource(value === 'github' ? 'github' : 'inline')
-                  }
-                  options={[
-                    { value: 'inline', label: t('自定义内容') },
-                    { value: 'github', label: 'GitHub' },
-                  ]}
+                <FieldLabel htmlFor="entry-name">{t('名称')}</FieldLabel>
+                <Input
+                  id="entry-name"
+                  required
+                  maxLength={80}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                 />
               </Field>
-              {source === 'inline' ? (
+              <Field>
+                <FieldLabel htmlFor="entry-slug">{t('标识')}</FieldLabel>
+                <Input
+                  id="entry-slug"
+                  required
+                  pattern="[a-zA-Z0-9_-]{3,32}"
+                  minLength={3}
+                  maxLength={32}
+                  disabled={!!item}
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value)}
+                />
+                <p className="hint-text">
+                  {t('3–32 位字母、数字、短横线或下划线，用于安装命令。')}
+                </p>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="entry-description">{t('描述')}</FieldLabel>
+                <textarea
+                  id="entry-description"
+                  rows={3}
+                  maxLength={2000}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </Field>
+            </FieldGroup>
+          </details>
+          {kind === 'skill' ? (
+            <>
+              <details className="skill-source">
+                <summary>{t('GitHub 导入与同步')}</summary>
                 <Field>
-                  <FieldLabel htmlFor="entry-content">
-                    {t('SKILL.md 内容')}
+                  <FieldLabel htmlFor="entry-source">
+                    {t('技能来源')}
                   </FieldLabel>
-                  <textarea
-                    id="entry-content"
-                    required
-                    rows={14}
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
+                  <Select
+                    id="entry-source"
+                    value={source}
+                    onValueChange={(value) => {
+                      setSource(value === 'github' ? 'github' : 'inline');
+                    }}
+                    options={[
+                      { value: 'inline', label: t('编辑技能文件') },
+                      { value: 'github', label: t('从 GitHub 重新同步') },
+                    ]}
                   />
-                  <p className="hint-text">
-                    {t('使用 Markdown 编写技能说明；编辑时保留已有附属文件。')}
-                  </p>
                 </Field>
-              ) : (
+                <p className="hint-text">
+                  {t('编辑已发布文件时，保存不会重新拉取 GitHub。')}
+                </p>
+              </details>
+              <div
+                className="skill-editor-content"
+                hidden={source !== 'inline'}
+              >
+                <SkillFileEditor
+                  item={item}
+                  content={content}
+                  setContent={setContent}
+                  uploads={uploads}
+                  deleted={deleted}
+                  onChange={setUploads}
+                  manageFiles={() => {
+                    if (fileManager.current) {
+                      fileManager.current.open = true;
+                      fileManager.current.scrollIntoView({ block: 'nearest' });
+                      fileManager.current
+                        .querySelector<HTMLInputElement>('input[type="file"]')
+                        ?.focus();
+                    }
+                  }}
+                  disabled={
+                    save.isPending || attachmentsBlocked || source !== 'inline'
+                  }
+                />
+                <details className="skill-attachments" ref={fileManager}>
+                  <summary>{t('文件管理：上传与移除')}</summary>
+                  <FileAttachments
+                    files={uploads}
+                    deleted={deleted}
+                    initial={{
+                      ...Object.fromEntries(
+                        Object.entries(item?.spec?.files ?? {}).map(
+                          ([path, text]) => [
+                            path,
+                            {
+                              size: new TextEncoder().encode(text).length,
+                              executable: false,
+                            },
+                          ],
+                        ),
+                      ),
+                      ...item?.spec?.file_manifest,
+                    }}
+                    documentBytes={new TextEncoder().encode(content).length}
+                    disabled={save.isPending}
+                    onBlocked={setAttachmentsBlocked}
+                    onChange={(files, removed) => {
+                      setUploads(files);
+                      setDeleted(removed);
+                    }}
+                  />
+                </details>
+              </div>
+              {source === 'github' && (
                 <>
+                  <p className="hint-text">
+                    {t(
+                      '同步会用 GitHub 目录替换已发布的全部文件，本地编辑不会一并保存。',
+                    )}
+                  </p>
                   <Field>
                     <FieldLabel htmlFor="entry-repo">
                       {t('GitHub 仓库')}
@@ -224,10 +323,17 @@ export function MarketplaceEditor({
             </fieldset>
           )}
           <ErrorNotice error={save.error} />
-          <div className="action-row">
+          {kind === 'skill' && source === 'inline' && !content.trim() && (
+            <p className="hint-text">{t('请先填写 SKILL.md，再保存技能。')}</p>
+          )}
+          <div className="action-row skill-save-bar">
             <Button
               disabled={
-                save.isPending || (kind === 'bundle' && includes.length === 0)
+                save.isPending ||
+                (kind === 'skill' &&
+                  source === 'inline' &&
+                  (attachmentsBlocked || !content.trim())) ||
+                (kind === 'bundle' && includes.length === 0)
               }
               type="submit"
             >
@@ -250,7 +356,7 @@ export function MarketplaceEditor({
   );
 }
 
-const recommendations = [
+export const recommendations = [
   {
     slug: 'superpowers-debugging',
     name: 'Systematic Debugging',

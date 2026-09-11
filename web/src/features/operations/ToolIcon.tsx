@@ -13,7 +13,8 @@ type ToolIconEditorProps = {
 };
 const maxBytes = 64 * 1024;
 const invalidMessage = '请输入无账号密码的 HTTPS 图片地址，或安全的 SVG';
-const uploadMessage = '请选择 SVG、PNG、JPEG 或 WebP 图片，大小不超过 64 KiB';
+const uploadMessage =
+  '请选择 PNG、JPEG、WebP（最多 5 MiB）或 SVG（最多 64 KiB）';
 const imageTypes = new Set([
   'image/svg+xml',
   'image/png',
@@ -84,6 +85,34 @@ function parseIcon(source: string) {
   return value;
 }
 
+async function compressImage(file: File) {
+  const bitmap = await createImageBitmap(file);
+  try {
+    if (
+      !bitmap.width ||
+      !bitmap.height ||
+      bitmap.width * bitmap.height > 20_000_000
+    )
+      throw new Error('dimensions');
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('canvas');
+    for (const size of [256, 128, 64]) {
+      const scale = Math.min(1, size / Math.max(bitmap.width, bitmap.height));
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const source = canvas.toDataURL('image/webp', 0.82);
+      const bytes = atob(source.split(',')[1] ?? '').length;
+      if (bytes && (bytes <= 16 * 1024 || (size === 64 && bytes <= maxBytes)))
+        return parseIcon(source);
+    }
+    throw new Error('size');
+  } finally {
+    bitmap.close();
+  }
+}
+
 export function ToolIcon({ icon, name }: ToolIconProps) {
   const [failed, setFailed] = useState<string>();
   return (
@@ -146,7 +175,10 @@ export function ToolIconEditor({
               const currentRevision = ++revision.current;
               if (
                 !imageTypes.has(file.type) ||
-                file.size > maxBytes ||
+                file.size >
+                  (file.type === 'image/svg+xml'
+                    ? maxBytes
+                    : 5 * 1024 * 1024) ||
                 !file.size
               ) {
                 report(uploadMessage);
@@ -155,6 +187,23 @@ export function ToolIconEditor({
               report('');
               setReading(true);
               field.current?.setCustomValidity(t('正在读取图标，请稍候'));
+              if (file.type !== 'image/svg+xml') {
+                void compressImage(file)
+                  .then((source) => {
+                    if (revision.current !== currentRevision) return;
+                    if (accept(source)) {
+                      setDraft('');
+                      setFilename(file.name);
+                    }
+                  })
+                  .catch(() => {
+                    if (revision.current === currentRevision)
+                      report(
+                        '图片处理失败，请选择有效且不超过 2000 万像素的图片，或换用 SVG',
+                      );
+                  });
+                return;
+              }
               const reader = new FileReader();
               reader.onerror = () => {
                 if (revision.current === currentRevision)
@@ -174,6 +223,17 @@ export function ToolIconEditor({
           {value.startsWith('data:') && !draft && (
             <p className="field-help tool-icon-filename">
               {filename || t('已上传图片')}
+            </p>
+          )}
+          {value.startsWith('data:') && value.includes(',') && (
+            <p className="field-help">
+              {t('保存大小：{size} KiB', {
+                size: (
+                  ((value.split(',')[1].length * 3) / 4 -
+                    (value.endsWith('==') ? 2 : value.endsWith('=') ? 1 : 0)) /
+                  1024
+                ).toFixed(1),
+              })}
             </p>
           )}
         </div>
@@ -209,7 +269,7 @@ export function ToolIconEditor({
       />
       <p id={`${id}-help`} className="field-help">
         {t(
-          '支持 HTTPS 地址、粘贴 SVG 或上传 SVG / PNG / JPEG / WebP（最多 64 KiB）。保存后图标配置存入共享数据库，所有服务副本共用。',
+          'PNG / JPEG / WebP 最多 5 MiB，自动等比缩小至最长 256 px，压缩后保存（目标 16 KiB，最多 64 KiB）。SVG 最多 64 KiB；也支持 HTTPS 地址。图标存入共享数据库，所有服务副本共用。',
         )}{' '}
         {t(
           'SVG 支持静态图形和文字；样式请写成 fill、stroke 等属性，不支持 style、动画或外部资源。',

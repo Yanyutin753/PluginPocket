@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom/vitest';
+import '../test/editor-geometry';
 import { cleanup, configure } from '@testing-library/react';
 import { afterEach, beforeEach } from 'vitest';
 
