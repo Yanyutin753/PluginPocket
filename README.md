@@ -60,6 +60,8 @@ Codex / Claude Code / Cursor
 
 ## 快速开始
 
+桌面打包已配置 Windows x64、macOS 双架构及 Linux 双架构，使用独立 Loadout 发布签名并在公开前验签；当前本机已产出 Linux x64 包，其他平台尚未远程验收。下载与证书边界见 [桌面发行说明](desktop/README.md#桌面发行)。
+
 工具链固定为搭建时最新稳定版：**Node 26.8.2、pnpm 12.3.4、Go 1.27.1、Rust 1.98.1**。Go 可自动下载模块要求的工具链；Rust 由 rustup 读取 `rust-toolchain.toml` 安装。Rust HTTPS 依赖需要本机 C/C++ 编译环境；完整 harness 在 Linux 运行，CLI 同时配置 macOS/Windows CI。
 
 ```bash

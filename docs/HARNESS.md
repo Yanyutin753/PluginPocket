@@ -21,6 +21,8 @@ pnpm --dir web test
 
 ## 入口
 
+桌面发行预检 `node --test tests/release-preflight.test.mjs` 已进入 `make check`，覆盖非法 tag、版本漂移和缺失签名配置。发行 workflow 使用原生多平台 runner，运行 desktop/UI 测试、解包 bridge 验证及独立 Minisign 验签；远程 CI 未运行时不得宣称跨平台已验收。详见 [桌面说明](../desktop/README.md#桌面发行)。
+
 | 命令 | 检查 |
 |---|---|
 | `make help` / `make` | 列出可用命令 |

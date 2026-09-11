@@ -112,3 +112,7 @@ Compose固定使用内部`db:5432`与`redis:6379`，不会将根.env里的应用
 新请求使用最新配置；已开始的请求保持其快照。配置读取失败返回可重试错误，不静默回退。GitHub与邮件启用需要已有公开访问源；密钥加密持久化使用LOADOUT_ENCRYPTION_KEY，网页从不回显原文。未配置加密主密钥时只能保存不包含秘密的配置。
 
 数据库/Redis连接、命名空间、监听/公开地址、加密主密钥、bootstrap管理员、stdio执行白名单、允许私网上游与允许SMTP本地明文仍为部署参数，不在网页可编辑，修改须重启。不要通过页面放宽部署信任边界。
+
+## 桌面发行专用配置
+
+GitHub Actions Secrets：`TAURI_SIGNING_PRIVATE_KEY`（独立 Loadout Minisign 私钥或本地私钥路径）、`TAURI_SIGNING_PRIVATE_KEY_PASSWORD`（可选密码）。仅用于 `desktop/tauri.release.conf.json` 发行构建，不传入服务端、前端或安装包；公钥随仓库版本管理。详见 [桌面发行](../desktop/README.md#桌面发行)。

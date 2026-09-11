@@ -15,6 +15,7 @@
 | 市场 | `server/internal/marketplace` | GitHub 同步 + 技能代取 + **服务端即 Codex 插件市场源**（`/marketplace.git` 哑 HTTP git 实时渲染，gateway 独享组件→bridge 条目；`/plugins` SEO 目录页；`loadout-export` 离线导出） |
 | 存储 | `server/internal/store` | pgx + 事务账本（append-only 触发器）；**SQLite 迁移轨道** `migrations_sqlite/`（ADR 0002 阶段 2 地基，已验证） |
 | CLI | `cli/src` | login/apply/bridge + market/install/uninstall（按 kind 分发；托管标记 + 备份 + 清单） |
+| 桌面发行 | `desktop` + `.github/workflows/release.yml` | Windows x64、macOS/Linux 双架构；独立发布密钥，安装包 bridge 验证 + Minisign 验签后公开；平台受信任证书与 GUI 验收另计 |
 | Web 控制台 | `web/src` | TanStack Query + Zod + shadcn/ui；市场面板、覆盖编辑器、结算策略编辑（前端语法预检） |
 | 压测设施 | `server/cmd/loadout-server/load_test.go`（build tag `load`） | QPS / 慢上游 / 内存安全三件套，`make load-test` |
 

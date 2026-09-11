@@ -1,5 +1,7 @@
 # Loadout —— 产品与技术总体方案
 
+2026-09-11 桌面分发扩展：Windows x64（MSI/NSIS）、macOS ARM64/Intel（DMG/app）、Linux x64/ARM64（deb/rpm/AppImage），使用独立 Loadout 发布签名密钥，macOS ad-hoc 封印；不含手机端，不等同于平台受信任证书公证。实施及真实验收状态见 [桌面发布记录](superpowers/plans/2026-09-11-desktop-release.md)。
+
 > **一句话定位**：登录即武装的 MCP 订阅网关 —— 用户在网页端注册/充值，本地一条命令把整套预设好的 MCP 工具写进 Codex / Claude Code / Cursor，开箱即用；服务端统一鉴权、计量、扣额度，后台看得见每一次调用。
 >
 > 名字来源：游戏术语 *Loadout*（预设装备 / 出战配置）—— 角色进场前配好的整套武器和配件，一键上身直接开战。

@@ -110,6 +110,7 @@ skills-check:
 	test -x .agents/skills/impeccable/scripts/impeccable
 
 check: ## 完整 harness，任一步失败即停止
+	node --test tests/release-preflight.test.mjs
 	$(MAKE) database-check
 	$(MAKE) redis-check
 	$(MAKE) skills-check

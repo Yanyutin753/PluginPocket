@@ -4,6 +4,14 @@ on:
   push:
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Version to validate (vMAJOR.MINOR.PATCH). Manual runs build artifacts only; they do not publish.'
+        required: true
+        type: string
+
+env:
+  RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
 
 permissions:
   contents: write
@@ -11,10 +19,24 @@ permissions:
 
 jobs:
   # 先创建空 Release（所有后续 job 构建完各自往里加产物）
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: .node-version
+      - run: node --test tests/release-preflight.test.mjs
+      - run: node scripts/release-preflight.mjs
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+
   create-release:
+    needs: preflight
     runs-on: ubuntu-latest
     steps:
       - uses: softprops/action-gh-release@v2
+        if: github.event_name == 'push'
         with:
           tag_name: ${{ github.ref_name }}
           name: 'Loadout ${{ github.ref_name }}'
@@ -39,12 +61,13 @@ jobs:
             ```bash
             codex plugin marketplace add https://loadout.lambchat.com/marketplace.git
             ```
-          draft: false
+          draft: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # CLI 多平台——每个构建完立刻上传到 Release
   cli:
+    if: github.event_name == 'push'
     needs: [create-release]
     strategy:
       fail-fast: false
@@ -120,6 +143,8 @@ jobs:
 
   # Docker 镜像
   docker:
+    if: github.event_name == 'push'
+    needs: preflight
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -144,53 +169,174 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # Tauri 桌面端——tauri-action 构建完自动上传到 Release
   desktop:
     needs: [create-release]
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
-            name: linux
-          - os: windows-latest
-            name: windows
-          - os: macos-latest
-            name: darwin
+          - os: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+            bundles: deb,rpm,appimage
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            bundles: deb,rpm,appimage
+          - os: windows-2022
+            target: x86_64-pc-windows-msvc
+            bundles: msi,nsis
+          - os: macos-14
+            target: aarch64-apple-darwin
+            bundles: dmg,app
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+            bundles: dmg,app
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: dtolnay/rust-toolchain@stable
-
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: .node-version
+      - uses: pnpm/action-setup@v6.1.0
+      - name: Install pinned Rust and target
+        run: rustup target add ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: desktop
-
-      - name: Install Linux deps
+          workspaces: |
+            desktop
+            cli
+      - name: Install Linux packaging dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 26
-
-      - name: Install pnpm
-        run: npm install -g pnpm@12.3.4
-
-      - name: Install deps & build UI
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf rpm xdg-utils
+      - run: pnpm install --frozen-lockfile
+      - name: Test native commands, bridge and UI
+        shell: bash
         run: |
-          pnpm install --frozen-lockfile
+          set -euo pipefail
           pnpm --dir desktop/ui build
-
-      - name: Build Tauri & Upload
-        uses: tauri-apps/tauri-action@v0
+          pnpm --dir desktop/ui test
+          cargo test --manifest-path desktop/Cargo.toml --locked --target ${{ matrix.target }}
+      - name: Build signed bundles
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+        run: pnpm --dir desktop/ui tauri build --ci --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --config tauri.release.conf.json -- --locked
+      - name: Verify installed Linux bridge
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="desktop/target/${{ matrix.target }}/release/bundle"
+          dpkg-deb --extract "$root"/deb/*.deb "$RUNNER_TEMP/loadout-installed"
+          LOADOUT_DESKTOP_TEST_BIN="$RUNNER_TEMP/loadout-installed/usr/bin/loadout-desktop" cargo test --manifest-path desktop/Cargo.toml --locked --target ${{ matrix.target }} --test native_bridge
+      - name: Verify macOS bundle seal and packaged bridge
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="$PWD/desktop/target/${{ matrix.target }}/release/bundle/macos/Loadout.app"
+          test -f "$app/Contents/_CodeSignature/CodeResources"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          LOADOUT_DESKTOP_TEST_BIN="$app/Contents/MacOS/loadout-desktop" cargo test --manifest-path desktop/Cargo.toml --locked --target ${{ matrix.target }} --test native_bridge
+      - name: Verify Windows MSI packaged bridge
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $msi = Get-ChildItem "desktop/target/${{ matrix.target }}/release/bundle/msi/*.msi" | Select-Object -First 1
+          $destination = Join-Path $env:RUNNER_TEMP 'loadout-installed'
+          $process = Start-Process msiexec.exe -ArgumentList "/a `"$($msi.FullName)`" /qn TARGETDIR=`"$destination`"" -WindowStyle Hidden -Wait -PassThru
+          if ($process.ExitCode -notin @(0, 3010)) { throw "MSI extraction failed: $($process.ExitCode)" }
+          $binary = Get-ChildItem $destination -Recurse -Filter loadout-desktop.exe | Select-Object -First 1
+          if (!$binary) { throw 'Installed bridge binary missing' }
+          $env:LOADOUT_DESKTOP_TEST_BIN = $binary.FullName
+          cargo test --manifest-path desktop/Cargo.toml --locked --target ${{ matrix.target }} --test native_bridge
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require all installers and signatures, collect checksums
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+          RUNNER_PLATFORM: ${{ runner.os }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          root="desktop/target/$TARGET/release/bundle"
+          case "$RUNNER_PLATFORM" in
+            Linux) patterns=("deb/*.deb" "rpm/*.rpm" "appimage/*.AppImage" "appimage/*.AppImage.sig");;
+            Windows) patterns=("msi/*.msi" "msi/*.msi.sig" "nsis/*.exe" "nsis/*.exe.sig");;
+            macOS) patterns=("dmg/*.dmg" "macos/*.app.tar.gz" "macos/*.app.tar.gz.sig");;
+          esac
+          mkdir -p release-assets
+          for pattern in "${patterns[@]}"; do
+            files=("$root"/$pattern)
+            test "${#files[@]}" -gt 0 || { echo "Missing required artifact: $pattern"; exit 1; }
+            for file in "${files[@]}"; do
+              test -s "$file"
+              cp "$file" "release-assets/$TARGET-$(basename "$file")"
+            done
+          done
+          for file in release-assets/*; do
+            case "$file" in *.sig) continue;; esac
+            if [ ! -s "$file.sig" ]; then
+              node desktop/ui/node_modules/@tauri-apps/cli/tauri.js signer sign "$file"
+            fi
+          done
+          cd release-assets
+          if command -v sha256sum >/dev/null; then
+            sha256sum * > "$TARGET-SHA256SUMS"
+          else
+            shasum -a 256 * > "$TARGET-SHA256SUMS"
+          fi
+      - uses: actions/upload-artifact@v7.0.1
         with:
-          projectPath: desktop
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Loadout ${{ github.ref_name }}'
-          releaseDraft: false
+          name: desktop-${{ matrix.target }}
+          path: release-assets/*
+          if-no-files-found: error
+      - name: Upload verified bundles to draft
+        if: github.event_name == 'push'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$RELEASE_TAG" release-assets/* --clobber
+
+  verify-signatures:
+    needs: desktop
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/download-artifact@v8.0.1
+        with:
+          pattern: desktop-*
+          merge-multiple: true
+          path: release-assets
+      - run: sudo apt-get update && sudo apt-get install -y minisign
+      - name: Verify every installer against the one Loadout public key
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e 'const fs=require("fs"); const c=JSON.parse(fs.readFileSync("desktop/tauri.release.conf.json")); fs.writeFileSync("release-public.key", Buffer.from(c.plugins.updater.pubkey,"base64"))'
+          public_key="$PWD/release-public.key"
+          cd release-assets
+          for manifest in *-SHA256SUMS; do sha256sum --check "$manifest"; done
+          for file in *; do
+            case "$file" in *.sig|*-SHA256SUMS) continue;; esac
+            test -s "$file.sig"
+            base64 --decode "$file.sig" > "$RUNNER_TEMP/release-signature"
+            minisign -Vm "$file" -p "$public_key" -x "$RUNNER_TEMP/release-signature"
+          done
+
+  publish:
+    if: github.event_name == 'push'
+    needs: [cli, desktop, docker, verify-signatures]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish only after every platform succeeds
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh release edit "$RELEASE_TAG" --draft=false
