@@ -52,37 +52,34 @@ jobs:
     strategy:
       matrix:
         target:
-          - os: linux
-            arch: amd64
+          - triple: x86_64-unknown-linux-musl
+            name: linux-amd64
             ext: ""
-          - os: linux
-            arch: arm64
+          - triple: aarch64-unknown-linux-musl
+            name: linux-arm64
             ext: ""
-          - os: darwin
-            arch: amd64
-            ext: ""
-          - os: darwin
-            arch: arm64
-            ext: ""
-          - os: windows
-            arch: amd64
+          - triple: x86_64-pc-windows-gnu
+            name: windows-amd64
             ext: ".exe"
     steps:
       - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target.os }}-${{ matrix.target.arch }}
+          targets: ${{ matrix.target.triple }}
 
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: cli
 
+      - name: Install cross
+        run: cargo install cross
+
       - name: Build CLI
-        run: cargo build --manifest-path cli/Cargo.toml --locked --release --target ${{ matrix.target.os }}-${{ matrix.target.arch }}
+        run: cross build --manifest-path cli/Cargo.toml --locked --release --target ${{ matrix.target.triple }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: loadout-${{ matrix.target.os }}-${{ matrix.target.arch }}
-          path: cli/target/${{ matrix.target.os }}-${{ matrix.target.arch }}/release/loadout${{ matrix.target.ext }}
+          name: loadout-${{ matrix.target.name }}
+          path: cli/target/${{ matrix.target.triple }}/release/loadout${{ matrix.target.ext }}
