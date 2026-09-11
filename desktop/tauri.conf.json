@@ -11,7 +11,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Loadout \u672c\u5730\u63a5\u5165",
+        "title": "Loadout 本地接入",
         "width": 960,
         "height": 740,
         "minWidth": 360,
@@ -25,9 +25,14 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["deb"],
+    "targets": "all",
     "category": "DeveloperTool",
-    "shortDescription": "Loadout \u672c\u5730 MCP \u63a5\u5165\u5de5\u5177",
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/256x256.png"]
+    "shortDescription": "Loadout 本地 MCP 接入工具",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/256x256.png",
+      "icons/icon.ico"
+    ]
   }
 }
