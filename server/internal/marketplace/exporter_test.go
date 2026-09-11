@@ -79,20 +79,22 @@ func TestExportMcpPluginTree(t *testing.T) {
 		Name        string `json:"name"`
 		Version     string `json:"version"`
 		Description string `json:"description"`
+		McpServers  map[string]struct {
+			Type string `json:"type"`
+			URL  string `json:"url"`
+		} `json:"mcpServers"`
 	}
 	decode(t, files["plugins/deepwiki/.codex-plugin/plugin.json"], &plugin)
 	if plugin.Name != "deepwiki" || plugin.Version == "" || plugin.Description != "Ask about repos" {
 		t.Fatalf("plugin.json wrong: %+v", plugin)
 	}
-	var mcp struct {
-		McpServers map[string]struct {
-			Type string `json:"type"`
-			URL  string `json:"url"`
-		} `json:"mcpServers"`
+	// Codex 只识别 plugin.json 的 mcpServers 声明（根目录 mcp.json 不会被加载），
+	// http 端点的类型值为 "http"。
+	if entry, ok := plugin.McpServers["deepwiki"]; !ok || entry.Type != "http" || entry.URL != "https://mcp.deepwiki.com/mcp" {
+		t.Fatalf("plugin.json mcpServers wrong: %+v", plugin.McpServers)
 	}
-	decode(t, files["plugins/deepwiki/mcp.json"], &mcp)
-	if entry, ok := mcp.McpServers["deepwiki"]; !ok || entry.Type != "streamable-http" || entry.URL != "https://mcp.deepwiki.com/mcp" {
-		t.Fatalf("mcp.json wrong: %+v", mcp)
+	if files["plugins/deepwiki/mcp.json"] != nil {
+		t.Fatal("root mcp.json is not a Codex convention; declare servers in plugin.json")
 	}
 }
 
@@ -101,25 +103,22 @@ func TestExportSkillAndBundlePluginTrees(t *testing.T) {
 	if got := string(files["plugins/commit-style/skills/commit-style/SKILL.md"]); !strings.Contains(got, "name: commit-style") {
 		t.Fatalf("skill file wrong: %q", got)
 	}
-	// bundle：成员技能进 skills/，成员 MCP 进 mcp.json。
+	// bundle：成员技能进 skills/，成员 MCP 内联进 plugin.json 的 mcpServers。
 	if got := string(files["plugins/expert-pack/skills/commit-style/SKILL.md"]); !strings.Contains(got, "正文") {
 		t.Fatalf("bundle skill wrong: %q", got)
 	}
-	var mcp struct {
+	var plugin struct {
+		Name       string `json:"name"`
 		McpServers map[string]struct {
 			URL string `json:"url"`
 		} `json:"mcpServers"`
 	}
-	decode(t, files["plugins/expert-pack/mcp.json"], &mcp)
-	if entry, ok := mcp.McpServers["deepwiki"]; !ok || entry.URL != "https://mcp.deepwiki.com/mcp" {
-		t.Fatalf("bundle mcp wrong: %+v", mcp)
-	}
-	var plugin struct {
-		Name string `json:"name"`
-	}
 	decode(t, files["plugins/expert-pack/.codex-plugin/plugin.json"], &plugin)
 	if plugin.Name != "expert-pack" {
 		t.Fatalf("bundle plugin.json wrong: %+v", plugin)
+	}
+	if entry, ok := plugin.McpServers["deepwiki"]; !ok || entry.URL != "https://mcp.deepwiki.com/mcp" {
+		t.Fatalf("bundle mcpServers wrong: %+v", plugin.McpServers)
 	}
 }
 
@@ -172,11 +171,11 @@ func TestExportGatewayComponentUsesBridge(t *testing.T) {
 	if err != nil || len(skipped) != 0 {
 		t.Fatalf("skipped=%v err=%v", skipped, err)
 	}
-	var mcp struct {
+	var plugin struct {
 		McpServers map[string]map[string]any `json:"mcpServers"`
 	}
-	decode(t, files["plugins/seedance/mcp.json"], &mcp)
-	entry := mcp.McpServers["seedance"]
+	decode(t, files["plugins/seedance/.codex-plugin/plugin.json"], &plugin)
+	entry := plugin.McpServers["seedance"]
 	if entry["command"] != "pluginpocket" {
 		t.Fatalf("gateway entry must be bridge stdio: %+v", entry)
 	}
@@ -187,8 +186,8 @@ func TestExportGatewayComponentUsesBridge(t *testing.T) {
 	if _, hasEnv := entry["env"]; hasEnv {
 		t.Fatal("bridge entry must not pin env paths (~ does not expand)")
 	}
-	decode(t, files["plugins/video-pack/mcp.json"], &mcp)
-	if entry := mcp.McpServers["seedance"]; entry["command"] != "pluginpocket" {
+	decode(t, files["plugins/video-pack/.codex-plugin/plugin.json"], &plugin)
+	if entry := plugin.McpServers["seedance"]; entry["command"] != "pluginpocket" {
 		t.Fatalf("bundle gateway member wrong: %+v", entry)
 	}
 }

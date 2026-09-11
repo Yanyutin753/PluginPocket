@@ -145,7 +145,7 @@ func TestGitRegistryServesAndInvalidates(t *testing.T) {
 	mu.Unlock()
 	cloneB := filepath.Join(t.TempDir(), "b")
 	gitClone(t, server.URL, cloneB)
-	if got := readCloned(t, cloneB, "plugins/fresh-probe/mcp.json"); !strings.Contains(got, "pluginpocket") {
+	if got := readCloned(t, cloneB, "plugins/fresh-probe/.codex-plugin/plugin.json"); !strings.Contains(got, "pluginpocket") {
 		t.Fatalf("invalidated registry must serve new gateway plugin: %s", got)
 	}
 }

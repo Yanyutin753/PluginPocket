@@ -63,6 +63,8 @@ func ExportCodexMarketplace(name, displayName string, entries []ExportInput) (ma
 		}
 		files := map[string][]byte{}
 		category := ""
+		// Codex 只加载 plugin.json 的 mcpServers 声明；根目录 mcp.json 不是 Codex 约定。
+		mcpServers := map[string]any{}
 		switch entry.Kind {
 		case "skill":
 			if !renderSkillFiles(entry.Slug, entry.Slug, entry.Files, files) {
@@ -76,11 +78,7 @@ func ExportCodexMarketplace(name, displayName string, entries []ExportInput) (ma
 				skipped = append(skipped, entry.Slug+":no-http-endpoint")
 				continue
 			}
-			mcpJSON, err := json.Marshal(map[string]any{"mcpServers": map[string]any{entry.Slug: server}})
-			if err != nil {
-				return nil, nil, err
-			}
-			files[fmt.Sprintf("plugins/%s/mcp.json", entry.Slug)] = mcpJSON
+			mcpServers[entry.Slug] = server
 			category = "Tools"
 		case "bundle":
 			var spec struct {
@@ -90,7 +88,6 @@ func ExportCodexMarketplace(name, displayName string, entries []ExportInput) (ma
 				skipped = append(skipped, entry.Slug+":invalid-bundle")
 				continue
 			}
-			mcpServers := map[string]any{}
 			ok := true
 			for _, member := range spec.Includes {
 				source, found := bySlug[member]
@@ -121,13 +118,6 @@ func ExportCodexMarketplace(name, displayName string, entries []ExportInput) (ma
 			if !ok {
 				continue
 			}
-			if len(mcpServers) > 0 {
-				mcpJSON, err := json.Marshal(map[string]any{"mcpServers": mcpServers})
-				if err != nil {
-					return nil, nil, err
-				}
-				files[fmt.Sprintf("plugins/%s/mcp.json", entry.Slug)] = mcpJSON
-			}
 			category = "Bundles"
 		default:
 			skipped = append(skipped, entry.Slug+":unknown-kind")
@@ -138,13 +128,17 @@ func ExportCodexMarketplace(name, displayName string, entries []ExportInput) (ma
 		if version == "" {
 			version = contentVersion(files)
 		}
-		pluginJSON, err := json.MarshalIndent(map[string]any{
+		metadata := map[string]any{
 			"name":        entry.Slug,
 			"version":     version,
 			"description": entry.Description,
 			"author":      "PluginPocket marketplace",
 			"keywords":    []string{"pluginpocket", entry.Kind},
-		}, "", "  ")
+		}
+		if len(mcpServers) > 0 {
+			metadata["mcpServers"] = mcpServers
+		}
+		pluginJSON, err := json.MarshalIndent(metadata, "", "  ")
 		if err != nil {
 			return nil, nil, err
 		}
@@ -203,11 +197,11 @@ func contentVersion(files map[string][]byte) string {
 	return "1." + hex.EncodeToString(sum.Sum(nil))[:8]
 }
 
-// mcpServerEntry：公共 HTTP 端点 → 直连 streamable-http；网关供给 → 本地
+// mcpServerEntry：公共 HTTP 端点 → 直连 HTTP MCP（Codex 配置类型值为 "http"）；网关供给 → 本地
 // pluginpocket bridge（stdio，读登录凭证注入 Bearer，调用经计量）。两者都不满足则不可渲染。
 func mcpServerEntry(transport, endpoint string) map[string]any {
 	if transport == "http" && endpoint != "" {
-		return map[string]any{"type": "streamable-http", "url": endpoint}
+		return map[string]any{"type": "http", "url": endpoint}
 	}
 	if transport == "gateway" {
 		// bridge 默认即读 ~/.pluginpocket/config.json（由 HOME 解析）；
