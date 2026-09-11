@@ -10,8 +10,42 @@ permissions:
   packages: write
 
 jobs:
-  # CLI 多平台原生构建
+  # 先创建空 Release（所有后续 job 构建完各自往里加产物）
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: 'Loadout ${{ github.ref_name }}'
+          body: |
+            ## Loadout ${{ github.ref_name }}
+
+            **Your AI, fully loaded.** 登录即武装的 MCP 生态。
+
+            ### 快速开始
+            ```bash
+            # Linux
+            curl -L https://github.com/Yanyutin753/loadout/releases/download/${{ github.ref_name }}/loadout-linux-amd64.tar.gz | tar xz
+            # macOS ARM
+            curl -L https://github.com/Yanyutin753/loadout/releases/download/${{ github.ref_name }}/loadout-darwin-arm64.tar.gz | tar xz
+
+            loadout login --server https://loadout.lambchat.com
+            loadout apply --clients codex
+            loadout install starter-pack
+            ```
+
+            ### Codex 插件市场
+            ```bash
+            codex plugin marketplace add https://loadout.lambchat.com/marketplace.git
+            ```
+          draft: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # CLI 多平台——每个构建完立刻上传到 Release
   cli:
+    needs: [create-release]
     strategy:
       fail-fast: false
       matrix:
@@ -49,7 +83,7 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      - name: Verify target installed
+      - name: Ensure target
         shell: bash
         run: rustup target add ${{ matrix.target }}
 
@@ -61,28 +95,28 @@ jobs:
         if: matrix.use-cross == true
         run: cargo install cross
 
-      - name: Build (cross)
-        if: matrix.use-cross == true
-        run: cross build --manifest-path cli/Cargo.toml --locked --release --target ${{ matrix.target }}
-
-      - name: Build (native)
-        if: matrix.use-cross == false
-        run: cargo build --manifest-path cli/Cargo.toml --locked --release --target ${{ matrix.target }}
-
-      - name: Package
+      - name: Build
         shell: bash
+        run: |
+          if [ "${{ matrix.use-cross }}" = "true" ]; then
+            cross build --manifest-path cli/Cargo.toml --locked --release --target ${{ matrix.target }}
+          else
+            cargo build --manifest-path cli/Cargo.toml --locked --release --target ${{ matrix.target }}
+          fi
+
+      - name: Package & Upload to Release
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd cli/target/${{ matrix.target }}/release
           if [ "${{ runner.os }}" = "Windows" ]; then
             7z a ../../../${{ matrix.name }}.zip loadout${{ matrix.ext }}
+            gh release upload ${{ github.ref_name }} ../../../${{ matrix.name }}.zip --clobber
           else
             tar czf ../../../${{ matrix.name }}.tar.gz loadout${{ matrix.ext }}
+            gh release upload ${{ github.ref_name }} ../../../${{ matrix.name }}.tar.gz --clobber
           fi
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.name }}
-          path: cli/${{ matrix.name }}.*
 
   # Docker 镜像
   docker:
@@ -110,8 +144,9 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # Tauri 桌面端
+  # Tauri 桌面端——tauri-action 构建完自动上传到 Release
   desktop:
+    needs: [create-release]
     strategy:
       fail-fast: false
       matrix:
@@ -145,13 +180,12 @@ jobs:
       - name: Install pnpm
         run: npm install -g pnpm@12.3.4
 
-      - name: Install deps & build desktop UI
+      - name: Install deps & build UI
         run: |
           pnpm install --frozen-lockfile
           pnpm --dir desktop/ui build
 
-      - name: Build Tauri (Linux)
-        if: runner.os == 'Linux'
+      - name: Build Tauri & Upload
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -160,45 +194,3 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: 'Loadout ${{ github.ref_name }}'
           releaseDraft: false
-
-      - name: Build Tauri (macOS)
-        if: runner.os == 'macOS'
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          projectPath: desktop
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Loadout ${{ github.ref_name }}'
-          releaseDraft: false
-
-
-      - name: Build Tauri (Windows)
-        if: runner.os == 'Windows'
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          projectPath: desktop
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Loadout ${{ github.ref_name }}'
-          releaseDraft: false
-
-  # 收集 CLI 产物到 Release
-  release-cli:
-    needs: [cli]
-    if: always() && !cancelled()
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            artifacts/**/*.tar.gz
-            artifacts/**/*.zip
-          tag_name: ${{ github.ref_name }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
