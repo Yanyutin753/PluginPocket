@@ -400,6 +400,7 @@ footer {
 
 /* The native color-scheme selector is authoritative over utility dark variants. */
 [data-slot="input"] {
+  font-size: 16px;
   background: var(--background);
   color: var(--foreground);
   border-color: var(--input-border);

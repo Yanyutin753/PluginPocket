@@ -72,7 +72,52 @@ async function login(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: '登录' }));
   await screen.findByText('alice');
 }
+
+it('blocks configuration during refresh and after client detection fails, then recovers with the selection intact', async () => {
+  const user = userEvent.setup();
+  mount();
+  await login(user);
+  await user.click(screen.getByRole('checkbox', { name: /Codex/ }));
+  let rejectClients: (reason: Error) => void = () => {};
+  vi.mocked(invoke).mockImplementation(async (_name, args) => {
+    if ((args as { command: { action: string } }).command.action === 'clients')
+      return new Promise((_resolve, reject) => {
+        rejectClients = reject;
+      });
+    return { account, clients: initialClients };
+  });
+  await user.click(screen.getByRole('button', { name: '刷新状态' }));
+  expect(screen.getByRole('button', { name: '配置所选客户端' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: '移除所选配置' })).toBeDisabled();
+  rejectClients(new Error('unreadable config'));
+  await screen.findByText('无法读取客户端配置，请检查文件内容后刷新重试');
+  expect(screen.getByRole('button', { name: '配置所选客户端' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: '移除所选配置' })).toBeDisabled();
+  vi.mocked(invoke).mockImplementation(async (_name, args) =>
+    (args as { command: { action: string } }).command.action === 'clients'
+      ? initialClients
+      : { account, clients: initialClients },
+  );
+  await user.click(screen.getByRole('button', { name: '刷新状态' }));
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: '配置所选客户端' }),
+    ).toBeEnabled(),
+  );
+  expect(screen.getByRole('checkbox', { name: /Codex/ })).toBeChecked();
+});
 describe('local desktop companion', () => {
+  it('replaces an earlier success message when the next connection check fails', async () => {
+    const user = userEvent.setup();
+    mount();
+    await login(user);
+    await user.click(screen.getByRole('button', { name: '检查连接' }));
+    await screen.findByText('服务可达 · 凭证有效');
+    vi.mocked(invoke).mockRejectedValueOnce(new Error('offline'));
+    await user.click(screen.getByRole('button', { name: '检查连接' }));
+    await screen.findByText('连接检查失败，请检查服务地址、网络和凭证后重试');
+    expect(screen.queryByText('服务可达 · 凭证有效')).not.toBeInTheDocument();
+  });
   it('logs in, clears the secret, configures selected clients, removes and logs out through limited native commands', async () => {
     const user = userEvent.setup();
     mount();

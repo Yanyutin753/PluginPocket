@@ -1,5 +1,9 @@
 # PluginPocket —— 产品与技术总体方案
 
+2026-09-12 CLI 技能生命周期修复：更新按本地已保存清单识别托管目录，允许新版增加、删除附件并清理旧文件；卸载递归核对嵌套附件。外来文件、目录与符号链接继续阻止破坏性操作，执行记录见 `superpowers/plans/2026-09-12-cli-skill-lifecycle.md`。
+
+2026-09-12 全站质量检查：通用面板关闭后重新打开恢复普通尺寸；桌面配置操作在状态刷新或客户端检测失败时禁用，恢复后继续使用原选择。沿用现有视觉体系优化窄屏输入与市场筛选，实际证据及未验证范围见 `superpowers/plans/2026-09-12-quality-review.md`。
+
 2026-09-12 品牌统一为 **PluginPocket（插件口袋）**，全量改名命令 `pluginpocket`、配置 `PLUGINPOCKET_*` 与 `.pluginpocket/`、包名及应用标识；按新项目运行，不提供旧版兼容或迁移。全产品展示与双语 README 同步，范围及验证见 `superpowers/plans/2026-09-12-pluginpocket-brand.md`。
 
 2026-09-12 SQLite 单机轨道阶段 2 首增量：账本核心（Reserve/Finish/RecoverPending/AuthToken）落地 stdlib database/sql 实现（`store_sqlite.go`），行为与 PG 等价（18 项 `TestSQLite*`，并发零超扣、退款幂等、吊销即时生效），零新依赖；`Ledger` 接口为双实现契约，运行时 DSN 分流待后续域移植。方案与验证见 `superpowers/plans/2026-09-12-sqlite-ledger.md`。
@@ -42,7 +46,7 @@
 
 > **一句话定位**：登录即武装的开源自托管 MCP 装备网关 —— 部署一套，成员在网页端注册，本地一条命令把整套预设好的 MCP 工具写进 Codex / Claude Code / Cursor，开箱即用；服务端统一鉴权、计量、扣额度，后台看得见每一次调用。
 >
-> 名字来源：游戏术语 *PluginPocket*（预设装备 / 出战配置）—— 角色进场前配好的整套武器和配件，一键上身直接开战。
+> 名字含义：*PluginPocket* 将插件（Plugin）与口袋（Pocket）组合，表达随手携带和使用 AI 工具的产品定位。
 
 | 项 | 值 |
 |---|---|
@@ -119,7 +123,7 @@
 
 ## 2. 市场背景与机会判断
 
-> 详细调研过程见对话记录，此处只留结论。
+> 本节保留早期市场假设，不作为当前产品能力或竞品现状的验收依据；价格、排名及能力对比需在对外引用前重新核验官方来源。
 
 ### 2.1 事实
 
@@ -147,13 +151,13 @@
 
 > 用 Codex / Claude Code 写代码，听说过 MCP 很强，但不想折腾配置和 API key。
 
-场景：注册 → 充 20 块 → `pluginpocket login` → `pluginpocket apply` → 重启 Codex，搜索/浏览/文档工具全部就位。用多少扣多少。
+场景：在自部署服务注册 → 按部署者设置领取初始或分配额度 → `pluginpocket login` → `pluginpocket apply` → 重启 Codex，使用管理员启用的工具并查看实际用量。
 
 ### Persona B：小团队 Tech Lead
 
 > 团队 5-20 人都用 Cursor/Claude Code，想统一工具配置、控制成本、有调用审计。
 
-场景：管理员在后台建团队额度池，成员各自 `pluginpocket login --team-code XXXX`，配置自动一致；后台看每人用量、月度成本报表、超限熔断。
+场景：在网页端创建团队、邀请成员与分配共享额度，成员创建关联团队钱包的网关令牌，再用 `pluginpocket login` 和 `pluginpocket apply` 接入；团队页面按权限查看成员和用量。CLI 不提供 `--team-code` 参数。
 
 ### Persona C：MCP 内容提供者（生态期）
 

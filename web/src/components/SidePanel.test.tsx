@@ -5,6 +5,24 @@ import { SidePanel } from './SidePanel';
 import { Button } from './ui/button';
 import { Select } from './ui/select';
 
+it('reopens a closed fullscreen panel at its normal size and returns keyboard focus', async () => {
+  const user = userEvent.setup();
+  render(
+    <SidePanel title="Edit" trigger="Open">
+      <p>Content</p>
+    </SidePanel>,
+  );
+  await user.click(screen.getByRole('button', { name: 'Open' }));
+  await user.click(screen.getByRole('button', { name: '全屏' }));
+  await user.click(screen.getByRole('button', { name: '关闭面板' }));
+  expect(screen.getByRole('button', { name: 'Open' })).toHaveFocus();
+  await user.keyboard('{Enter}');
+  expect(screen.getByRole('button', { name: '全屏' })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
+});
+
 it('keeps focus inside the panel and lets a nested selector close before the panel', async () => {
   const user = userEvent.setup();
   render(

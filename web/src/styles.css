@@ -249,6 +249,13 @@
     outline-offset: 3px;
     box-shadow: none;
   }
+
+  @media (max-width: 639px) {
+    :root [data-slot="input"],
+    :root textarea {
+      font-size: 16px;
+    }
+  }
   :root [data-slot="input"]:focus-visible {
     box-shadow: none;
   }

@@ -51,6 +51,7 @@ export function SidePanel({
       onOpenChange={(next) => {
         if (!next && locked) return;
         setOpen(next);
+        if (!next) setFullscreen(false);
         if (!next) onClose?.();
       }}
     >

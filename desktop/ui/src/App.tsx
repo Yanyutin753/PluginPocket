@@ -50,7 +50,12 @@ export function App() {
   const [selected, setSelected] = useState<ClientKind[]>([]);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const clearFeedback = () => {
+    setMessage('');
+    setError('');
+  };
   const login = useMutation({
+    onMutate: clearFeedback,
     mutationFn: () => api.login(server, token),
     onSuccess: async (account) => {
       await cache.cancelQueries({ queryKey: ['status'] });
@@ -62,6 +67,7 @@ export function App() {
     onSettled: () => setToken(''),
   });
   const logout = useMutation({
+    onMutate: clearFeedback,
     mutationFn: api.logout,
     onSuccess: async () => {
       await cache.cancelQueries({ queryKey: ['status'] });
@@ -74,6 +80,7 @@ export function App() {
     onError: () => setError('退出登录失败，请重试'),
   });
   const configure = useMutation({
+    onMutate: clearFeedback,
     mutationFn: (remove: boolean) =>
       remove ? api.remove(selected) : api.apply(selected),
     onSuccess: async (_result, remove) => {
@@ -91,6 +98,7 @@ export function App() {
       ),
   });
   const doctor = useMutation({
+    onMutate: clearFeedback,
     mutationFn: () => api.doctor(server || null),
     onSuccess: (result) => {
       setMessage(
@@ -106,9 +114,12 @@ export function App() {
     configure.isPending ||
     doctor.isPending;
   const account = status.isError ? undefined : status.data?.account;
+  const clientsUnavailable =
+    clients.isPending || clients.isFetching || clients.isError;
+  const configurationDisabled =
+    pending || status.isFetching || clientsUnavailable || selected.length === 0;
   const refresh = () => {
-    setMessage('');
-    setError('');
+    clearFeedback();
     void cache.invalidateQueries({ queryKey: ['status'] });
     void cache.invalidateQueries({ queryKey: ['clients'] });
   };
@@ -150,7 +161,7 @@ export function App() {
       </header>
       <div className="desktop-intro">
         <div>
-          <h1>让把 AI 的超能力，装进口袋</h1>
+          <h1>把 AI 的超能力，装进口袋</h1>
           <p>登录一次，将工具接入这台电脑上的 AI 客户端</p>
         </div>
         <img src={workshopDesktop} alt="" width="900" height="600" />
@@ -273,7 +284,7 @@ export function App() {
             </p>
           )}
           <fieldset
-            disabled={pending || clients.isPending || clients.isError}
+            disabled={pending || clientsUnavailable}
             className="client-list"
           >
             <legend className="sr-only">选择客户端</legend>
@@ -307,7 +318,7 @@ export function App() {
           <div className="client-actions">
             <Button
               onClick={() => configure.mutate(false)}
-              disabled={pending || !account || selected.length === 0}
+              disabled={configurationDisabled || !account}
             >
               <Link aria-hidden="true" data-icon="inline-start" />
               配置所选客户端
@@ -315,7 +326,7 @@ export function App() {
             <Button
               variant="outline"
               onClick={() => configure.mutate(true)}
-              disabled={pending || selected.length === 0}
+              disabled={configurationDisabled}
             >
               <Unplug aria-hidden="true" data-icon="inline-start" />
               移除所选配置
