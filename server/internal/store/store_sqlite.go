@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Yanyutin753/pluginpocket/server/internal/auth"
+	"github.com/Yanyutin753/loadout/server/internal/auth"
 	_ "modernc.org/sqlite"
 )
 

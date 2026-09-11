@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Yanyutin753/pluginpocket/server/internal/auth"
+	"github.com/Yanyutin753/loadout/server/internal/auth"
 )
 
 func sqliteTestStore(t testing.TB) *SQLiteStore {
