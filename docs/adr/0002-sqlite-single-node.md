@@ -1,6 +1,6 @@
 # ADR 0002：单机 SQLite / 集群 PG(+MySQL) 多方言部署（提议，已完成可行性 Spike）
 
-日期：2026-09-11 · 状态：阶段 2 地基已落地（SQLite 迁移轨道全量转写并通过行为验证：建库等价、append-only 双触发器、目录修订触发器、钱包归属触发器、种子校验）；store/app 查询移植待续
+日期：2026-09-11 · 状态：阶段 2 地基已落地（SQLite 迁移轨道全量转写并通过行为验证：建库等价、append-only 双触发器、目录修订触发器、钱包归属触发器、种子校验）；2026-09-12 账本核心 SQLite 实现落地（stdlib database/sql，行为等价测试 TestSQLite*）；store/app 其余查询移植待续
 
 ## 背景
 
@@ -11,6 +11,8 @@
 参照系 one-api/new-api 用 **GORM v2** 实现 SQLite/MySQL/PG 切换（单机默认 SQLite 文件、集群推荐 PG）。Go 生态候选：GORM/bun/ent/sqlc 均覆盖三库，哲学分 code-first（GORM/ent）与 SQL-first（bun/sqlc）。
 
 **选定 bun**：SQL-first 最贴近现有 pgx 裸 SQL 风格（保留手写事务的精细控制），方言驱动 pg/mysqldialect/sqlitedialect；SQLite 驱动用 modernc.org/sqlite（纯 Go 无 CGO，交叉编译不受影响）；MySQL 预留 go-sql-driver + mysqldialect。迁移工具配 golang-migrate（原生 pg/mysql/sqlite 方言目录）。
+
+2026-09-12 修订：账本存储层以 **stdlib database/sql + modernc.org/sqlite** 落地（零新依赖，符合本仓“标准库优先”边界；modernc 驱动已在迁移测试中使用）；bun 推迟到出现查询构造/多方言映射需求的大规模移植阶段再评估，届时若无必要则本 ADR 选型以 stdlib 为准。Spike 的事务配方（WAL + busy_timeout + synchronous=NORMAL + _txlock=immediate）与结论不变。
 
 ## 可行性 Spike 结果（throwaway，/tmp/loadout-sqlite-spike）
 

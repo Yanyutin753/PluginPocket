@@ -1,4 +1,8 @@
-# Loadout —— 产品与技术总体方案
+# PluginPocket —— 产品与技术总体方案
+
+2026-09-12 品牌统一为 **PluginPocket（插件口袋）**，全量改名命令 `pluginpocket`、配置 `PLUGINPOCKET_*` 与 `.pluginpocket/`、包名及应用标识；按新项目运行，不提供旧版兼容或迁移。全产品展示与双语 README 同步，范围及验证见 `superpowers/plans/2026-09-12-pluginpocket-brand.md`。
+
+2026-09-12 SQLite 单机轨道阶段 2 首增量：账本核心（Reserve/Finish/RecoverPending/AuthToken）落地 stdlib database/sql 实现（`store_sqlite.go`），行为与 PG 等价（18 项 `TestSQLite*`，并发零超扣、退款幂等、吊销即时生效），零新依赖；`Ledger` 接口为双实现契约，运行时 DSN 分流待后续域移植。方案与验证见 `superpowers/plans/2026-09-12-sqlite-ledger.md`。
 
 2026-09-12 项目定位更新：确定为**开源项目**（全仓库 MIT，取消 open-core 闭源边界）。成功标准为自部署体验与社区采用，不是收入；外部支付不再是路线图关键路径，额度计量保留为自托管治理能力。详见 §1.2 与 §12。同日新增贡献者指南 `CONTRIBUTING.md`（M4 开源运营首项落地）。
 
@@ -34,11 +38,11 @@
 
 同轮补齐所有页面与市场源的无粘性多副本验收：Git 提交与对象改为 PostgreSQL 持久共享，市场变更事务内失效，重启/换副本保留完整提交链；SQLite 迁移轨道同步。静态资源滚动版本仍要求共享保留新旧构建资源，见 docs/CLUSTER.md。
 
-2026-09-11 桌面分发扩展：Windows x64（MSI/NSIS）、macOS ARM64/Intel（DMG/app）、Linux x64/ARM64（deb/rpm/AppImage），使用独立 Loadout 发布签名密钥，macOS ad-hoc 封印；不含手机端，不等同于平台受信任证书公证。实施及真实验收状态见 [桌面发布记录](superpowers/plans/2026-09-11-desktop-release.md)。
+2026-09-11 桌面分发扩展：Windows x64（MSI/NSIS）、macOS ARM64/Intel（DMG/app）、Linux x64/ARM64（deb/rpm/AppImage），使用独立 PluginPocket 发布签名密钥，macOS ad-hoc 封印；不含手机端，不等同于平台受信任证书公证。实施及真实验收状态见 [桌面发布记录](superpowers/plans/2026-09-11-desktop-release.md)。
 
 > **一句话定位**：登录即武装的开源自托管 MCP 装备网关 —— 部署一套，成员在网页端注册，本地一条命令把整套预设好的 MCP 工具写进 Codex / Claude Code / Cursor，开箱即用；服务端统一鉴权、计量、扣额度，后台看得见每一次调用。
 >
-> 名字来源：游戏术语 *Loadout*（预设装备 / 出战配置）—— 角色进场前配好的整套武器和配件，一键上身直接开战。
+> 名字来源：游戏术语 *PluginPocket*（预设装备 / 出战配置）—— 角色进场前配好的整套武器和配件，一键上身直接开战。
 
 | 项 | 值 |
 |---|---|
@@ -95,7 +99,7 @@
 3. 手改各客户端配置文件（`config.toml` / `.claude.json` / `mcp.json`），格式各异、坑多；
 4. 换一台机器全部重来；团队里每个人各配各的，没人管得住调用量和成本。
 
-**Loadout 把这四步压缩成两步**：网页注册 → 本地执行 `loadout login && loadout apply`。之后所有工具经统一网关调用，额度、用量、计费全部可视。
+**PluginPocket 把这四步压缩成两步**：网页注册 → 本地执行 `pluginpocket login && pluginpocket apply`。之后所有工具经统一网关调用，额度、用量、计费全部可视。
 
 ### 1.2 产品本质
 
@@ -143,13 +147,13 @@
 
 > 用 Codex / Claude Code 写代码，听说过 MCP 很强，但不想折腾配置和 API key。
 
-场景：注册 → 充 20 块 → `loadout login` → `loadout apply` → 重启 Codex，搜索/浏览/文档工具全部就位。用多少扣多少。
+场景：注册 → 充 20 块 → `pluginpocket login` → `pluginpocket apply` → 重启 Codex，搜索/浏览/文档工具全部就位。用多少扣多少。
 
 ### Persona B：小团队 Tech Lead
 
 > 团队 5-20 人都用 Cursor/Claude Code，想统一工具配置、控制成本、有调用审计。
 
-场景：管理员在后台建团队额度池，成员各自 `loadout login --team-code XXXX`，配置自动一致；后台看每人用量、月度成本报表、超限熔断。
+场景：管理员在后台建团队额度池，成员各自 `pluginpocket login --team-code XXXX`，配置自动一致；后台看每人用量、月度成本报表、超限熔断。
 
 ### Persona C：MCP 内容提供者（生态期）
 
@@ -164,7 +168,7 @@
 | 模块 | 功能 | 优先级 |
 |---|---|---|
 | **账号体系** | 用户名密码注册/登录（P0）；邮箱验证（P1）；GitHub OAuth（P1） | P0 |
-| **网关令牌** | 创建/吊销网关 token（`ldt_` 前缀，只显示一次）（P0）；token 分设备命名（P1） | P0 |
+| **网关令牌** | 创建/吊销网关 token（`ppt_` 前缀，只显示一次）（P0）；token 分设备命名（P1） | P0 |
 | **MCP 网关** | 单一 streamable HTTP 端点，聚合预设工具（P0）；builtin 工具（P0）；HTTP 上游（P0）；stdio 上游（P1，默认关闭）；工具启停与倍率（P0 后台 / P1 API） | P0 |
 | **计量扣费** | 每次 tools/call 记账（时长/状态/工具/成本）（P0）；余额原子扣减（P0）；调用限频（P1） | P0 |
 | **本地 CLI** | `login` / `apply` / `status` / `doctor` / `logout`（P0）；`bridge` 本地转发进程（P0）；device-code 网页授权登录（P2） | P0 |
@@ -187,12 +191,12 @@
 │  网页控制台(用户/管理)          本地开发机                       │
 │  ┌──────────────┐      ┌─────────────────────────────────┐    │
 │  │ login/dashboard│     │ Codex / Claude Code / Cursor     │    │
-│  │ admin.html     │     │   └─ stdio ──► loadout bridge    │    │
+│  │ admin.html     │     │   └─ stdio ──► pluginpocket bridge    │    │
 │  └──────┬───────┘      │                  │(注入token转发)  │    │
 │         │ HTTPS        └──────────────────┼────────────────┘    │
 └─────────┼─────────────────────────────────┼─────────────────────┘
           ▼                                 ▼ streamable HTTP + Bearer
-┌─────────────────────── Loadout 服务端 ──────────────────────────┐
+┌─────────────────────── PluginPocket 服务端 ──────────────────────────┐
 │  ┌─────────┐  ┌──────────────┐  ┌────────────────────────────┐  │
 │  │ API 层   │  │ MCP 网关      │  │ 预设上游池                  │  │
 │  │ auth/账号 │─►│ /mcp 端点     │─►│ builtin(time/echo…)        │  │
@@ -220,10 +224,10 @@
 ### 5.3 三个关键设计决策
 
 **决策一：bridge 模式为默认，direct 模式可选。**
-所有客户端一律配置一个本地 stdio 命令（`loadout bridge`），由它带着 token 转发到网关。
+所有客户端一律配置一个本地 stdio 命令（`pluginpocket bridge`），由它带着 token 转发到网关。
 
 - 收益 1：客户端配置文件里**不落任何密钥**；
-- 收益 2：token 轮换 / 换服务器只需改 `~/.loadout/config.json`，**不动各客户端配置**；
+- 收益 2：token 轮换 / 换服务器只需改 `~/.pluginpocket/config.json`，**不动各客户端配置**；
 - 收益 3：绕开各客户端远程认证差异（Codex 只支持 `bearer_token_env_var`，体验差）；
 - 代价：本地多一跳（实际开销通过后续 bridge 端到端基准测量）。
 
@@ -243,10 +247,10 @@ direct 模式（客户端直连网关 HTTP 端点 + Authorization 头）作为�
 
 ```
 1. 网页 /login 注册（送初始额度，如 1000 credits）
-2. 控制台 → 令牌页 → 「创建令牌」→ 复制 ldt_xxxx（只显示这一次）
-3. 终端：安装原生 loadout 二进制后执行 loadout login --server https://api.xxx.com
-   → 粘贴令牌 → CLI 调 /api/v1/account/verify 校验 → 写 ~/.loadout/config.json (0600)
-4. loadout apply            # 自动检测已装的客户端（codex/claude/cursor）
+2. 控制台 → 令牌页 → 「创建令牌」→ 复制 ppt_xxxx（只显示这一次）
+3. 终端：安装原生 pluginpocket 二进制后执行 pluginpocket login --server https://api.xxx.com
+   → 粘贴令牌 → CLI 调 /api/v1/account/verify 校验 → 写 ~/.pluginpocket/config.json (0600)
+4. pluginpocket apply            # 自动检测已装的客户端（codex/claude/cursor）
    → 逐个写入 bridge 配置（带标记块，幂等）
 5. 重启 Codex/Claude/Cursor → 工具全部出现 → 直接用
 ```
@@ -255,9 +259,9 @@ direct 模式（客户端直连网关 HTTP 端点 + Authorization 头）作为�
 
 ```
 Codex(用户按 F5 调用 time_now)
-  └─ stdio ─► loadout bridge（本地，读 ~/.loadout/config.json）
-       └─ HTTP+Bearer ldt_xxx ─► 网关 /mcp (tools/call)
-            ├─ 1. 鉴权：ldt_xxx → sha256 → tokens 表 → user
+  └─ stdio ─► pluginpocket bridge（本地，读 ~/.pluginpocket/config.json）
+       └─ HTTP+Bearer ppt_xxx ─► 网关 /mcp (tools/call)
+            ├─ 1. 鉴权：ppt_xxx → sha256 → tokens 表 → user
             ├─ 2. 事务预占钱包额度并写 pending；不足 → denied
             ├─ 3. 转发上游（builtin 直调 / http 上游转发）
             ├─ 4. 成功结算；失败原路退款；不持事务等待上游
@@ -274,7 +278,7 @@ Codex(用户按 F5 调用 time_now)
 ### 6.4 token 轮换（体现 bridge 价值）
 
 ```
-网页吊销旧令牌 → 创建新令牌 → loadout login（只更新 ~/.loadout/config.json）
+网页吊销旧令牌 → 创建新令牌 → pluginpocket login（只更新 ~/.pluginpocket/config.json）
 → 各客户端配置零改动，bridge 下一次调用自动用新 token
 ```
 
@@ -302,8 +306,8 @@ Codex(用户按 F5 调用 time_now)
 
 前缀 `/api/v1`。鉴权两轨：
 
-- **网页会话**：HttpOnly/SameSite Cookie，服务端可立即注销；写请求保留 Origin 必填边界，并使用 Go `http.CrossOriginProtection` 根据浏览器 Fetch Metadata 或 Origin/Host 判断同源。前端相对路径 `/api` 反代不依赖固定 `LOADOUT_PUBLIC_URL`；该配置只用于公开链接、身份回调与 Secure Cookie 策略。代理保留 Host、Origin、Sec-Fetch-Site，不把跨站请求改写为同源。
-- **网关令牌**：`Authorization: Bearer ldt_xxx`（opaque，仅用于 `/mcp` 与 verify）
+- **网页会话**：HttpOnly/SameSite Cookie，服务端可立即注销；写请求保留 Origin 必填边界，并使用 Go `http.CrossOriginProtection` 根据浏览器 Fetch Metadata 或 Origin/Host 判断同源。前端相对路径 `/api` 反代不依赖固定 `PLUGINPOCKET_PUBLIC_URL`；该配置只用于公开链接、身份回调与 Secure Cookie 策略。代理保留 Host、Origin、Sec-Fetch-Site，不把跨站请求改写为同源。
+- **网关令牌**：`Authorization: Bearer ppt_xxx`（opaque，仅用于 `/mcp` 与 verify）
 
 错误响应统一 `{"error":"<code>"}`：码表唯一事实源在 `server/internal/httpapi/codes.go` 注册表（含码→HTTP 状态映射），机器契约 `web/src/i18n/error-codes.json` 由测试锁定，前端 `web/src/i18n/errors.ts` 按码双语映射（完整表见 `docs/API.md` 错误码注册表）。
 
@@ -321,14 +325,14 @@ Codex(用户按 F5 调用 time_now)
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | GET | `/api/v1/account/tokens` | 列表（含前缀、末次使用、吊销态；**不含完整 token**） |
-| POST | `/api/v1/account/tokens` | `{name}` → `{token: "ldt_..."}`（仅此一次返回明文） |
+| POST | `/api/v1/account/tokens` | `{name}` → `{token: "ppt_..."}`（仅此一次返回明文） |
 | DELETE | `/api/v1/account/tokens/:id` | 吊销 |
 
 ### 8.3 CLI 校验（网关令牌）
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| GET | `/api/v1/account/verify` | `loadout login` 用：返回 `{username, balance, tools:[...]}` 供展示 |
+| GET | `/api/v1/account/verify` | `pluginpocket login` 用：返回 `{username, balance, tools:[...]}` 供展示 |
 
 ### 8.4 管理后台（网页会话 + role=admin）
 
@@ -383,19 +387,19 @@ Codex(用户按 F5 调用 time_now)
 ### 9.3a 插件市场（2026-09-11 增补）
 
 - **定位**：服务端维护的 MCP 插件目录，运营方浏览/同步/一键装入预设池；用户经 CLI 浏览并本地直连安装。
-- **只收录 HTTP MCP**：市场安装接口拒绝非 http 传输；stdio 仍属部署者受控能力（工具管理 + `LOADOUT_STDIO_COMMANDS` 允许名单），不进入市场。
+- **只收录 HTTP MCP**：市场安装接口拒绝非 http 传输；stdio 仍属部署者受控能力（工具管理 + `PLUGINPOCKET_STDIO_COMMANDS` 允许名单），不进入市场。
 - **目录来源**：
   - curated：随迁移种子的精选公共端点（DeepWiki、Context7、Microsoft Learn），已知 endpoint 可默认直装；
-  - github：管理员触发同步 GitHub Search（`mcp-server in:name topic:mcp-server` 按星标，可选 `LOADOUT_GITHUB_TOKEN` 提额）；同步失败目录保持原样。
+  - github：管理员触发同步 GitHub Search（`mcp-server in:name topic:mcp-server` 按星标，可选 `PLUGINPOCKET_GITHUB_TOKEN` 提额）；同步失败目录保持原样。
 - **双通道产品语义**：
   - **服务端池**（计量）：管理员市场安装 → `tools` 行 + 密封配置 → 网关目录 → 全部客户端经 bridge 受益；
-  - **本地直连**（不经计量）：`loadout install <slug>` 把公共 HTTP 端点直接写进客户端配置（`loadout-<slug>` 托管条目，独立标记与备份），不写入任何凭证。
+  - **本地直连**（不经计量）：`pluginpocket install <slug>` 把公共 HTTP 端点直接写进客户端配置（`pluginpocket-<slug>` 托管条目，独立标记与备份），不写入任何凭证。
 - **元数据覆盖**：`tool_metadata_overrides` 按 (tool_id, remote_name) 覆盖上游工具的描述与参数 InputSchema（目录构建时应用，无效 schema 整体忽略）；管理员可在工具页实时发现上游工具并编辑覆盖。
-- **服务端即插件市场源（2026-09-11 终态，产品主线）**："登录即武装"完整闭环——运营方在服务端定制插件（**网关独享 MCP**（`transport=gateway`，凭证密封、按次计量）+ 技能 + 装备组），服务端在 `/marketplace.git` 以哑 HTTP git 裸仓**实时**渲染官方 Codex 插件市场（`internal/marketplace/{exporter,gitrepo,registry}.go`，懒构建+变更失效缓存），`/plugins` 提供对外 SEO 目录页（服务端直出 HTML）。用户：`codex plugin marketplace add <origin>/marketplace.git` → `codex plugin add <插件>`——独享 MCP 以 **stdio bridge 条目**（`{"command":"loadout","args":["bridge"]}`）进入插件 mcp.json，经登录凭证走网关计量；CLI `loadout install <slug>` 对 gateway 成员自动确保 bridge、不落直连条目。仍可用 `build/loadout-export` 导出目录树推 git 仓库（公共策展源路径）。全部经真实 Codex CLI 0.153.4 验证：服务端源接入/列目录/安装/stdio mcp 接受/独享工具经 bridge 真实扣费。
+- **服务端即插件市场源（2026-09-11 终态，产品主线）**："登录即武装"完整闭环——运营方在服务端定制插件（**网关独享 MCP**（`transport=gateway`，凭证密封、按次计量）+ 技能 + 装备组），服务端在 `/marketplace.git` 以哑 HTTP git 裸仓**实时**渲染官方 Codex 插件市场（`internal/marketplace/{exporter,gitrepo,registry}.go`，懒构建+变更失效缓存），`/plugins` 提供对外 SEO 目录页（服务端直出 HTML）。用户：`codex plugin marketplace add <origin>/marketplace.git` → `codex plugin add <插件>`——独享 MCP 以 **stdio bridge 条目**（`{"command":"pluginpocket","args":["bridge"]}`）进入插件 mcp.json，经登录凭证走网关计量；CLI `pluginpocket install <slug>` 对 gateway 成员自动确保 bridge、不落直连条目。仍可用 `build/pluginpocket-export` 导出目录树推 git 仓库（公共策展源路径）。全部经真实 Codex CLI 0.153.4 验证：服务端源接入/列目录/安装/stdio mcp 接受/独享工具经 bridge 真实扣费。
 - **生态三件套（2026-09-11 晚增补）**：市场条目分 `kind`——
   - `mcp`：HTTP MCP 插件（池内计量安装 / CLI 本地直连安装）；
-  - `skill`：Agent Skill（SKILL.md 及配套文件）；来源 inline（目录内维护）或 github (repo, path)（服务端经 contents API 解析，CLI 只连 Loadout：`GET /api/v1/marketplace/{slug}/files`）；CLI 写入 `~/.codex/skills/<slug>/`、`~/.claude/skills/<slug>/`，清单登记文件集，目录含外来文件时拒绝卸载；
-  - `bundle` 装备组：mcp/skill 成员集合，`loadout install <bundle>` 一条命令复刻专家配置（普通用户的核心场景）；不允许嵌套。
+  - `skill`：Agent Skill（SKILL.md 及配套文件）；来源 inline（目录内维护）或 github (repo, path)（服务端经 contents API 解析，CLI 只连 PluginPocket：`GET /api/v1/marketplace/{slug}/files`）；CLI 写入 `~/.codex/skills/<slug>/`、`~/.claude/skills/<slug>/`，清单登记文件集，目录含外来文件时拒绝卸载；
+  - `bundle` 装备组：mcp/skill 成员集合，`pluginpocket install <bundle>` 一条命令复刻专家配置（普通用户的核心场景）；不允许嵌套。
   发布（管理员导入）与消费（用户安装）分离；文件路径安全校验（拒 `..`/绝对路径/控制字符，≤32 文件、单文件 ≤256KB）。
 
 ### 9.4 计量与扣费（核心）
@@ -420,81 +424,81 @@ tools/call → 当前令牌/成员/工具权限 → 数据库共享限额
 
 ## 10. 本地端 CLI 详细设计
 
-### 10.1 命令一览（可执行文件名 `loadout`）
+### 10.1 命令一览（可执行文件名 `pluginpocket`）
 
 ```
-loadout login [--server URL] [--token ldt_xxx]   # 登录：校验并保存凭证
-loadout logout                                   # 清除本地凭证
-loadout status                                   # 当前账号/余额/已配置客户端
-loadout doctor                                   # 体检：服务连通性（M0.0）；凭证/客户端检测/配置状态（M0）
-loadout apply [--clients codex,claude,cursor]    # 写入配置（默认自动检测全部）
+pluginpocket login [--server URL] [--token ppt_xxx]   # 登录：校验并保存凭证
+pluginpocket logout                                   # 清除本地凭证
+pluginpocket status                                   # 当前账号/余额/已配置客户端
+pluginpocket doctor                                   # 体检：服务连通性（M0.0）；凭证/客户端检测/配置状态（M0）
+pluginpocket apply [--clients codex,claude,cursor]    # 写入配置（默认自动检测全部）
               [--direct]                         # 强制 direct 模式（默认 bridge）
               [--remove]                         # 移除已写入的配置
-loadout bridge                                   # [内部] 本地 stdio 转发进程，由客户端拉起
-loadout version
+pluginpocket bridge                                   # [内部] 本地 stdio 转发进程，由客户端拉起
+pluginpocket version
 ```
 
 ### 10.2 登录与凭证存储
 
-- `~/.loadout/config.json`（Windows: `%USERPROFILE%\.loadout\config.json`），权限 0600：
-  `{ "serverUrl": "https://api.xxx.com", "token": "ldt_xxx", "username": "alice" }`
+- `~/.pluginpocket/config.json`（Windows: `%USERPROFILE%\.pluginpocket\config.json`），权限 0600：
+  `{ "serverUrl": "https://api.xxx.com", "token": "ppt_xxx", "username": "alice" }`
 - 登录即调 `GET /api/v1/account/verify` 校验，失败提示重新粘贴。
-- 已实现 device-code 流：`loadout login --device` 输出网页码，浏览器登录后自动回写 token（更好体验）。
+- 已实现 device-code 流：`pluginpocket login --device` 输出网页码，浏览器登录后自动回写 token（更好体验）。
 
 ### 10.3 配置写入目标（三种客户端）
 
 **Codex** —— `~/.codex/config.toml`（CLI 与 IDE 插件共享），写入标记块：
 
 ```toml
-# --- loadout begin ---
-[mcp_servers.loadout]
-command = "C:\\Users\\me\\.local\\bin\\loadout.exe"
+# --- pluginpocket begin ---
+[mcp_servers.pluginpocket]
+command = "C:\\Users\\me\\.local\\bin\\pluginpocket.exe"
 args = ["bridge"]
-env = { LOADOUT_CONFIG = "C:\\Users\\me\\.loadout\\config.json" }
-# --- loadout end ---
+env = { PLUGINPOCKET_CONFIG = "C:\\Users\\me\\.pluginpocket\\config.json" }
+# --- pluginpocket end ---
 ```
 
-**Claude Code** —— `~/.claude.json` 的 `mcpServers.loadout`：
+**Claude Code** —— `~/.claude.json` 的 `mcpServers.pluginpocket`：
 
 ```json
-{ "mcpServers": { "loadout": {
+{ "mcpServers": { "pluginpocket": {
     "type": "stdio",
-    "command": "C:\\Users\\me\\.local\\bin\\loadout.exe",
+    "command": "C:\\Users\\me\\.local\\bin\\pluginpocket.exe",
     "args": ["bridge"],
-    "env": { "LOADOUT_CONFIG": "C:\\Users\\me\\.loadout\\config.json" } } } }
+    "env": { "PLUGINPOCKET_CONFIG": "C:\\Users\\me\\.pluginpocket\\config.json" } } } }
 ```
 
 **Cursor** —— `~/.cursor/mcp.json`（同构）：
 
 ```json
-{ "mcpServers": { "loadout": {
-    "command": "C:\\Users\\me\\.local\\bin\\loadout.exe",
+{ "mcpServers": { "pluginpocket": {
+    "command": "C:\\Users\\me\\.local\\bin\\pluginpocket.exe",
     "args": ["bridge"],
-    "env": { "LOADOUT_CONFIG": "C:\\Users\\me\\.loadout\\config.json" } } } }
+    "env": { "PLUGINPOCKET_CONFIG": "C:\\Users\\me\\.pluginpocket\\config.json" } } } }
 ```
 
 **direct 模式**（`--direct`，Claude/Cursor 推荐、Codex 不推荐）：
 
 ```jsonc
 // Claude ~/.claude.json
-{ "mcpServers": { "loadout": { "type": "http", "url": "https://api.xxx.com/mcp",
-  "headers": { "Authorization": "Bearer ldt_xxx" } } } }
+{ "mcpServers": { "pluginpocket": { "type": "http", "url": "https://api.xxx.com/mcp",
+  "headers": { "Authorization": "Bearer ppt_xxx" } } } }
 // Cursor ~/.cursor/mcp.json 同构
 ```
 ```toml
 # Codex direct（需自设环境变量，体验差，仅文档说明）
-[mcp_servers.loadout]
+[mcp_servers.pluginpocket]
 url = "https://api.xxx.com/mcp"
-bearer_token_env_var = "LOADOUT_TOKEN"
+bearer_token_env_var = "PLUGINPOCKET_TOKEN"
 ```
 
 ### 10.4 写入算法（幂等 + 标记 + 冲突防御）
 
-- **JSON 类**（claude/cursor）：读文件（容忍不存在）→ 设/删 `mcpServers.loadout` 键 → 格式化写回。天然幂等。
+- **JSON 类**（claude/cursor）：读文件（容忍不存在）→ 设/删 `mcpServers.pluginpocket` 键 → 格式化写回。天然幂等。
 - **TOML 类**（codex）：不做全量重序列化（会毁掉用户注释）。用标记块：
-  - 已有 `# --- loadout begin --- ... # --- loadout end ---` → 整块替换；
+  - 已有 `# --- pluginpocket begin --- ... # --- pluginpocket end ---` → 整块替换；
   - 没有 → 文件末尾追加（TOML 表声明放末尾恒合法）；
-  - 检测到无标记的 `[mcp_servers.loadout]` → **拒绝写入并提示人工处理**（防误覆盖用户手写配置）。
+  - 检测到无标记的 `[mcp_servers.pluginpocket]` → **拒绝写入并提示人工处理**（防误覆盖用户手写配置）。
   - 字符串值使用 Rust TOML 序列化库编码，测试覆盖转义、Unicode 和 Windows 路径。
 - bridge 命令解析：Rust `std::env::current_exe()` 获取绝对二进制路径，参数固定为 `bridge`，避免 PATH、Node shim 与脚本路径依赖。
 
@@ -502,17 +506,17 @@ bearer_token_env_var = "LOADOUT_TOKEN"
 
 ```
 stdin/stdout (JSON-RPC over stdio, MCP 协议)
-  ┌─ loadout bridge ─────────────────────────────┐
+  ┌─ pluginpocket bridge ─────────────────────────────┐
   │ Server(stdio transport)                       │
   │  tools/list  ──► 转发网关 tools/list           │
   │  tools/call  ──► 转发网关 tools/call           │
-  │ Client(StreamableHTTP + Bearer ldt_xxx)       │
+  │ Client(StreamableHTTP + Bearer ppt_xxx)       │
   │  失败 → 重建连接重试一次 → 再失败返回 isError    │
   └───────────────────────────────────────────────┘
 ```
 
-- 凭证从 `LOADOUT_CONFIG` 环境变量或默认路径读取；
-- 额度不足/限流的错误原样透传（文案前缀 `[loadout]`）；
+- 凭证从 `PLUGINPOCKET_CONFIG` 环境变量或默认路径读取；
+- 额度不足/限流的错误原样透传（文案前缀 `[pluginpocket]`）；
 - 进程随客户端生命周期（客户端退出 → stdio 关闭 → 进程退出）。
 
 ---
@@ -527,7 +531,7 @@ P0 起使用 React + TypeScript + Vite、Tailwind CSS、shadcn/ui、TanStack Que
 |---|---|
 | 登录页 `/login` | 用户名/密码 + 注册切换 |
 | 概览卡片 | 当前余额、今日调用、本月消耗、token 数 |
-| 令牌管理 | 列表（名称/前缀/末次使用/状态）；「创建」弹窗 → **明文只展示一次** + 复制按钮 + CLI 用法提示（`loadout login --token ldt_xxx`）；吊销按钮（二次确认） |
+| 令牌管理 | 列表（名称/前缀/末次使用/状态）；「创建」弹窗 → **明文只展示一次** + 复制按钮 + CLI 用法提示（`pluginpocket login --token ppt_xxx`）；吊销按钮（二次确认） |
 | 用量明细 | 表格：时间 / 工具 / 状态 / 耗时 / 消耗（分页） |
 
 ### 11.2 管理端（同页 admin 标签页，role=admin 可见）
@@ -580,7 +584,7 @@ P0 起使用 React + TypeScript + Vite、Tailwind CSS、shadcn/ui、TanStack Que
 | 密码泄露 | scrypt 加盐哈希；登录失败不区分"用户不存在/密码错" |
 | 网关 token 泄露 | 库中只存 sha256；明文仅创建时一次；可吊销；多设备分 token |
 | 会话劫持 | 随机 opaque AT/RT 哈希入库、HttpOnly/SameSite/Secure Cookie；默认15分钟/7天，系统配置可热更新，可撤销 |
-| 本地凭证泄露 | `~/.loadout/config.json` 0600；客户端配置零密钥（bridge 模式） |
+| 本地凭证泄露 | `~/.pluginpocket/config.json` 0600；客户端配置零密钥（bridge 模式） |
 | **服务端任意命令执行（stdio 上游）** | stdio 上游 = 服务器上跑任意命令。**P0 默认禁用**；P1 开启时仅 admin 可配 + 命令白名单；生产建议放容器/独立沙箱节点 |
 | 上游凭证泄露 | AES-GCM 加密 JSONB，部署密钥；管理列表不返回秘密 |
 | 滥用/刷量 | 限频（60/min/token）、日上限、30s 超时、error/denied 全留痕 |
@@ -588,7 +592,7 @@ P0 起使用 React + TypeScript + Vite、Tailwind CSS、shadcn/ui、TanStack Que
 | 传输 | 生产强制 HTTPS（反代终止 TLS） |
 | 越权 | 管理接口双层校验（session + role），对象级鉴权（只能看自己的 token/用量） |
 
-**明确声明（写进 README）**：Loadout 不托管用户第三方账号的 OAuth token；上游凭证均为运营方自有。
+**明确声明（写进 README）**：PluginPocket 不托管用户第三方账号的 OAuth token；上游凭证均为运营方自有。
 
 ---
 
@@ -612,14 +616,14 @@ P0 起使用 React + TypeScript + Vite、Tailwind CSS、shadcn/ui、TanStack Que
 ## 15. 代码仓库结构
 
 ```text
-loadout/
+pluginpocket/
 ├── .agents/skills/             # 固定版本的三套技能，随仓库共享
 ├── .github/workflows/          # 与本地一致的 CI
 ├── docs/PLAN.md                # 产品总体方案
 ├── docs/HARNESS.md             # RED/GREEN/REFACTOR 与验证入口
 ├── docs/FRONTEND.md            # React 开发规范
 ├── server/
-│   ├── cmd/loadout-server/     # Go 进程入口
+│   ├── cmd/pluginpocket-server/     # Go 进程入口
 │   └── internal/              # 当前 config/httpapi；业务模块按需增加
 ├── cli/
 │   ├── src/                   # Rust CLI；后续 bridge/config writers
@@ -633,9 +637,9 @@ loadout/
 └── .env.example               # 当前已实现的环境变量
 ```
 
-M0.0 环境变量：`LOADOUT_ADDR`（默认 `127.0.0.1:8787`）、`LOADOUT_WEB_DIR`（默认 `web/dist`，相对服务工作目录）。数据库、会话密钥和额度配置随对应业务任务增加，不在基建接收无效选项。
+M0.0 环境变量：`PLUGINPOCKET_ADDR`（默认 `127.0.0.1:8787`）、`PLUGINPOCKET_WEB_DIR`（默认 `web/dist`，相对服务工作目录）。数据库、会话密钥和额度配置随对应业务任务增加，不在基建接收无效选项。
 
-本地开发提供根目录 `pnpm run dev` / `make dev` 前台启动（VS Code 任务固定根目录），Go 通过固定版本 Air 监听 `server/` 的 Go、SQL、go.mod/go.sum 变更自动编译重启；编译失败停止旧程序，修复后恢复；`.env` 修改需重启整个任务。另提供 `make up/down/restart/status/logs` 后台管理 Go + Vite；CLI 是按需运行的命令，不作为常驻服务。`make ready` 串行执行完整 `check` 后再 `up`。后台状态与日志默认保存在 `.loadout/`，可用 `LOADOUT_RUN_DIR` 隔离；通过本地 Unix socket 控制本次开发进程，不按端口或进程名杀进程。后台启动须等待真实 API 和 Web 就绪，重复启动保持现有实例，启动失败清理已启动的子进程。
+本地开发提供根目录 `pnpm run dev` / `make dev` 前台启动（VS Code 任务固定根目录），Go 通过固定版本 Air 监听 `server/` 的 Go、SQL、go.mod/go.sum 变更自动编译重启；编译失败停止旧程序，修复后恢复；`.env` 修改需重启整个任务。另提供 `make up/down/restart/status/logs` 后台管理 Go + Vite；CLI 是按需运行的命令，不作为常驻服务。`make ready` 串行执行完整 `check` 后再 `up`。后台状态与日志默认保存在 `.pluginpocket/`，可用 `PLUGINPOCKET_RUN_DIR` 隔离；通过本地 Unix socket 控制本次开发进程，不按端口或进程名杀进程。后台启动须等待真实 API 和 Web 就绪，重复启动保持现有实例，启动失败清理已启动的子进程。
 
 ---
 
@@ -654,8 +658,8 @@ React 状态页 → Go 健康 API ← Rust doctor；完整 TDD / harness、三�
 **验收 = 冒烟脚本全绿**，覆盖：
 
 1. 注册/登录 → 创建网关令牌；
-2. `loadout login`（临时 HOME）→ verify 通过；
-3. `loadout apply` → 三客户端配置文件生成且内容正确、重复 apply 幂等；
+2. `pluginpocket login`（临时 HOME）→ verify 通过；
+3. `pluginpocket apply` → 三客户端配置文件生成且内容正确、重复 apply 幂等；
 4. MCP 客户端 → 网关直连：listTools ≥2、callTool 成功；
 5. MCP 客户端 → bridge：listTools/callTool 成功（全链路）；
 6. 两次调用后余额精确减少、usage_logs 有 2 条 ok 记录；
@@ -691,13 +695,13 @@ React 状态页 → Go 健康 API ← Rust doctor；完整 TDD / harness、三�
 | 4 | **支付合规**（国内） | 中/中 | 主体资质先行；初期用管理员手动加额度 + 兑换码过渡；海外 Stripe/Paddle |
 | 5 | Cursor Team Sync 变好用 | 中/中 | 只覆盖 Cursor 一家；多客户端 + 自部署 + 计费深度是差异 |
 | 6 | MCP 协议演进（如 UCP/竞争协议） | 中/中 | 网关层隔离协议细节；抽象 transport；出现新协议加适配器 |
-| 7 | 命名商标（loadout 为常见游戏词汇） | 低/低 | 开源项目用 `loadout` 风险小；商用前查标，必要时换名（§19 备选） |
+| 7 | 命名商标（pluginpocket 为常见游戏词汇） | 低/低 | 开源项目用 `pluginpocket` 风险小；商用前查标，必要时换名（§19 备选） |
 
 ---
 
 ## 18. 竞品对照
 
-| 维度 | **Loadout** | HiMarket | Composio | Smithery CLI / mcpm | 1MCP / MCPJungle | Cursor Team Sync |
+| 维度 | **PluginPocket** | HiMarket | Composio | Smithery CLI / mcpm | 1MCP / MCPJungle | Cursor Team Sync |
 |---|---|---|---|---|---|---|
 | 登录即全套预设 | ✅ 核心 | 部分（企业市场） | ❌（开发者自助） | ❌ 无账号体系 | ❌ | ✅（仅 Cursor 团队档） |
 | 本地一键写配置 | ✅ 三客户端 | ❌ | ❌ | ✅ 但无服务端 | ❌ | ✅ 仅自家 |
@@ -713,11 +717,11 @@ React 状态页 → Go 健康 API ← Rust doctor；完整 TDD / harness、三�
 
 ## 19. 命名与备选
 
-**主名：Loadout**（`loadout`，CLI 同名）
+**主名：PluginPocket**（`pluginpocket`，CLI 同名）
 
 - 含义：游戏"预设装备/出战配置"——登录即武装，一词条精确命中产品体验；
-- 短、好念、跨语言无歧义，npm scope 可用 `@loadout/cli`；
-- Slogan：*"Your AI, fully loaded."*（你的 AI，满装出战）
+- 短、好念、跨语言无歧义，npm scope 可用 `@pluginpocket/cli`；
+- Slogan：*"Your AI superpowers, in your pocket."*（你的 AI，满装出战）
 
 备选（如需更换，目录与标识符批量替换即可，M0 阶段成本≈0）：
 
@@ -736,17 +740,17 @@ React 状态页 → Go 健康 API ← Rust doctor；完整 TDD / harness、三�
 | 术语 | 含义 |
 |---|---|
 | credit | 计费单位；1 credit = 1 次成功调用 × 工具倍率 |
-| 网关令牌 / `ldt_` | 用户创建的 opaque 密钥，调 `/mcp` 用，库中只存哈希 |
+| 网关令牌 / `ppt_` | 用户创建的 opaque 密钥，调 `/mcp` 用，库中只存哈希 |
 | 网页会话 | 可撤销 opaque AT/RT Cookie，网页控制台用，默认15分钟/7天 |
 | bridge | CLI 内置本地 stdio→HTTP 转发进程，客户端配置零密钥的关键 |
 | direct 模式 | 客户端直连网关 HTTP 端点的配置方式（高级选项） |
 | 上游 / 预设池 | 网关聚合的 MCP server 集合（builtin/http/stdio 三类） |
-| 标记块 | 写入 TOML 时包裹的 `# --- loadout begin/end ---` 注释，用于幂等替换与安全移除 |
+| 标记块 | 写入 TOML 时包裹的 `# --- pluginpocket begin/end ---` 注释，用于幂等替换与安全移除 |
 | denied / ok / error | 调用账单三态：拒付（余额不足/限频）/ 成功扣费 / 上游失败不扣费 |
 
 ---
 
-*本文档为 Loadout 项目的唯一开发依据；实现与文档冲突时，先改文档再改代码。*
+*本文档为 PluginPocket 项目的唯一开发依据；实现与文档冲突时，先改文档再改代码。*
 
 浏览器鉴权期限由系统配置 `access_token_seconds` / `refresh_token_seconds` 热更新（默认900/604800秒，范围60–86400 / 60–31536000，RT≥AT）；所有副本签发时读共享PG，不延长已签发RT，凭据过期判断使用数据库时钟。
 
