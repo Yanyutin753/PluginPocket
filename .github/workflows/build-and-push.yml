@@ -18,7 +18,7 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
 
       - uses: docker/setup-buildx-action@v3
 
@@ -47,39 +47,56 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  # 与 release.yml 相同的已验证矩阵：cross 仅用于 musl，
+  # arm64 走原生 ARM runner、Windows 走原生 msvc（cross 编译 windows-gnu 时
+  # zerofrom 的 proc-macro 链接失败，见 2026-09-11 Build & Push 失败记录）。
   cli:
-    runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        target:
-          - triple: x86_64-unknown-linux-musl
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
             name: linux-amd64
             ext: ""
-          - triple: aarch64-unknown-linux-musl
+            use-cross: true
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
             name: linux-arm64
             ext: ""
-          - triple: x86_64-pc-windows-gnu
+            use-cross: false
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
             name: windows-amd64
             ext: ".exe"
+            use-cross: false
+    runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target.triple }}
+          targets: ${{ matrix.target }}
 
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: cli
 
       - name: Install cross
+        if: matrix.use-cross == true
         run: cargo install cross
 
       - name: Build CLI
-        run: cross build --manifest-path cli/Cargo.toml --locked --release --target ${{ matrix.target.triple }}
+        shell: bash
+        run: |
+          if [ "${{ matrix.use-cross }}" = "true" ]; then
+            cross build --manifest-path cli/Cargo.toml --locked --release --target ${{ matrix.target }}
+          else
+            cargo build --manifest-path cli/Cargo.toml --locked --release --target ${{ matrix.target }}
+          fi
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
-          name: loadout-${{ matrix.target.name }}
-          path: cli/target/${{ matrix.target.triple }}/release/loadout${{ matrix.target.ext }}
+          name: loadout-${{ matrix.name }}
+          path: cli/target/${{ matrix.target }}/release/loadout${{ matrix.ext }}

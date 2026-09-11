@@ -7,11 +7,11 @@ use std::{
 
 fn cli(args: &[&str]) -> Output {
     let dir = tempfile::tempdir().unwrap();
-    let mut child = Command::new(env!("CARGO_BIN_EXE_loadout"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_pluginpocket"))
         .args(args)
         .env("HOME", dir.path())
         .env("USERPROFILE", dir.path())
-        .env_remove("LOADOUT_CONFIG")
+        .env_remove("PLUGINPOCKET_CONFIG")
         .env("NO_PROXY", "*")
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -43,6 +43,9 @@ fn serve_once(status: &str, body: &str) -> (String, thread::JoinHandle<String>) 
         loop {
             match listener.accept() {
                 Ok((mut stream, _)) => {
+                    // Windows 上 accept 出的连接继承监听 socket 的非阻塞模式，
+                    // 必须显式切回阻塞，否则 read 立即返回 WouldBlock。
+                    stream.set_nonblocking(false).unwrap();
                     stream
                         .set_read_timeout(Some(std::time::Duration::from_secs(2)))
                         .unwrap();
@@ -68,11 +71,11 @@ fn serve_once(status: &str, body: &str) -> (String, thread::JoinHandle<String>) 
 fn doctor_checks_real_health_endpoint() {
     let (url, task) = serve_once(
         "200 OK",
-        r#"{"status":"ok","service":"loadout","version":"test"}"#,
+        r#"{"status":"ok","service":"pluginpocket","version":"test"}"#,
     );
     let output = cli(&["doctor", "--server", &url]);
     assert!(output.status.success(), "{:?}", output);
-    assert!(String::from_utf8_lossy(&output.stdout).contains("Loadout test"));
+    assert!(String::from_utf8_lossy(&output.stdout).contains("PluginPocket test"));
     assert!(
         task.join()
             .unwrap()
@@ -91,16 +94,16 @@ fn doctor_rejects_error_and_unrelated_servers_without_exposing_response() {
         ),
         (
             "200 OK",
-            r#"{"status":"down","service":"loadout","version":"test"}"#,
+            r#"{"status":"down","service":"pluginpocket","version":"test"}"#,
         ),
         (
             "200 OK",
-            r#"{"status":"ok","service":"loadout","version":""}"#,
+            r#"{"status":"ok","service":"pluginpocket","version":""}"#,
         ),
         ("302 Found", "secret-token-value"),
         (
             "200 OK",
-            r#"{"status":"ok","service":"loadout","version":"test\u001b[2J\nfake"}"#,
+            r#"{"status":"ok","service":"pluginpocket","version":"test\u001b[2J\nfake"}"#,
         ),
     ] {
         let (url, task) = serve_once(status, body);
@@ -146,6 +149,7 @@ fn doctor_does_not_follow_redirects() {
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
         while std::time::Instant::now() < deadline {
             if let Ok((mut stream, _)) = origin.accept() {
+                stream.set_nonblocking(false).unwrap();
                 stream
                     .set_read_timeout(Some(std::time::Duration::from_secs(2)))
                     .unwrap();
@@ -186,6 +190,6 @@ fn cli_exposes_only_implemented_commands() {
         assert!(help.contains(command));
     }
     let output = cli(&["--version"]);
-    assert!(String::from_utf8_lossy(&output.stdout).contains("loadout 0.1.0"));
+    assert!(String::from_utf8_lossy(&output.stdout).contains("pluginpocket 0.1.0"));
     assert!(!cli(&["login"]).status.success());
 }
