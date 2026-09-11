@@ -22,7 +22,7 @@ jobs:
             ext: ""
             use-cross: true
           - os: ubuntu-24.04-arm
-            target: aarch64-unknown-linux-musl
+            target: aarch64-unknown-linux-gnu
             name: loadout-linux-arm64
             ext: ""
             use-cross: false
@@ -171,7 +171,7 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: 'Loadout ${{ github.ref_name }}'
           releaseDraft: false
-          args: --target aarch64-apple-darwin
+
 
       - name: Build Tauri (Windows)
         if: runner.os == 'Windows'
