@@ -1,24 +1,20 @@
-import {
-  useInfiniteQuery,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { Pagination } from '@/components/Pagination';
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { useI18n } from '@/i18n';
 import {
   accountQuery,
-  listOptions,
   number,
   request,
   resultSchema,
   type User,
   userSchema,
 } from './api';
-import { ErrorNotice, Heading, Loading, More } from './shared';
+import { ErrorNotice, Heading, Loading } from './shared';
+import { usePagedList } from './usePagedList';
 
 function Adjustment({ user, close }: { user: User; close: () => void }) {
   const { t, locale } = useI18n();
@@ -135,10 +131,7 @@ export default function AdminPage() {
   const { t, locale } = useI18n();
   const account = useQuery(accountQuery);
   const permitted = account.data?.user.role === 'admin';
-  const users = useInfiniteQuery({
-    ...listOptions('/admin/users', userSchema),
-    enabled: permitted,
-  });
+  const users = usePagedList('/admin/users', userSchema, permitted);
   const [selected, setSelected] = useState<User | null>(null);
   const client = useQueryClient();
   const [confirmUser, setConfirmUser] = useState<User | null>(null);
@@ -161,10 +154,10 @@ export default function AdminPage() {
     );
   return (
     <>
-      <Heading title={t('用户管理')}>
+      <Heading title={t('用户管理')} artwork="admin-users">
         {t('查看账号与额度，记录每一笔人工调整。')}
       </Heading>
-      <ErrorNotice error={users.error} retry={() => void users.refetch()} />
+      <ErrorNotice error={users.error} retry={() => void users.retry()} />
       {users.isPending && <Loading />}
       <ErrorNotice error={toggleUser.error} />
       {confirmUser && (
@@ -201,12 +194,13 @@ export default function AdminPage() {
           close={() => setSelected(null)}
         />
       )}
-      {users.isSuccess && users.data.pages[0].items.length === 0 ? (
+      {users.isSuccess && users.items.length === 0 ? (
         <p>{t('暂无用户。')}</p>
       ) : (
         users.data && (
           <section
             className="table-scroll"
+            ref={users.listRef}
             aria-label={t('用户表格')}
             // biome-ignore lint/a11y/noNoninteractiveTabindex: Horizontal tables need keyboard scrolling.
             tabIndex={0}
@@ -214,56 +208,64 @@ export default function AdminPage() {
             <table>
               <thead>
                 <tr>
-                  <th>{t('用户')}</th>
-                  <th>{t('角色')}</th>
-                  <th>{t('状态')}</th>
-                  <th>{t('可用额度')}</th>
-                  <th>{t('操作')}</th>
+                  <th scope="col">{t('用户')}</th>
+                  <th scope="col">{t('角色')}</th>
+                  <th scope="col">{t('状态')}</th>
+                  <th scope="col" className="numeric">
+                    {t('可用额度')}
+                  </th>
+                  <th scope="col">{t('操作')}</th>
                 </tr>
               </thead>
               <tbody>
-                {users.data.pages
-                  .flatMap((page) => page.items)
-                  .map((user) => (
-                    <tr key={user.id}>
-                      <td>{user.username}</td>
-                      <td>{user.role === 'admin' ? t('管理员') : t('用户')}</td>
-                      <td>{user.enabled ? t('正常') : t('已停用')}</td>
-                      <td>{number(user.balance, locale)}</td>
-                      <td>
+                {users.items.map((user) => (
+                  <tr key={user.id}>
+                    <td data-label={t('用户')} className="cell-wrap">
+                      {user.username}
+                    </td>
+                    <td data-label={t('角色')}>
+                      {user.role === 'admin' ? t('管理员') : t('用户')}
+                    </td>
+                    <td data-label={t('状态')}>
+                      <span
+                        className="status-badge"
+                        data-tone={user.enabled ? 'success' : 'neutral'}
+                      >
+                        {user.enabled ? t('正常') : t('已停用')}
+                      </span>
+                    </td>
+                    <td data-label={t('可用额度')} className="numeric">
+                      {number(user.balance, locale)}
+                    </td>
+                    <td data-label={t('操作')} className="cell-actions">
+                      <Button
+                        variant="outline"
+                        disabled={Boolean(selected)}
+                        onClick={() => setSelected(user)}
+                      >
+                        {t('调整余额')}
+                      </Button>
+                      {user.id !== account.data?.user.id && (
                         <Button
                           variant="outline"
-                          disabled={Boolean(selected)}
-                          onClick={() => setSelected(user)}
+                          aria-label={`${user.enabled ? t('停用') : t('启用')} ${user.username}`}
+                          onClick={() => {
+                            toggleUser.reset();
+                            setConfirmUser(user);
+                          }}
                         >
-                          {t('调整余额')}
+                          {user.enabled ? t('停用') : t('启用')}
                         </Button>
-                        {user.id !== account.data?.user.id && (
-                          <Button
-                            className="ml-2"
-                            variant="outline"
-                            aria-label={`${user.enabled ? t('停用') : t('启用')} ${user.username}`}
-                            onClick={() => {
-                              toggleUser.reset();
-                              setConfirmUser(user);
-                            }}
-                          >
-                            {user.enabled ? t('停用') : t('启用')}
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                      )}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </section>
         )
       )}
-      <More
-        hasNext={users.hasNextPage}
-        pending={users.isFetchingNextPage}
-        onClick={() => void users.fetchNextPage()}
-      />
+      <Pagination label={t('用户')} {...users.pagination} />
     </>
   );
 }

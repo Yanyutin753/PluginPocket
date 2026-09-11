@@ -33,7 +33,7 @@ export default function SettingsPage() {
   });
   return (
     <>
-      <Heading title={t('个人设置')}>
+      <Heading title={t('个人设置')} artwork="settings">
         {t('管理账号的联系方式和验证状态。')}
       </Heading>
       <ErrorNotice error={email.error} retry={() => void email.refetch()} />

@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Yanyutin753/loadout/server/internal/store"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -60,7 +61,7 @@ func TestAllowlistedStdioUpstreamUsesOfficialProtocol(t *testing.T) {
 	}
 	for _, binding := range bindings {
 		if binding.definition.Name == "local__ping" {
-			result := g.execute(ctx, binding, json.RawMessage(`{}`))
+			result := g.execute(ctx, store.Principal{}, binding, json.RawMessage(`{}`))
 			if result.IsError || len(result.Content) != 1 {
 				t.Fatal("stdio call failed")
 			}

@@ -1,24 +1,15 @@
-import {
-  useInfiniteQuery,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { z } from 'zod';
+import { Pagination } from '@/components/Pagination';
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { useI18n } from '@/i18n';
-import {
-  accountQuery,
-  date,
-  listOptions,
-  number,
-  request,
-} from '../account/api';
-import { ErrorNotice, Heading, Loading, More } from '../account/shared';
+import { accountQuery, date, number, request } from '../account/api';
+import { ErrorNotice, Heading, Loading } from '../account/shared';
+import { usePagedList } from '../account/usePagedList';
 import { memberSchema, type Team, teamSchema } from './api';
 import { OneTimeCode } from './OneTimeCode';
 import { TeamSettings } from './TeamSettings';
@@ -26,7 +17,7 @@ import { TeamSettings } from './TeamSettings';
 function TeamList() {
   const { t, locale } = useI18n();
   const client = useQueryClient();
-  const teams = useInfiniteQuery(listOptions('/account/teams', teamSchema));
+  const teams = usePagedList('/account/teams', teamSchema);
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const refresh = () => {
@@ -56,7 +47,7 @@ function TeamList() {
   });
   return (
     <>
-      <Heading title={t('我的团队')} artwork="team">
+      <Heading title={t('我的团队')} artwork="teams">
         {t('让成员共用额度，并按成员查看工具调用。')}
       </Heading>
       <div className="two-column">
@@ -111,41 +102,35 @@ function TeamList() {
           </FieldGroup>
         </form>
       </div>
-      <ErrorNotice error={teams.error} retry={() => void teams.refetch()} />
+      <ErrorNotice error={teams.error} retry={() => void teams.retry()} />
       {teams.isPending && <Loading />}
-      {teams.isSuccess && !teams.data.pages[0].items.length && (
+      {teams.isSuccess && !teams.items.length && (
         <p className="empty-state">{t('还没有加入团队')}</p>
       )}
-      <ul className="record-list">
-        {teams.data?.pages
-          .flatMap((page) => page.items)
-          .map((team) => (
-            <li key={team.id}>
-              <div className="record-main">
-                <h2>{team.name}</h2>
-                <p>
-                  {t('{role} · 共享额度 {credits} · {seats} 个席位', {
-                    role: team.role === 'owner' ? t('所有者') : t('成员'),
-                    credits: number(team.balance, locale),
-                    seats: number(team.seat_limit, locale),
-                  })}
-                </p>
-              </div>
-              <Link
-                className="inline-action"
-                aria-label={t('管理 {value1}', { value1: team.name })}
-                to={`/teams/${team.id}`}
-              >
-                {t('管理团队')}
-              </Link>
-            </li>
-          ))}
+      <ul className="record-list" ref={teams.listRef} tabIndex={-1}>
+        {teams.items.map((team) => (
+          <li key={team.id}>
+            <div className="record-main">
+              <h2>{team.name}</h2>
+              <p>
+                {t('{role} · 共享额度 {credits} · {seats} 个席位', {
+                  role: team.role === 'owner' ? t('所有者') : t('成员'),
+                  credits: number(team.balance, locale),
+                  seats: number(team.seat_limit, locale),
+                })}
+              </p>
+            </div>
+            <Link
+              className="inline-action"
+              aria-label={t('管理 {value1}', { value1: team.name })}
+              to={`/teams/${team.id}`}
+            >
+              {t('管理团队')}
+            </Link>
+          </li>
+        ))}
       </ul>
-      <More
-        hasNext={teams.hasNextPage}
-        pending={teams.isFetchingNextPage}
-        onClick={() => void teams.fetchNextPage()}
-      />
+      <Pagination label={t('团队')} {...teams.pagination} />
     </>
   );
 }
@@ -246,10 +231,11 @@ function TeamDetail({ id }: { id: string }) {
       }),
     retry: false,
   });
-  const members = useInfiniteQuery({
-    ...listOptions(`/account/teams/${id}/members`, memberSchema),
-    enabled: team.isSuccess,
-  });
+  const members = usePagedList(
+    `/account/teams/${id}/members`,
+    memberSchema,
+    team.isSuccess,
+  );
   const [invite, setInvite] = useState<{
     code: string;
     expires_at: string;
@@ -293,7 +279,7 @@ function TeamDetail({ id }: { id: string }) {
   const item = team.data.item;
   return (
     <>
-      <Heading title={item.name} translateTitle={false}>
+      <Heading title={item.name} translateTitle={false} artwork="team-detail">
         {t('共享额度 {credits} · {seats} 个席位', {
           credits: number(item.balance, locale),
           seats: number(item.seat_limit, locale),
@@ -345,75 +331,66 @@ function TeamDetail({ id }: { id: string }) {
       )}
       <section className="section-stack">
         <h2>{t('团队成员')}</h2>
-        <ErrorNotice
-          error={members.error}
-          retry={() => void members.refetch()}
-        />
+        <ErrorNotice error={members.error} retry={() => void members.retry()} />
         <ErrorNotice error={remove.error} />
         {members.isPending && <Loading />}
-        <ul className="record-list">
-          {members.data?.pages
-            .flatMap((page) => page.items)
-            .map((member) => {
-              const self = member.user_id === account.data?.user.id;
-              return (
-                <li key={member.id}>
-                  <div className="record-main">
-                    <h3>
-                      {member.username}
-                      {self ? t('（你）') : ''}
-                    </h3>
-                    <p>{member.role === 'owner' ? t('所有者') : t('成员')}</p>
-                  </div>
-                  {(item.role === 'owner' || self) &&
-                    (removing === member.user_id ? (
-                      <div className="confirm-actions">
-                        <p>
-                          {self
-                            ? t(
-                                '退出后将无法访问团队额度与工具。最后一位所有者需要先交接团队。',
-                              )
-                            : t('移除后，此成员的团队令牌将无法使用团队额度。')}
-                        </p>
-                        <Button
-                          disabled={remove.isPending}
-                          onClick={() => remove.mutate(member.user_id)}
-                        >
-                          {self ? t('确认退出') : t('确认移除')}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => setRemoving(null)}
-                          disabled={remove.isPending}
-                        >
-                          {t('取消')}
-                        </Button>
-                      </div>
-                    ) : (
+        <ul className="record-list" ref={members.listRef} tabIndex={-1}>
+          {members.items.map((member) => {
+            const self = member.user_id === account.data?.user.id;
+            return (
+              <li key={member.id}>
+                <div className="record-main">
+                  <h3>
+                    {member.username}
+                    {self ? t('（你）') : ''}
+                  </h3>
+                  <p>{member.role === 'owner' ? t('所有者') : t('成员')}</p>
+                </div>
+                {(item.role === 'owner' || self) &&
+                  (removing === member.user_id ? (
+                    <div className="confirm-actions">
+                      <p>
+                        {self
+                          ? t(
+                              '退出后将无法访问团队额度与工具。最后一位所有者需要先交接团队。',
+                            )
+                          : t('移除后，此成员的团队令牌将无法使用团队额度。')}
+                      </p>
+                      <Button
+                        disabled={remove.isPending}
+                        onClick={() => remove.mutate(member.user_id)}
+                      >
+                        {self ? t('确认退出') : t('确认移除')}
+                      </Button>
                       <Button
                         variant="outline"
-                        aria-label={
-                          self
-                            ? t('退出团队')
-                            : t('移除 {value1}', { value1: member.username })
-                        }
-                        onClick={() => {
-                          remove.reset();
-                          setRemoving(member.user_id);
-                        }}
+                        onClick={() => setRemoving(null)}
+                        disabled={remove.isPending}
                       >
-                        {self ? t('退出团队') : t('移除成员')}
+                        {t('取消')}
                       </Button>
-                    ))}
-                </li>
-              );
-            })}
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      aria-label={
+                        self
+                          ? t('退出团队')
+                          : t('移除 {value1}', { value1: member.username })
+                      }
+                      onClick={() => {
+                        remove.reset();
+                        setRemoving(member.user_id);
+                      }}
+                    >
+                      {self ? t('退出团队') : t('移除成员')}
+                    </Button>
+                  ))}
+              </li>
+            );
+          })}
         </ul>
-        <More
-          hasNext={members.hasNextPage}
-          pending={members.isFetchingNextPage}
-          onClick={() => void members.fetchNextPage()}
-        />
+        <Pagination label={t('成员')} {...members.pagination} />
       </section>
     </>
   );

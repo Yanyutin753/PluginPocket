@@ -28,7 +28,7 @@ export default function OverviewPage() {
   ] as const;
   return (
     <>
-      <section className="workshop-hero">
+      <section className="workshop-hero overview-hero">
         <div className="workshop-intro">
           <div className="workshop-note" aria-hidden="true">
             Tools for
@@ -57,6 +57,20 @@ export default function OverviewPage() {
           height="900"
           fetchPriority="high"
         />
+      </section>
+      <section className="workshop-account" aria-labelledby="account-overview">
+        <h2 id="account-overview">{t('账号概览')}</h2>
+        <dl className="stats-grid">
+          {stats.map(([label, value, Icon]) => (
+            <div key={label}>
+              <dt>
+                {t(label)}
+                <Icon aria-hidden="true" />
+              </dt>
+              <dd>{number(value, locale)}</dd>
+            </div>
+          ))}
+        </dl>
       </section>
       <section className="workshop-setup" aria-label={t('接入指南')}>
         <ol className="workshop-steps" aria-label={t('接入指南')}>
@@ -125,20 +139,6 @@ export default function OverviewPage() {
           <p>{t('登录时粘贴令牌。不要把令牌写在命令行参数中。')}</p>
           {copyMessage && <p role="status">{t(copyMessage)}</p>}
         </div>
-      </section>
-      <section className="workshop-account" aria-labelledby="account-overview">
-        <h2 id="account-overview">{t('账号概览')}</h2>
-        <dl className="stats-grid">
-          {stats.map(([label, value, Icon]) => (
-            <div key={label}>
-              <dt>
-                {t(label)}
-                <Icon aria-hidden="true" />
-              </dt>
-              <dd>{number(value, locale)}</dd>
-            </div>
-          ))}
-        </dl>
       </section>
       <div className="overview-links">
         <Link to="/tools">

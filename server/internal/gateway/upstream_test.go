@@ -55,7 +55,7 @@ func TestHTTPUpstreamSchemaNamespaceAndReplacement(t *testing.T) {
 	if !bytes.Equal(expected, actual) {
 		t.Fatalf("schema changed: %s", actual)
 	}
-	result := g.execute(ctx, *found, json.RawMessage(`{"query":"q"}`))
+	result := g.execute(ctx, store.Principal{}, *found, json.RawMessage(`{"query":"q"}`))
 	if result.IsError {
 		t.Fatal(result)
 	}

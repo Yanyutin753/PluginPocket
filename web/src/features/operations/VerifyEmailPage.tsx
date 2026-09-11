@@ -28,7 +28,7 @@ export default function VerifyEmailPage() {
       <div className="flex justify-end">
         <PreferencesControls />
       </div>
-      <Heading title={t('验证邮箱')}>
+      <Heading title={t('验证邮箱')} artwork="verify-email">
         {t('确认将此邮箱用于你的 Loadout 账号。')}
       </Heading>
       {verify.isSuccess ? (

@@ -1,13 +1,15 @@
-import { useInfiniteQuery, useMutation } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useParams, useSearchParams } from 'react-router';
+import { Pagination } from '@/components/Pagination';
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { useI18n } from '@/i18n';
 import { UsageSummary } from '../operations/UsageSummary';
-import { date, listOptions, number, requestCSV, usageSchema } from './api';
-import { ErrorNotice, Heading, Loading, More } from './shared';
+import { date, number, requestCSV, usageSchema } from './api';
+import { ErrorNotice, Heading, Loading } from './shared';
+import { usePagedList } from './usePagedList';
 
 const status = {
   pending: '处理中',
@@ -37,7 +39,7 @@ export default function UsagePage({
     if (value) filter.set(key, value);
   }
   const path = `${base}${filter.size ? `?${filter}` : ''}`;
-  const usage = useInfiniteQuery(listOptions(path, usageSchema));
+  const usage = usePagedList(path, usageSchema);
   const exporter = useMutation({
     mutationFn: (cursor: string) =>
       requestCSV(
@@ -47,12 +49,13 @@ export default function UsagePage({
   return (
     <>
       <Heading
-        artwork="insights"
+        artwork={admin ? 'admin-usage' : team ? 'team-usage' : 'usage'}
         title={admin ? t('全局用量') : team ? t('团队用量') : t('用量明细')}
       >
         {t('逐次查看工具调用、执行结果与实际消耗。')}
       </Heading>
       <form
+        key={filter.toString()}
         onSubmit={(event) => {
           event.preventDefault();
           const data = new FormData(event.currentTarget);
@@ -106,6 +109,18 @@ export default function UsagePage({
           <Button type="submit" variant="outline">
             {t('应用筛选')}
           </Button>
+          {filter.size > 0 && (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                exporter.reset();
+                setParams(new URLSearchParams());
+              }}
+            >
+              {t('清除筛选')}
+            </Button>
+          )}
         </FieldGroup>
       </form>
       {(admin || team) && (
@@ -144,9 +159,9 @@ export default function UsagePage({
         </div>
       )}
       {(admin || team) && <UsageSummary path={base} team={team} />}
-      <ErrorNotice error={usage.error} retry={() => void usage.refetch()} />
+      <ErrorNotice error={usage.error} retry={() => void usage.retry()} />
       {usage.isPending && <Loading />}
-      {usage.isSuccess && usage.data.pages[0].items.length === 0 ? (
+      {usage.isSuccess && usage.items.length === 0 ? (
         <section className="empty-state">
           <h2>
             {filter.size ? t('没有符合筛选条件的记录') : t('还没有调用记录')}
@@ -157,6 +172,7 @@ export default function UsagePage({
         usage.data && (
           <section
             className="table-scroll"
+            ref={usage.listRef}
             aria-label={t('调用明细表格')}
             // biome-ignore lint/a11y/noNoninteractiveTabindex: Horizontal tables need keyboard scrolling.
             tabIndex={0}
@@ -164,39 +180,59 @@ export default function UsagePage({
             <table>
               <thead>
                 <tr>
-                  {(admin || team) && <th>{t('成员编号')}</th>}
-                  <th>{t('工具')}</th>
-                  <th>{t('时间')}</th>
-                  <th>{t('结果')}</th>
-                  <th>{t('耗时')}</th>
-                  <th>{t('额度')}</th>
+                  {(admin || team) && <th scope="col">{t('成员编号')}</th>}
+                  <th scope="col">{t('工具')}</th>
+                  <th scope="col">{t('时间')}</th>
+                  <th scope="col">{t('结果')}</th>
+                  <th scope="col" className="numeric">
+                    {t('耗时')}
+                  </th>
+                  <th scope="col" className="numeric">
+                    {t('额度')}
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {usage.data.pages
-                  .flatMap((page) => page.items)
-                  .map((item) => (
-                    <tr key={item.id}>
-                      {(admin || team) && <td>{item.user_id ?? '—'}</td>}
-                      <td>
-                        <code>{item.tool}</code>
-                      </td>
-                      <td>{date(item.created_at, locale)}</td>
-                      <td>{t(status[item.status])}</td>
-                      <td>{number(item.duration_ms, locale)} ms</td>
-                      <td>{number(item.cost, locale)}</td>
-                    </tr>
-                  ))}
+                {usage.items.map((item) => (
+                  <tr key={item.id}>
+                    {(admin || team) && (
+                      <td data-label={t('成员编号')}>{item.user_id ?? '—'}</td>
+                    )}
+                    <td data-label={t('工具')} className="cell-wrap">
+                      <code>{item.tool}</code>
+                    </td>
+                    <td data-label={t('时间')}>
+                      {date(item.created_at, locale)}
+                    </td>
+                    <td data-label={t('结果')}>
+                      <span
+                        className="status-badge"
+                        data-tone={
+                          item.status === 'ok'
+                            ? 'success'
+                            : item.status === 'error' ||
+                                item.status === 'denied'
+                              ? 'danger'
+                              : 'neutral'
+                        }
+                      >
+                        {t(status[item.status])}
+                      </span>
+                    </td>
+                    <td data-label={t('耗时')} className="numeric">
+                      {number(item.duration_ms, locale)} ms
+                    </td>
+                    <td data-label={t('额度')} className="numeric">
+                      {number(item.cost, locale)}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </section>
         )
       )}
-      <More
-        hasNext={usage.hasNextPage}
-        pending={usage.isFetchingNextPage}
-        onClick={() => void usage.fetchNextPage()}
-      />
+      <Pagination label={t('调用明细')} {...usage.pagination} />
     </>
   );
 }

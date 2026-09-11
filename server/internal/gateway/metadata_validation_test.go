@@ -64,7 +64,7 @@ func TestDuplicateUpstreamDefinitionsLeaveHealthyCatalogAvailable(t *testing.T) 
 	for _, binding := range bindings {
 		names[binding.definition.Name] = true
 	}
-	if len(bindings) != 3 || !names["echo"] || !names["time_now"] || !names["healthy__ping"] {
+	if len(bindings) != 6 || !names["echo"] || !names["time_now"] || !names["healthy__ping"] {
 		t.Fatalf("healthy tools lost or duplicate provider exposed: names=%v", names)
 	}
 }

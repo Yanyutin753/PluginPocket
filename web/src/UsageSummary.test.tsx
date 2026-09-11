@@ -55,7 +55,7 @@ it.each([false, true])(
     );
     const user = userEvent.setup();
     expect(await screen.findByText('first-group')).toBeVisible();
-    const more = await screen.findByRole('button', { name: '加载更多' });
+    const more = await screen.findByRole('button', { name: '下一页' });
     more.focus();
     await user.keyboard('{Enter}');
     expect(await screen.findByRole('alert')).toBeVisible();
@@ -64,12 +64,10 @@ it.each([false, true])(
     retry.focus();
     await user.keyboard('{Enter}');
     expect(await screen.findByText('last-group')).toBeVisible();
-    expect(screen.getByText('first-group')).toBeVisible();
-    expect(
-      screen.queryByRole('button', { name: '加载更多' }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText('first-group')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '下一页' })).toBeDisabled();
     const table = screen.getByRole('region', { name: '调用汇总表格' });
-    expect(within(table).getAllByRole('row')).toHaveLength(3);
+    expect(within(table).getAllByRole('row')).toHaveLength(2);
     table.focus();
     expect(table).toHaveFocus();
     await chooseOption(

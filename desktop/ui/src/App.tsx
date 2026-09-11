@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, Link, LogOut, RefreshCw, Unplug } from 'lucide-react';
+import { Check, Link, LogOut, RefreshCw, SunMoon, Unplug } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import workshopDesktop from '../../../web/public/images/workshop-desktop.webp';
 import workshopMark from '../../../web/public/images/workshop-mark.webp';
-import workshopTools from '../../../web/public/images/workshop-tools.webp';
 import { Select } from '../../../web/src/components/ui/select';
 import { api, type ClientKind } from './api';
 import { Button } from './components/ui/button';
@@ -124,8 +124,9 @@ export function App() {
         </div>
         <div className="desktop-controls">
           <label className="theme-control" htmlFor="desktop-theme">
-            外观
+            <span className="sr-only">外观</span>
             <Select
+              icon={<SunMoon />}
               id="desktop-theme"
               aria-label="外观"
               value={theme}
@@ -152,7 +153,7 @@ export function App() {
           <h1>让你的 AI，准备就绪</h1>
           <p>登录一次，将工具接入这台电脑上的 AI 客户端</p>
         </div>
-        <img src={workshopTools} alt="" width="900" height="600" />
+        <img src={workshopDesktop} alt="" width="900" height="600" />
       </div>
       <div className="desktop-grid">
         {status.isPending && (

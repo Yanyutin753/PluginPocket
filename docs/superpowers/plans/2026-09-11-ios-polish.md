@@ -34,3 +34,16 @@
 - review_workshop最终聚焦审查：未发现已证实P1/P2；复跑Product17、Select4、Preferences4通过。
 - ios-final-check.log：第一轮完整 make check 已运行成功（此后用户继续追加侧栏/账号/图标等变更，不能代表最终状态）。
 - ios-final-check-2.log：第二轮前端/桌面构建通过，Go限流测试 TestRateLimitIsSharedAndAtomic 出现 allowed68/want60；无后端代码修改。独立 go test -race -count=3 -run TestRateLimitIsSharedAndAtomic ./internal/gateway 通过（ios-rate-recheck.log）。最终完整检查需在追加资产及UI完成后再次运行并记录。
+
+
+## 同主角、逐页独立场景（最终追加）
+
+客户端同理：品牌图标与默认头像共享，内容插画按页面分配，保留薄荷绿工具箱主角。新增21张900×600透明WebP，分别覆盖账号7场景、管理7场景、工具与客户端7场景；完整prompt、原图与抠图记录见 docs/third-party/Workshop-account-scenes.md、Workshop-admin-scenes.md、Workshop-utility-scenes.md。客户端使用workshop-desktop，不再借用落地页的workshop-tools。落地页6张、概览hero、404empty各自保留；共享查询加载组件使用loading。全局空状态不再重复插入同一图片。
+
+最终改动仅为装饰图片分配与既有Heading复用，未新增业务行为；相关组件回归：pnpm --dir web test（103通过，scene-web-test.log）；pnpm --dir desktop/ui test（7通过，scene-client-test.log）。此前标点归一化的RED见ui-copy-red.log，GREEN见ui-copy-green.log与ui-copy-desktop-green.log，插值内容保持原样。
+
+真实浏览器最终检查：20个生产入口×浅深主题×1440/390，共80张内容加载完成后截图，无横向溢出、无破图；团队详情/用量8张独立只读fixture截图。客户端390、1440浅深主题和2560深色大屏均截图核对。预览环境无Tauri bridge，显示真实不可用/重试状态；没有登录或改写真实客户端配置。图集与DOM记录位于Codex visualizations/2026/09/10/01a08bfd-0b27-7442-828c-49b57a546d35/ios（scene-*、client-scene-*）。临时qa-team/qa-loading入口检查后删除。
+
+ios-final-check-3.log曾因演示数据E2E缺少管理员令牌失败；并行后端工作更新后，最终 make check 已完整运行且退出0，日志 .loadout/ios-scenes-final-check.log，包含Web/客户端测试、构建、Rust/Go检查、Tauri deb打包、真实产品旅程与集成测试。此前失败不作为最终成功证据。git diff --check通过。未提交、推送或发布。
+
+静态设计扫描完成：104条记录，其中97条字号/模式等建议，7条字体登记偏差为已使用的Bricolage与SFMono，已补齐DESIGN.md typography。未以扫描替代截图验收。共享Select额外以非忽略路径stdin执行Biome检查/格式化，随后复跑组件测试。

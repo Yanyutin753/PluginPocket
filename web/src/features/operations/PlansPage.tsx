@@ -1,16 +1,14 @@
-import {
-  useInfiniteQuery,
-  useMutation,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { z } from 'zod';
+import { Pagination } from '@/components/Pagination';
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { useI18n } from '@/i18n';
-import { listOptions, number, request } from '../account/api';
-import { ErrorNotice, Heading, Loading, More } from '../account/shared';
+import { number, request } from '../account/api';
+import { ErrorNotice, Heading, Loading } from '../account/shared';
+import { usePagedList } from '../account/usePagedList';
 import { type Plan, planSchema, price } from './api';
 
 function PlanEditor({ item, close }: { item: Plan | null; close: () => void }) {
@@ -114,7 +112,7 @@ function PlanEditor({ item, close }: { item: Plan | null; close: () => void }) {
 export default function PlansPage() {
   const { t, locale } = useI18n();
   const client = useQueryClient();
-  const plans = useInfiniteQuery(listOptions('/admin/plans', planSchema));
+  const plans = usePagedList('/admin/plans', planSchema);
   const [editing, setEditing] = useState<Plan | null | undefined>();
   const toggle = useMutation({
     mutationFn: (item: Plan) =>
@@ -135,7 +133,7 @@ export default function PlansPage() {
   });
   return (
     <>
-      <Heading title={t('套餐管理')}>
+      <Heading title={t('套餐管理')} artwork="admin-plans">
         {t('套餐额度和价格由你定义。付款能力取决于支付服务配置。')}
       </Heading>
       {editing === undefined ? (
@@ -143,53 +141,47 @@ export default function PlansPage() {
       ) : (
         <PlanEditor item={editing} close={() => setEditing(undefined)} />
       )}
-      <ErrorNotice error={plans.error} retry={() => void plans.refetch()} />
+      <ErrorNotice error={plans.error} retry={() => void plans.retry()} />
       <ErrorNotice error={toggle.error} />
       {plans.isPending && <Loading />}
-      {plans.isSuccess && !plans.data.pages[0].items.length && (
+      {plans.isSuccess && !plans.items.length && (
         <p className="empty-state">{t('暂时没有套餐。')}</p>
       )}
-      <ul className="record-list">
-        {plans.data?.pages
-          .flatMap((page) => page.items)
-          .map((item) => (
-            <li key={item.id}>
-              <div className="record-main">
-                <h2>{item.name}</h2>
-                <p>
-                  {t('{credits} 额度 · {price}', {
-                    credits: number(item.credits, locale),
-                    price: price(item.price_cents, item.currency, locale),
-                  })}
-                </p>
-                <p>{item.enabled ? t('在售') : t('已停用')}</p>
-              </div>
-              <div className="action-row">
-                <Button
-                  variant="outline"
-                  aria-label={t('编辑 {value1}', { value1: item.name })}
-                  disabled={editing !== undefined}
-                  onClick={() => setEditing(item)}
-                >
-                  {t('编辑')}
-                </Button>
-                <Button
-                  variant="outline"
-                  aria-label={`${item.enabled ? t('停用') : t('启用')} ${item.name}`}
-                  disabled={toggle.isPending || editing !== undefined}
-                  onClick={() => toggle.mutate(item)}
-                >
-                  {item.enabled ? t('停用') : t('启用')}
-                </Button>
-              </div>
-            </li>
-          ))}
+      <ul className="record-list" ref={plans.listRef} tabIndex={-1}>
+        {plans.items.map((item) => (
+          <li key={item.id}>
+            <div className="record-main">
+              <h2>{item.name}</h2>
+              <p>
+                {t('{credits} 额度 · {price}', {
+                  credits: number(item.credits, locale),
+                  price: price(item.price_cents, item.currency, locale),
+                })}
+              </p>
+              <p>{item.enabled ? t('在售') : t('已停用')}</p>
+            </div>
+            <div className="action-row">
+              <Button
+                variant="outline"
+                aria-label={t('编辑 {value1}', { value1: item.name })}
+                disabled={editing !== undefined}
+                onClick={() => setEditing(item)}
+              >
+                {t('编辑')}
+              </Button>
+              <Button
+                variant="outline"
+                aria-label={`${item.enabled ? t('停用') : t('启用')} ${item.name}`}
+                disabled={toggle.isPending || editing !== undefined}
+                onClick={() => toggle.mutate(item)}
+              >
+                {item.enabled ? t('停用') : t('启用')}
+              </Button>
+            </div>
+          </li>
+        ))}
       </ul>
-      <More
-        hasNext={plans.hasNextPage}
-        pending={plans.isFetchingNextPage}
-        onClick={() => void plans.fetchNextPage()}
-      />
+      <Pagination label={t('套餐')} {...plans.pagination} />
     </>
   );
 }

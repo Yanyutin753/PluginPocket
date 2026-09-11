@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Yanyutin753/loadout/server/internal/store"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -62,7 +63,7 @@ func TestRetiredHTTPPoolDoesNotBlockReenableOrInterruptActiveCall(t *testing.T) 
 	defer cancel()
 	binding := poolTool(t, g, ctx, "remote__wait")
 	old := make(chan *mcp.CallToolResult, 1)
-	go func() { old <- g.execute(ctx, binding, json.RawMessage(`{"old":true}`)) }()
+	go func() { old <- g.execute(ctx, store.Principal{}, binding, json.RawMessage(`{"old":true}`)) }()
 	select {
 	case <-entered:
 	case <-ctx.Done():
@@ -85,14 +86,14 @@ func TestRetiredHTTPPoolDoesNotBlockReenableOrInterruptActiveCall(t *testing.T) 
 	}
 	g.Invalidate()
 	current := poolTool(t, g, ctx, "remote__wait")
-	if g.execute(ctx, current, json.RawMessage(`{}`)).IsError {
+	if g.execute(ctx, store.Principal{}, current, json.RawMessage(`{}`)).IsError {
 		t.Fatal("reenabled upstream waited for retired active calls")
 	}
 	unblock()
 	if result := <-old; result.IsError {
 		t.Fatal("retired active call did not finish successfully")
 	}
-	if g.execute(ctx, current, json.RawMessage(`{}`)).IsError || connections.Load() != 2 {
+	if g.execute(ctx, store.Principal{}, current, json.RawMessage(`{}`)).IsError || connections.Load() != 2 {
 		t.Fatalf("retired release replaced the new pool: handshakes=%d", connections.Load())
 	}
 }
@@ -180,7 +181,7 @@ func TestHTTPPoolBoundsLeasesReusesSessionsAndKeepsOtherUpstreamsAvailable(t *te
 	binding := poolTool(t, g, ctx, "remote__wait")
 	results := make(chan *mcp.CallToolResult, 40)
 	for range 40 {
-		go func() { results <- g.execute(ctx, binding, json.RawMessage(`{"block":true}`)) }()
+		go func() { results <- g.execute(ctx, store.Principal{}, binding, json.RawMessage(`{"block":true}`)) }()
 	}
 	for range 32 {
 		select {
@@ -219,7 +220,7 @@ func TestHTTPPoolBoundsLeasesReusesSessionsAndKeepsOtherUpstreamsAvailable(t *te
 	}
 	g.Invalidate()
 	limited, stop := context.WithTimeout(ctx, 100*time.Millisecond)
-	if !g.execute(limited, next, json.RawMessage(`{}`)).IsError {
+	if !g.execute(limited, store.Principal{}, next, json.RawMessage(`{}`)).IsError {
 		stop()
 		t.Fatal("configuration replacement bypassed the provider's 32-call limit")
 	}
@@ -232,7 +233,7 @@ func TestHTTPPoolBoundsLeasesReusesSessionsAndKeepsOtherUpstreamsAvailable(t *te
 	}
 	g.Invalidate()
 	healthy := poolTool(t, g, ctx, "healthy__wait")
-	if g.execute(ctx, healthy, json.RawMessage(`{}`)).IsError {
+	if g.execute(ctx, store.Principal{}, healthy, json.RawMessage(`{}`)).IsError {
 		t.Fatal("saturated upstream hid another upstream")
 	}
 	unblock()
@@ -247,7 +248,7 @@ func TestHTTPPoolBoundsLeasesReusesSessionsAndKeepsOtherUpstreamsAvailable(t *te
 		}
 	}
 	for range 3 {
-		if g.execute(ctx, binding, json.RawMessage(`{}`)).IsError {
+		if g.execute(ctx, store.Principal{}, binding, json.RawMessage(`{}`)).IsError {
 			t.Fatal("idle session reuse failed")
 		}
 	}

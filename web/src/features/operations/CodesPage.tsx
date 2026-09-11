@@ -1,24 +1,20 @@
-import {
-  useInfiniteQuery,
-  useMutation,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { z } from 'zod';
+import { Pagination } from '@/components/Pagination';
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { useI18n } from '@/i18n';
-import { date, listOptions, number, request } from '../account/api';
-import { ErrorNotice, Heading, Loading, More } from '../account/shared';
+import { date, number, request } from '../account/api';
+import { ErrorNotice, Heading, Loading } from '../account/shared';
+import { usePagedList } from '../account/usePagedList';
 import { codeSchema } from './api';
 import { OneTimeCode } from './OneTimeCode';
 export default function CodesPage() {
   const { t, locale } = useI18n();
   const client = useQueryClient();
-  const list = useInfiniteQuery(
-    listOptions('/admin/redemption-codes', codeSchema),
-  );
+  const list = usePagedList('/admin/redemption-codes', codeSchema);
   const [code, setCode] = useState('');
   const create = useMutation({
     mutationFn: async (body: { credits: number; note: string }) => {
@@ -35,11 +31,11 @@ export default function CodesPage() {
   });
   return (
     <>
-      <Heading artwork="credits" title={t('兑换码管理')}>
+      <Heading artwork="admin-codes" title={t('兑换码管理')}>
         {t('生成单次兑换凭据，查看发放和兑换状态。')}
       </Heading>
       <form
-        className="editor-panel"
+        className="editor-panel compact-editor"
         onSubmit={(event) => {
           event.preventDefault();
           const data = new FormData(event.currentTarget);
@@ -75,40 +71,37 @@ export default function CodesPage() {
       {code && (
         <OneTimeCode title={t('兑换码')} code={code} hide={() => setCode('')} />
       )}
-      <ErrorNotice error={list.error} retry={() => void list.refetch()} />
+      <ErrorNotice error={list.error} retry={() => void list.retry()} />
       {list.isPending && <Loading />}
-      {list.isSuccess && !list.data.pages[0].items.length && (
+      {list.isSuccess && !list.items.length && (
         <p className="empty-state">{t('还没有生成兑换码。')}</p>
       )}
-      <ul className="record-list">
-        {list.data?.pages
-          .flatMap((page) => page.items)
-          .map((item) => (
-            <li key={item.id}>
-              <div className="record-main">
-                <h2>
-                  {t('{credits} 额度', {
-                    credits: number(item.credits, locale),
-                  })}
-                </h2>
-                <p>{item.note}</p>
-                <p>{date(item.created_at, locale)}</p>
-              </div>
-              <span>
-                {item.redeemed_at
-                  ? t('已兑换 · {value1}', {
-                      value1: date(item.redeemed_at, locale),
-                    })
-                  : t('未兑换')}
-              </span>
-            </li>
-          ))}
+      <ul className="record-list" ref={list.listRef} tabIndex={-1}>
+        {list.items.map((item) => (
+          <li key={item.id}>
+            <div className="record-main">
+              <h2>
+                {t('{credits} 额度', {
+                  credits: number(item.credits, locale),
+                })}
+              </h2>
+              <p>{item.note}</p>
+              <p>{date(item.created_at, locale)}</p>
+            </div>
+            <span
+              className="status-badge"
+              data-tone={item.redeemed_at ? 'neutral' : 'success'}
+            >
+              {item.redeemed_at
+                ? t('已兑换 · {value1}', {
+                    value1: date(item.redeemed_at, locale),
+                  })
+                : t('未兑换')}
+            </span>
+          </li>
+        ))}
       </ul>
-      <More
-        hasNext={list.hasNextPage}
-        pending={list.isFetchingNextPage}
-        onClick={() => void list.fetchNextPage()}
-      />
+      <Pagination label={t('兑换码')} {...list.pagination} />
     </>
   );
 }

@@ -158,8 +158,12 @@ export const accountQuery = queryOptions({
   retry: false,
   staleTime: 30_000,
 });
-export const listOptions = <T extends z.ZodType>(path: string, schema: T) => ({
-  queryKey: [path],
+export const listOptions = <T extends z.ZodType>(
+  path: string,
+  schema: T,
+  limit = 50,
+) => ({
+  queryKey: [path, { limit }],
   initialPageParam: '',
   queryFn: ({
     signal,
@@ -169,7 +173,7 @@ export const listOptions = <T extends z.ZodType>(path: string, schema: T) => ({
     pageParam: string;
   }) =>
     request(
-      `${path}${path.includes('?') ? '&' : '?'}limit=50&cursor=${encodeURIComponent(pageParam)}`,
+      `${path}${path.includes('?') ? '&' : '?'}limit=${limit}&cursor=${encodeURIComponent(pageParam)}`,
       pageSchema(schema),
       { signal },
     ),

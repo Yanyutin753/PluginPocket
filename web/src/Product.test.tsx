@@ -213,7 +213,7 @@ describe('account console', () => {
     await user.click(screen.getByRole('button', { name: '确认撤销' }));
     expect(await screen.findByText('已撤销')).toBeVisible();
   });
-  it('paginates usage using the server cursor and keeps earlier records', async () => {
+  it('paginates usage using the server cursor and returns to cached previous records', async () => {
     network((url) =>
       url.startsWith('/api/v1/account/usage')
         ? Response.json(
@@ -251,12 +251,15 @@ describe('account console', () => {
     expect(await screen.findByText('time_now')).toBeVisible();
     await userEvent
       .setup()
-      .click(screen.getByRole('button', { name: '加载更多' }));
+      .click(screen.getByRole('button', { name: '下一页' }));
     expect(await screen.findByText('echo')).toBeVisible();
-    expect(screen.getByText('time_now')).toBeVisible();
-    expect(
-      screen.queryByRole('button', { name: '加载更多' }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText('time_now')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '下一页' })).toBeDisabled();
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: '上一页' }));
+    expect(await screen.findByText('time_now')).toBeVisible();
+    expect(screen.queryByText('echo')).not.toBeInTheDocument();
   });
   it('returns to login and removes protected content when a page returns 401', async () => {
     network((url) =>
@@ -459,7 +462,7 @@ describe('recovery and navigation', () => {
     mount('/usage');
     const user = userEvent.setup();
     await screen.findByText('time_now');
-    await user.click(screen.getByRole('button', { name: '加载更多' }));
+    await user.click(screen.getByRole('button', { name: '下一页' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
       '暂时无法完成请求',
     );
@@ -468,7 +471,7 @@ describe('recovery and navigation', () => {
     table.focus();
     expect(table).toHaveFocus();
     failing = false;
-    await user.click(screen.getByRole('button', { name: '加载更多' }));
+    await user.click(screen.getByRole('button', { name: '下一页' }));
     expect(await screen.findByText('echo')).toBeVisible();
   });
 });

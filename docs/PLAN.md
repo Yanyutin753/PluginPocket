@@ -15,6 +15,8 @@
 
 2026-09-11 增加管理员系统配置热更新：注册赠送额度、GitHub/SMTP运行时配置使用PostgreSQL版本化保存，设计见 [系统配置](superpowers/specs/2026-09-11-runtime-settings.md)。
 
+2026-09-11 增加独立本地演示数据生成器，覆盖普通用户与管理员自己的数据；沿用真实 REST、MCP 和账本，仅模拟外部工具结果。规模与运行方式见 [演示说明](DEMO.md)，双副本/存活 bridge 的 MCP 配置热重载验证见 [本轮记录](superpowers/plans/2026-09-11-demo-validation.md)。
+
 当前实施以 [完整产品设计](superpowers/specs/2026-09-10-product-design.md)、[架构 ADR](adr/0001-product-architecture.md)、[实施计划](superpowers/plans/2026-09-10-product.md) 与 [验收账本](superpowers/plans/2026-09-10-product-execution.md) 为准。用户确认响应式 Web + Tauri 桌面；充值先做兑换码/管理员调账，外部支付保留接口。当前数据模型、Cookie会话与预占账本已同步；详细REST字段以 [API](API.md) / [OpenAPI](openapi.json) 和可执行迁移为准。
 
 ---

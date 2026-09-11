@@ -193,11 +193,11 @@
   width: auto;
   flex-shrink: 0;
   min-height: 44px;
-  border: 1px solid var(--input-border);
+  border: 0;
   border-radius: 12px;
-  background: var(--card);
+  background: transparent;
   color: var(--foreground);
-  padding: 0.5rem;
+  padding: 0.5rem 0.75rem;
   font: inherit;
   cursor: pointer;
 }
@@ -516,5 +516,11 @@ footer {
   [data-slot="button"]:enabled:hover,
   [data-slot="button"]:enabled:active {
     transform: none;
+  }
+}
+
+@media (hover: hover) {
+  .theme-control [data-slot="select-trigger"]:enabled:hover {
+    background: var(--muted);
   }
 }

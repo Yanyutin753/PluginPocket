@@ -12,6 +12,7 @@ import { healthQuery } from './api';
 import { PreferencesControls } from './components/Preferences';
 import { Button } from './components/ui/button';
 import { Separator } from './components/ui/separator';
+import { Heading } from './features/account/shared';
 
 export default function HealthPage() {
   const { t } = useI18n();
@@ -47,14 +48,9 @@ export default function HealthPage() {
       </header>
 
       <main className="mx-auto flex max-w-5xl flex-col gap-10 px-5 py-10 sm:px-8 sm:py-14">
-        <div className="flex flex-col gap-3">
-          <h1 className="text-3xl font-semibold tracking-tight">
-            {t('接入状态')}
-          </h1>
-          <p className="max-w-prose text-base leading-7 text-muted-foreground">
-            {t('让你的 AI 工具，准备就绪。从这里确认 Loadout 服务是否可用。')}
-          </p>
-        </div>
+        <Heading title={t('接入状态')} artwork="health">
+          {t('让你的 AI 工具，准备就绪。从这里确认 Loadout 服务是否可用。')}
+        </Heading>
 
         <section
           aria-label={t('服务连接')}

@@ -1,13 +1,14 @@
-import { useInfiniteQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router';
 import { z } from 'zod';
+import { Pagination } from '@/components/Pagination';
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { useI18n } from '@/i18n';
-import { date, listOptions, number } from '../account/api';
-import { ErrorNotice, Heading, Loading, More } from '../account/shared';
+import { date, number } from '../account/api';
+import { ErrorNotice, Heading, Loading } from '../account/shared';
+import { usePagedList } from '../account/usePagedList';
 import { ledgerSchema } from './api';
 
 const schema = ledgerSchema.extend({
@@ -32,15 +33,17 @@ export default function LedgerPage() {
     const value = params.get(key);
     if (value) filter.set(key, value);
   }
-  const ledger = useInfiniteQuery(
-    listOptions(`/admin/ledger${filter.size ? `?${filter}` : ''}`, schema),
+  const ledger = usePagedList(
+    `/admin/ledger${filter.size ? `?${filter}` : ''}`,
+    schema,
   );
   return (
     <>
-      <Heading title={t('额度审计')}>
+      <Heading title={t('额度审计')} artwork="admin-ledger">
         {t('按用户、操作人和变动类型核对不可变账本。')}
       </Heading>
       <form
+        key={filter.toString()}
         onSubmit={(event) => {
           event.preventDefault();
           const data = new FormData(event.currentTarget);
@@ -95,14 +98,15 @@ export default function LedgerPage() {
           </Button>
         </FieldGroup>
       </form>
-      <ErrorNotice error={ledger.error} retry={() => void ledger.refetch()} />
+      <ErrorNotice error={ledger.error} retry={() => void ledger.retry()} />
       {ledger.isPending && <Loading />}
-      {ledger.isSuccess && !ledger.data.pages[0].items.length ? (
+      {ledger.isSuccess && !ledger.items.length ? (
         <p className="empty-state">{t('没有符合条件的额度变动。')}</p>
       ) : (
         ledger.data && (
           <section
             className="table-scroll"
+            ref={ledger.listRef}
             aria-label={t('额度审计表格')}
             // biome-ignore lint/a11y/noNoninteractiveTabindex: Horizontal tables need keyboard scrolling.
             tabIndex={0}
@@ -110,48 +114,56 @@ export default function LedgerPage() {
             <table>
               <thead>
                 <tr>
-                  <th>{t('时间')}</th>
-                  <th>{t('用户')}</th>
-                  <th>{t('操作人')}</th>
-                  <th>{t('钱包')}</th>
-                  <th>{t('变动类型')}</th>
-                  <th>{t('额度变动')}</th>
-                  <th>{t('备注')}</th>
-                  <th>{t('变动后余额')}</th>
+                  <th scope="col">{t('时间')}</th>
+                  <th scope="col">{t('用户')}</th>
+                  <th scope="col">{t('操作人')}</th>
+                  <th scope="col">{t('钱包')}</th>
+                  <th scope="col">{t('变动类型')}</th>
+                  <th scope="col" className="numeric">
+                    {t('额度变动')}
+                  </th>
+                  <th scope="col">{t('备注')}</th>
+                  <th scope="col" className="numeric">
+                    {t('变动后余额')}
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {ledger.data.pages
-                  .flatMap((page) => page.items)
-                  .map((item) => (
-                    <tr key={item.id}>
-                      <td>{date(item.created_at, locale)}</td>
-                      <td>{item.user_id}</td>
-                      <td>{item.actor_id ?? t('系统')}</td>
-                      <td>{item.wallet_id}</td>
-                      <td>{t(kinds[item.kind] ?? item.kind)}</td>
-                      <td>
-                        {item.delta > 0 ? '+' : ''}
-                        {number(item.delta, locale)}
-                      </td>
-                      <td>{item.note || '—'}</td>
-                      <td>
-                        {item.balance_after === null
-                          ? '—'
-                          : number(item.balance_after, locale)}
-                      </td>
-                    </tr>
-                  ))}
+                {ledger.items.map((item) => (
+                  <tr key={item.id}>
+                    <td data-label={t('时间')}>
+                      {date(item.created_at, locale)}
+                    </td>
+                    <td data-label={t('用户')} className="cell-wrap">
+                      {item.user_id}
+                    </td>
+                    <td data-label={t('操作人')}>
+                      {item.actor_id ?? t('系统')}
+                    </td>
+                    <td data-label={t('钱包')}>{item.wallet_id}</td>
+                    <td data-label={t('变动类型')}>
+                      {t(kinds[item.kind] ?? item.kind)}
+                    </td>
+                    <td data-label={t('额度变动')} className="numeric">
+                      {item.delta > 0 ? '+' : ''}
+                      {number(item.delta, locale)}
+                    </td>
+                    <td data-label={t('备注')} className="cell-wrap">
+                      {item.note || '—'}
+                    </td>
+                    <td data-label={t('变动后余额')} className="numeric">
+                      {item.balance_after === null
+                        ? '—'
+                        : number(item.balance_after, locale)}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </section>
         )
       )}
-      <More
-        hasNext={ledger.hasNextPage}
-        pending={ledger.isFetchingNextPage}
-        onClick={() => void ledger.fetchNextPage()}
-      />
+      <Pagination label={t('额度流水')} {...ledger.pagination} />
     </>
   );
 }

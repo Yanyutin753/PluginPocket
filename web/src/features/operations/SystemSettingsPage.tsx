@@ -68,7 +68,7 @@ export default function SystemSettingsPage() {
   const item = settings.data?.item;
   return (
     <>
-      <Heading title="系统配置">
+      <Heading title="系统配置" artwork="admin-settings">
         保存后对新请求生效，多个服务副本共享配置。
       </Heading>
       <ErrorNotice

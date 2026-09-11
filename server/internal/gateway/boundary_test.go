@@ -89,8 +89,8 @@ func TestBoundaryNamespaceCollisionRoutesToWrongProvider(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	if len(list.Tools) != 4 {
-		t.Errorf("two upstreams plus two builtins should expose 4 tools; got %d", len(list.Tools))
+	if len(list.Tools) != 7 {
+		t.Errorf("two upstreams plus five builtins should expose 7 tools; got %d", len(list.Tools))
 	}
 	result, e := session.CallTool(t.Context(), &mcp.CallToolParams{Name: "foo__bar__baz", Arguments: map[string]any{}})
 	if e != nil {
@@ -131,7 +131,7 @@ func TestBoundaryAll129EnabledUpstreamsVisible(t *testing.T) {
 			found = true
 		}
 	}
-	if !found || len(bindings) != 131 {
-		t.Fatalf("129 enabled upstreams plus builtins should expose 131 bindings including provider128; actual bindings=%d final_provider_present=%v", len(bindings), found)
+	if !found || len(bindings) != 134 {
+		t.Fatalf("129 enabled upstreams plus builtins should expose 134 bindings including provider128; actual bindings=%d final_provider_present=%v", len(bindings), found)
 	}
 }

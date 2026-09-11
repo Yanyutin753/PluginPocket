@@ -456,9 +456,17 @@ function AppRoutes() {
             <Route
               path="*"
               element={
-                <main className="standalone">
+                <main className="standalone not-found">
+                  <img
+                    src="/images/workshop-empty.webp"
+                    alt=""
+                    width="900"
+                    height="600"
+                  />
                   <h1>{t('页面不存在')}</h1>
-                  <Link to="/overview">{t('返回概览')}</Link>
+                  <Button asChild>
+                    <Link to="/overview">{t('返回概览')}</Link>
+                  </Button>
                 </main>
               }
             />

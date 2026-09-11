@@ -14,7 +14,7 @@ func TestCatalogRevisionInvalidatesAnAlreadyPublishedFlight(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 	previous, err := g.tools(ctx)
-	if err != nil || len(previous) != 2 {
+	if err != nil || len(previous) != 5 {
 		t.Fatalf("cannot warm real catalog: count=%d err=%v", len(previous), err)
 	}
 	// A real catalog flight publishes its snapshot, then retires old SDK
@@ -86,7 +86,7 @@ func TestCatalogRevisionInvalidatesAnAlreadyPublishedFlight(t *testing.T) {
 				t.Fatal("request begun after committed disable returned the previous flight's stale echo tool")
 			}
 		}
-		if len(got.bindings) != 1 || got.bindings[0].definition.Name != "time_now" {
+		if len(got.bindings) != 4 || got.bindings[0].definition.Name != "time_now" {
 			t.Fatal("catalog refresh lost the enabled tool")
 		}
 	case <-ctx.Done():

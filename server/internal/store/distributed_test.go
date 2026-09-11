@@ -161,7 +161,7 @@ func TestDistributedConcurrentFirstMigrations(t *testing.T) {
 			}
 			defer s.Close()
 			var tools int
-			if err := s.Pool.QueryRow(ctx, "SELECT count(*) FROM tools").Scan(&tools); err != nil || tools != 2 {
+			if err := s.Pool.QueryRow(ctx, "SELECT count(*) FROM tools").Scan(&tools); err != nil || tools != 5 {
 				t.Errorf("seed tools=%d err=%v", tools, err)
 			}
 		})

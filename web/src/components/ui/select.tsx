@@ -57,7 +57,9 @@ export function Select({
         disabled={disabled}
       />
       <SelectPrimitive.Root
-        onOpenChange={(next) => { open.current = next; }}
+        onOpenChange={(next) => {
+          open.current = next;
+        }}
         value={internalValue}
         disabled={disabled}
         onValueChange={(next) => {
@@ -72,12 +74,18 @@ export function Select({
           data-pointer-focus={pointerFocus || undefined}
           onPointerDown={() => setPointerFocus(true)}
           onKeyDown={() => setPointerFocus(false)}
-          onBlur={() => { if (!open.current) setPointerFocus(false); }}
+          onBlur={() => {
+            if (!open.current) setPointerFocus(false);
+          }}
           className={
             className ? `select-trigger ${className}` : 'select-trigger'
           }
         >
-          {icon && <span className="select-leading-icon" aria-hidden="true">{icon}</span>}
+          {icon && (
+            <span className="select-leading-icon" aria-hidden="true">
+              {icon}
+            </span>
+          )}
           <span className="select-label">
             <SelectPrimitive.Value placeholder={placeholder} />
           </span>

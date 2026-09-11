@@ -83,7 +83,7 @@ format: $(GOLANGCI_LINT) ## 自动格式化三端代码
 	cd server && "$(GOLANGCI_LINT)" fmt ./...
 	cargo fmt --manifest-path cli/Cargo.toml --all
 
-build: build-web build-server build-cli ## 构建 Web、Go 和 Rust release
+build: build-web build-server build-cli build-demo ## 构建 Web、Go、Rust release 和本地演示工具
 
 build-web:
 	pnpm --dir web build
@@ -94,6 +94,11 @@ build-server:
 
 build-cli:
 	cargo build --manifest-path cli/Cargo.toml --locked --release
+
+.PHONY: build-demo
+build-demo: ## 构建本地演示数据与 mock MCP 工具
+	mkdir -p build
+	cd server && go build -trimpath -o ../build/loadout-demo ./cmd/loadout-demo
 
 integration: build ## 构建并验证真实 HTTP / CLI 集成
 	node --test tests/integration.test.mjs
@@ -147,7 +152,7 @@ build-desktop: build-desktop-ui ## 构建 Linux 桌面 release 与 Debian 安装
 database-check: ## 要求真实 PostgreSQL；避免业务测试被跳过仍报告成功
 	@test -n "$$LOADOUT_TEST_DATABASE_URL" || { echo "Set LOADOUT_TEST_DATABASE_URL to an isolated PostgreSQL 18 test database."; exit 1; }
 
-test-product: database-check build-server build-cli ## 真实数据库、Go 服务、Rust bridge 全链路
+test-product: database-check build-server build-cli build-demo ## 真实数据库、Go 服务、Rust bridge 全链路
 	cd server && LOADOUT_SERVER_BINARY="$(CURDIR)/build/loadout-server" LOADOUT_CLI_BINARY="$(CURDIR)/cli/target/release/loadout" go test -race ./cmd/loadout-server -run TestProductJourney -count=1 -v
 
 test-e2e: database-check redis-check build build-desktop ## 真实 Web（生产/开发）、CLI、桌面 bridge、数据库与故障恢复

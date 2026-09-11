@@ -12,7 +12,25 @@ export function Heading({
   title: string;
   translateTitle?: boolean;
   children?: ReactNode;
-  artwork?: 'tools' | 'credits' | 'team' | 'connect' | 'insights' | 'security';
+  artwork?:
+    | 'tokens'
+    | 'usage'
+    | 'teams'
+    | 'team-detail'
+    | 'team-usage'
+    | 'health'
+    | 'device'
+    | 'settings'
+    | 'admin-users'
+    | 'admin-tools'
+    | 'admin-plans'
+    | 'admin-codes'
+    | 'admin-usage'
+    | 'admin-ledger'
+    | 'admin-settings'
+    | 'tool-catalog'
+    | 'verify-email'
+    | 'billing';
 }) {
   const { t } = useI18n();
   return (
@@ -27,7 +45,7 @@ export function Heading({
       </div>
       {artwork && (
         <img
-          src={`/images/workshop-${({ team: 'hero', connect: 'loading', insights: 'credits', security: 'welcome', tools: 'tools', credits: 'credits' } as const)[artwork]}.webp`}
+          src={`/images/workshop-${artwork}.webp`}
           alt=""
           width="900"
           height="600"

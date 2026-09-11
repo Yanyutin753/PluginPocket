@@ -18,6 +18,13 @@ colors:
   success: "#34674b"
   destructive: "#b13d32"
 typography:
+  brand:
+    fontFamily: Bricolage Grotesque, Manrope, system-ui, sans-serif
+    fontSize: 24px
+    fontWeight: 750
+  code:
+    fontFamily: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace
+    fontSize: 13px
   display:
     fontFamily: Manrope, PingFang SC, Microsoft YaHei, system-ui, sans-serif
     fontSize: clamp(2.35rem, 4.8vw, 4.5rem)
@@ -149,3 +156,13 @@ Hero 按 alpha > 8 的完整画迹边界重构画布，保留铅笔阴影，约 
 - 选择框使用共享 Radix Select；前置图标在触发按钮内，图标/文字/箭头间距 8px，两侧内边距 12px（手机偏好控件 8px）。鼠标选中只显示勾选，键盘使用中性焦点线，浅色 #62646c、深色 #b2b4bd。
 - 桌面侧栏支持 228px 展开与 80px 图标模式（更大断点原展开宽度规则保留）；移动端用原导航按钮。右上角账号菜单支持 Escape 返回焦点，左下角另有账号设置入口。
 - 控制台页脚以 1360px 容器与主内容对齐，品牌图标/字标与服务状态入口组成；手机隐藏非关键英文口号。
+
+
+### 页面场景分配
+
+同一薄荷绿工具箱主角，内容图不跨页面重复。品牌mark/默认avatar和查询loading为共享系统元素。账号、管理、工具与客户端新增21张独立透明场景，来源清单见 docs/third-party/Workshop-account-scenes.md、Workshop-admin-scenes.md、Workshop-utility-scenes.md。客户端专用workshop-desktop；各场景均900×600，按固有比例缩放，使用同一浅深色页面底面。早期非工具箱主角的team/connect/insights/security版本仅存档，不在页面引用。
+
+
+### 数据密集页面
+
+默认一页10条，允许20/50条；分页只呈现真实记录范围及当前页，不展示未知总页数。列表分页失败保留当前数据，成功切页从列表开头阅读。空结果隐藏无效分页操作。桌面表格的数字列右对齐、使用等宽数字，表头在局部滚动时保留；手机使用同一语义表格的字段卡片布局。状态同时有文字及语义颜色，不仅依赖颜色。概览真实指标放在接入教程前，沿用原主角及专属页面插画。

@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Yanyutin753/loadout/server/internal/store"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -80,7 +81,7 @@ func TestConcurrentCatalogRequestsBoundDiscoveryAndShareConnections(t *testing.T
 	for range 24 {
 		go func() {
 			bindings, err := g.tools(ctx)
-			if err == nil && len(bindings) != 14 {
+			if err == nil && len(bindings) != 17 {
 				err = errors.New("catalog missing builtin or upstream tools")
 			}
 			completed <- err
@@ -381,8 +382,8 @@ func testCanceledHTTPCall(t *testing.T, legacy bool) {
 	defer cancelFirst()
 	first := make(chan *mcp.CallToolResult, 1)
 	second := make(chan *mcp.CallToolResult, 1)
-	go func() { first <- g.execute(firstCtx, binding, json.RawMessage(`{"name":"first"}`)) }()
-	go func() { second <- g.execute(ctx, binding, json.RawMessage(`{"name":"second"}`)) }()
+	go func() { first <- g.execute(firstCtx, store.Principal{}, binding, json.RawMessage(`{"name":"first"}`)) }()
+	go func() { second <- g.execute(ctx, store.Principal{}, binding, json.RawMessage(`{"name":"second"}`)) }()
 	for range 2 {
 		select {
 		case <-entered:
@@ -421,7 +422,7 @@ func testCanceledHTTPCall(t *testing.T, legacy bool) {
 	case <-ctx.Done():
 		t.Fatal("unrelated call did not finish")
 	}
-	result := g.execute(ctx, binding, json.RawMessage(`{"name":"third"}`))
+	result := g.execute(ctx, store.Principal{}, binding, json.RawMessage(`{"name":"third"}`))
 	if result.IsError {
 		t.Error("subsequent call failed after cancellation")
 	}

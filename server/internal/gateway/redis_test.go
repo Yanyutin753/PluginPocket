@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Yanyutin753/loadout/server/internal/cache"
+	"github.com/Yanyutin753/loadout/server/internal/store"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/redis/go-redis/v9"
 )
@@ -65,7 +66,7 @@ func TestRedisSharesHTTPMetadataAcrossGateways(t *testing.T) {
 	if lists.Load() != 1 {
 		t.Fatalf("two replicas performed %d upstream discoveries; want one shared metadata fetch", lists.Load())
 	}
-	if got := b.execute(t.Context(), binding, json.RawMessage(`{}`)); got.IsError {
+	if got := b.execute(t.Context(), store.Principal{}, binding, json.RawMessage(`{}`)); got.IsError {
 		t.Fatal("cached metadata did not preserve callable remote binding")
 	}
 	keys, err := inspector.Keys(t.Context(), namespace+":data:*").Result()
@@ -286,7 +287,11 @@ func TestInvalidUpstreamMetadataDoesNotHideHealthyTools(t *testing.T) {
 					t.Fatal("SDK-invalid upstream definition entered the serving catalog")
 				}
 			}
-			if len(bindings) != 2 {
+			names := map[string]bool{}
+			for _, binding := range bindings {
+				names[binding.definition.Name] = true
+			}
+			if !names["echo"] || !names["time_now"] {
 				t.Fatal("invalid upstream hid healthy builtin tools")
 			}
 		})

@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Yanyutin753/loadout/server/internal/store"
 	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -75,14 +76,14 @@ func TestRPCErrorDoesNotCloseConcurrentCall(t *testing.T) {
 				t.Fatal("missing fixture tools")
 			}
 			slow := make(chan *mcp.CallToolResult, 1)
-			go func() { slow <- g.execute(ctx, wait, json.RawMessage(`{}`)) }()
+			go func() { slow <- g.execute(ctx, store.Principal{}, wait, json.RawMessage(`{}`)) }()
 			select {
 			case <-entered:
 			case <-ctx.Done():
 				t.Fatal("concurrent upstream call did not start")
 			}
 			failed := make(chan *mcp.CallToolResult, 1)
-			go func() { failed <- g.execute(ctx, fail, json.RawMessage(`{}`)) }()
+			go func() { failed <- g.execute(ctx, store.Principal{}, fail, json.RawMessage(`{}`)) }()
 			select {
 			case result := <-failed:
 				if !result.IsError {
@@ -100,7 +101,7 @@ func TestRPCErrorDoesNotCloseConcurrentCall(t *testing.T) {
 			case <-ctx.Done():
 				t.Fatal("concurrent call did not finish")
 			}
-			if result := g.execute(ctx, wait, json.RawMessage(`{}`)); result.IsError {
+			if result := g.execute(ctx, store.Principal{}, wait, json.RawMessage(`{}`)); result.IsError {
 				t.Error("subsequent call failed after ordinary RPC error")
 			}
 			if connections.Load() != 2 {
@@ -145,10 +146,10 @@ func TestHTTPDisconnectRebuildsOnlyTheFailedSession(t *testing.T) {
 	binding := toolBinding{row: toolRow{ID: 1, Kind: "http", Config: config}, remoteName: "ping"}
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
-	if !g.execute(ctx, binding, json.RawMessage(`{}`)).IsError {
+	if !g.execute(ctx, store.Principal{}, binding, json.RawMessage(`{}`)).IsError {
 		t.Fatal("disconnected call returned success or was replayed")
 	}
-	if g.execute(ctx, binding, json.RawMessage(`{}`)).IsError {
+	if g.execute(ctx, store.Principal{}, binding, json.RawMessage(`{}`)).IsError {
 		t.Fatal("next request did not recover after a real HTTP disconnect")
 	}
 	if connections.Load() != 2 || calls.Load() != 1 {
@@ -176,7 +177,7 @@ func TestCloseCancelsActiveHTTPCall(t *testing.T) {
 		t.Fatal("missing remote tool")
 	}
 	result := make(chan *mcp.CallToolResult, 1)
-	go func() { result <- g.execute(ctx, binding, json.RawMessage(`{}`)) }()
+	go func() { result <- g.execute(ctx, store.Principal{}, binding, json.RawMessage(`{}`)) }()
 	select {
 	case <-entered:
 	case <-ctx.Done():
@@ -241,10 +242,10 @@ func TestHTTPProtocolFailureRebuildsConnection(t *testing.T) {
 			if binding.definition == nil {
 				t.Fatal("missing flaky tool")
 			}
-			if result := g.execute(ctx, binding, json.RawMessage(`{}`)); !result.IsError {
+			if result := g.execute(ctx, store.Principal{}, binding, json.RawMessage(`{}`)); !result.IsError {
 				t.Fatal("first HTTP error returned success")
 			}
-			if result := g.execute(ctx, binding, json.RawMessage(`{}`)); result.IsError {
+			if result := g.execute(ctx, store.Principal{}, binding, json.RawMessage(`{}`)); result.IsError {
 				t.Error("HTTP error left a dead connection cached for the next call")
 			}
 			if calls.Load() != 2 || connections.Load() != 2 {

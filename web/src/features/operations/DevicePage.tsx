@@ -21,7 +21,7 @@ export default function DevicePage() {
   });
   return (
     <>
-      <Heading title={t('设备授权')} artwork="connect">
+      <Heading title={t('设备授权')} artwork="device">
         {t('将本地 CLI 或桌面客户端连接到你的账号。')}
       </Heading>
       <section className="editor-panel">

@@ -7,6 +7,7 @@ import {
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { z } from 'zod';
+import { Pagination } from '@/components/Pagination';
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -15,6 +16,7 @@ import { useI18n } from '@/i18n';
 import { teamSchema } from '../operations/api';
 import { date, listOptions, request, tokenSchema } from './api';
 import { ErrorNotice, Heading, Loading, More } from './shared';
+import { usePagedList } from './usePagedList';
 export default function TokensPage() {
   const { t, locale } = useI18n();
   const client = useQueryClient();
@@ -42,7 +44,7 @@ export default function TokensPage() {
       ? [selectedTeam.data.item]
       : []),
   ];
-  const tokens = useInfiniteQuery(listOptions('/account/tokens', tokenSchema));
+  const tokens = usePagedList('/account/tokens', tokenSchema);
   const [secret, setSecret] = useState('');
   const [copied, setCopied] = useState('');
   const [name, setName] = useState('');
@@ -84,7 +86,7 @@ export default function TokensPage() {
   });
   return (
     <>
-      <Heading title={t('网关令牌')} artwork="security">
+      <Heading title={t('网关令牌')} artwork="tokens">
         {t('为不同设备分别命名。令牌只显示一次，撤销后立即失效。')}
       </Heading>
       <form
@@ -182,69 +184,65 @@ export default function TokensPage() {
           {copied && <p role="status">{t(copied)}</p>}
         </section>
       )}
-      <ErrorNotice error={tokens.error} retry={() => void tokens.refetch()} />
+      <ErrorNotice error={tokens.error} retry={() => void tokens.retry()} />
       {tokens.isPending && <Loading />}
-      {tokens.isSuccess && tokens.data.pages[0].items.length === 0 && (
+      {tokens.isSuccess && tokens.items.length === 0 && (
         <section className="empty-state">
           <h2>{t('还没有令牌')}</h2>
           <p>{t('创建第一个令牌，让本地客户端连接网关。')}</p>
         </section>
       )}
-      <ul className="record-list">
-        {tokens.data?.pages
-          .flatMap((page) => page.items)
-          .map((token) => (
-            <li key={token.id}>
-              <div className="record-main">
-                <h2>{token.name}</h2>
-                <code>{token.prefix}…</code>
-                <p>
-                  {t('创建于 {created} · 最近使用：{lastUsed}', {
-                    created: date(token.created_at, locale),
-                    lastUsed: date(token.last_used_at, locale),
-                  })}
-                </p>
-              </div>
-              {token.revoked_at ? (
-                <span className="text-muted-foreground">{t('已撤销')}</span>
-              ) : confirm === token.id ? (
-                <div className="confirm-actions">
-                  <p>{t('撤销后，使用此令牌的客户端将无法连接。')}</p>
-                  <Button
-                    variant="outline"
-                    disabled={revoke.isPending}
-                    onClick={() => {
-                      setConfirm(null);
-                      revoke.reset();
-                    }}
-                  >
-                    {t('取消')}
-                  </Button>
-                  <Button
-                    disabled={revoke.isPending}
-                    onClick={() => revoke.mutate(token.id)}
-                  >
-                    {revoke.isPending ? t('正在撤销…') : t('确认撤销')}
-                  </Button>
-                  <ErrorNotice error={revoke.error} />
-                </div>
-              ) : (
+      <ul className="record-list" ref={tokens.listRef} tabIndex={-1}>
+        {tokens.items.map((token) => (
+          <li key={token.id}>
+            <div className="record-main">
+              <h2>{token.name}</h2>
+              <code>{token.prefix}…</code>
+              <p>
+                {t('创建于 {created} · 最近使用：{lastUsed}', {
+                  created: date(token.created_at, locale),
+                  lastUsed: date(token.last_used_at, locale),
+                })}
+              </p>
+            </div>
+            {token.revoked_at ? (
+              <span className="status-badge" data-tone="neutral">
+                {t('已撤销')}
+              </span>
+            ) : confirm === token.id ? (
+              <div className="confirm-actions">
+                <p>{t('撤销后，使用此令牌的客户端将无法连接。')}</p>
                 <Button
                   variant="outline"
-                  aria-label={t('撤销 {value1}', { value1: token.name })}
-                  onClick={() => setConfirm(token.id)}
+                  disabled={revoke.isPending}
+                  onClick={() => {
+                    setConfirm(null);
+                    revoke.reset();
+                  }}
                 >
-                  {t('撤销')}
+                  {t('取消')}
                 </Button>
-              )}
-            </li>
-          ))}
+                <Button
+                  disabled={revoke.isPending}
+                  onClick={() => revoke.mutate(token.id)}
+                >
+                  {revoke.isPending ? t('正在撤销…') : t('确认撤销')}
+                </Button>
+                <ErrorNotice error={revoke.error} />
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                aria-label={t('撤销 {value1}', { value1: token.name })}
+                onClick={() => setConfirm(token.id)}
+              >
+                {t('撤销')}
+              </Button>
+            )}
+          </li>
+        ))}
       </ul>
-      <More
-        hasNext={tokens.hasNextPage}
-        pending={tokens.isFetchingNextPage}
-        onClick={() => void tokens.fetchNextPage()}
-      />
+      <Pagination label={t('令牌')} {...tokens.pagination} />
     </>
   );
 }

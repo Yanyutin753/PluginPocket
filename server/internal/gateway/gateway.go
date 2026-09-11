@@ -150,6 +150,58 @@ func toolError(message string) *mcp.CallToolResult {
 func toolText(message string) *mcp.CallToolResult {
 	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: message}}}
 }
+func toolJSON(value any) *mcp.CallToolResult {
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return toolError("响应编码失败")
+	}
+	return toolText(string(encoded))
+}
+func (g *Gateway) accountUsage(ctx context.Context, p store.Principal, args json.RawMessage) *mcp.CallToolResult {
+	var input struct {
+		Limit *int `json:"limit"`
+	}
+	if json.Unmarshal(args, &input) != nil {
+		return toolError("limit 必须为整数")
+	}
+	limit := 20
+	if input.Limit != nil {
+		if *input.Limit < 1 || *input.Limit > 50 {
+			return toolError("limit 必须在 1 到 50 之间")
+		}
+		limit = *input.Limit
+	}
+	now := time.Now().UTC()
+	day := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	month := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+	// 排除 pending：汇总与最近记录只描述已结算（或被拒）的调用，不含正在执行的本次调用。
+	summary := struct {
+		TodayCalls int64 `json:"today_calls"`
+		MonthCost  int64 `json:"month_cost"`
+	}{}
+	if err := g.store.Pool.QueryRow(ctx, "SELECT count(*) FILTER(WHERE created_at >= $2),COALESCE(sum(cost),0) FROM usage_logs WHERE user_id=$1 AND status!='pending' AND created_at >= $3", p.UserID, day, month).Scan(&summary.TodayCalls, &summary.MonthCost); err != nil {
+		return toolError("暂时无法读取用量")
+	}
+	rows, err := g.store.Pool.Query(ctx, "SELECT tool,cost,status,created_at FROM usage_logs WHERE user_id=$1 AND status!='pending' ORDER BY id DESC LIMIT $2", p.UserID, limit)
+	if err != nil {
+		return toolError("暂时无法读取用量")
+	}
+	defer rows.Close()
+	recent := []map[string]any{}
+	for rows.Next() {
+		var tool, status string
+		var cost int64
+		var at time.Time
+		if rows.Scan(&tool, &cost, &status, &at) != nil {
+			return toolError("暂时无法读取用量")
+		}
+		recent = append(recent, map[string]any{"tool": tool, "cost": cost, "status": status, "at": at.UTC().Format(time.RFC3339)})
+	}
+	if rows.Err() != nil {
+		return toolError("暂时无法读取用量")
+	}
+	return toolJSON(map[string]any{"summary": summary, "recent": recent})
+}
 
 func (g *Gateway) call(parent context.Context, p store.Principal, binding toolBinding, args json.RawMessage) *mcp.CallToolResult {
 	ctx, cancel := context.WithTimeout(parent, g.options.Timeout)
@@ -171,7 +223,7 @@ func (g *Gateway) call(parent context.Context, p store.Principal, binding toolBi
 		return toolError("暂时无法开始调用")
 	}
 	started := time.Now()
-	result := g.execute(ctx, binding, args)
+	result := g.execute(ctx, p, binding, args)
 	finishCtx, finishCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer finishCancel()
 	if err = g.store.Finish(finishCtx, call.ID, !result.IsError, time.Since(started)); err != nil {
@@ -183,7 +235,7 @@ func (g *Gateway) call(parent context.Context, p store.Principal, binding toolBi
 func (g *Gateway) recordDenied(ctx context.Context, p store.Principal, name, key string) {
 	_, _ = g.store.Pool.Exec(ctx, "INSERT INTO usage_logs(user_id,token_id,wallet_id,tool,cost,status,request_key,finished_at) VALUES ($1,$2,$3,$4,0,'denied',$5,now())", p.UserID, p.TokenID, p.WalletID, name, key)
 }
-func (g *Gateway) execute(ctx context.Context, b toolBinding, args json.RawMessage) *mcp.CallToolResult {
+func (g *Gateway) execute(ctx context.Context, p store.Principal, b toolBinding, args json.RawMessage) *mcp.CallToolResult {
 	if b.row.Kind == "builtin" {
 		switch b.row.Key {
 		case "echo":
@@ -196,6 +248,33 @@ func (g *Gateway) execute(ctx context.Context, b toolBinding, args json.RawMessa
 			return toolText(*input.Message)
 		case "time_now":
 			return toolText(time.Now().UTC().Format(time.RFC3339Nano))
+		case "account_balance":
+			var balance int64
+			if g.store.Pool.QueryRow(ctx, "SELECT balance FROM wallets WHERE id=$1", p.WalletID).Scan(&balance) != nil {
+				return toolError("暂时无法读取余额")
+			}
+			return toolJSON(map[string]any{"username": p.Username, "balance": balance})
+		case "account_usage":
+			return g.accountUsage(ctx, p, args)
+		case "tools_catalog":
+			rows, err := g.store.Pool.Query(ctx, "SELECT key,description,cost FROM tools WHERE enabled ORDER BY id")
+			if err != nil {
+				return toolError("暂时无法读取工具目录")
+			}
+			defer rows.Close()
+			entries := []map[string]any{}
+			for rows.Next() {
+				var key, description string
+				var cost int64
+				if rows.Scan(&key, &description, &cost) != nil {
+					return toolError("暂时无法读取工具目录")
+				}
+				entries = append(entries, map[string]any{"key": key, "description": description, "cost_per_call": cost})
+			}
+			if rows.Err() != nil {
+				return toolError("暂时无法读取工具目录")
+			}
+			return toolJSON(entries)
 		default:
 			return toolError("未知内置工具")
 		}

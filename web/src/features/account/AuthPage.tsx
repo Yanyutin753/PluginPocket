@@ -59,10 +59,14 @@ export default function AuthPage({ register = false }: { register?: boolean }) {
             <p>{t('统一管理 MCP 工具，接入 Codex、Claude Code 和 Cursor。')}</p>
           </div>
           <img
-            src="/images/workshop-welcome.webp"
+            src={
+              register
+                ? '/images/workshop-register.webp'
+                : '/images/workshop-login.webp'
+            }
             alt=""
-            width="1000"
-            height="750"
+            width="900"
+            height="600"
             fetchPriority="high"
           />
           <ul

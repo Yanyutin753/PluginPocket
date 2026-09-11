@@ -1,19 +1,17 @@
-import {
-  useInfiniteQuery,
-  useMutation,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Wrench } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { Pagination } from '@/components/Pagination';
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { useI18n } from '@/i18n';
-import { ApiError, listOptions, number, request } from '../account/api';
-import { ErrorNotice, Heading, Loading, More } from '../account/shared';
+import { ApiError, number, request } from '../account/api';
+import { ErrorNotice, Heading, Loading } from '../account/shared';
+import { usePagedList } from '../account/usePagedList';
 import { type Tool, toolSchema } from './api';
 
 function ToolEditor({ item, close }: { item: Tool | null; close: () => void }) {
@@ -194,7 +192,7 @@ export default function ToolsPage({ admin = false }: { admin?: boolean }) {
   const { t, locale } = useI18n();
   const client = useQueryClient();
   const path = admin ? '/admin/tools' : '/tools';
-  const tools = useInfiniteQuery(listOptions(path, toolSchema));
+  const tools = usePagedList(path, toolSchema);
   const [editing, setEditing] = useState<Tool | null | undefined>();
   const [expanded, setExpanded] = useState<number | null>(null);
   const toggle = useMutation({
@@ -218,7 +216,10 @@ export default function ToolsPage({ admin = false }: { admin?: boolean }) {
   });
   return (
     <>
-      <Heading artwork="tools" title={admin ? t('工具管理') : t('工具目录')}>
+      <Heading
+        artwork={admin ? 'admin-tools' : 'tool-catalog'}
+        title={admin ? t('工具管理') : t('工具目录')}
+      >
         {admin
           ? t('维护预设工具、连接配置和每次调用的额度。')
           : t('查看当前可用的工具与调用成本。')}
@@ -229,75 +230,73 @@ export default function ToolsPage({ admin = false }: { admin?: boolean }) {
       {editing !== undefined && (
         <ToolEditor item={editing} close={() => setEditing(undefined)} />
       )}
-      <ErrorNotice error={tools.error} retry={() => void tools.refetch()} />
+      <ErrorNotice error={tools.error} retry={() => void tools.retry()} />
       <ErrorNotice error={toggle.error} />
       {tools.isPending && <Loading />}
-      {tools.isSuccess && !tools.data.pages[0].items.length && (
+      {tools.isSuccess && !tools.items.length && (
         <p className="empty-state">{t('暂时没有工具。')}</p>
       )}
-      <ul className="record-list tool-records">
-        {tools.data?.pages
-          .flatMap((page) => page.items)
-          .map((item) => (
-            <li key={item.id}>
-              <span className="tool-icon">
-                <Wrench aria-hidden="true" />
-              </span>
-              <div className="record-main">
-                <h2>{item.name}</h2>
-                <p>{item.description}</p>
-                <p>
-                  <code>{item.key}</code> ·{' '}
-                  {t('{credits} 额度 / 次', {
-                    credits: number(item.units_per_call, locale),
-                  })}{' '}
-                  · <span>{item.enabled ? t('可用') : t('已停用')}</span>
-                  {admin && item.configured ? t(' · 已配置连接') : ''}
-                </p>
-                <Button
-                  variant="ghost"
-                  aria-expanded={expanded === item.id}
-                  aria-label={t('查看参数 {value1}', { value1: item.name })}
-                  onClick={() =>
-                    setExpanded(expanded === item.id ? null : item.id)
-                  }
-                >
-                  {t('查看参数')}
-                </Button>
-                {expanded === item.id && (
-                  <pre className="schema-code">
-                    <code>{JSON.stringify(item.input_schema, null, 2)}</code>
-                  </pre>
-                )}
-              </div>
-              {admin && (
-                <div className="action-row">
-                  <Button
-                    variant="outline"
-                    aria-label={t('编辑 {value1}', { value1: item.name })}
-                    disabled={editing !== undefined}
-                    onClick={() => setEditing(item)}
-                  >
-                    {t('编辑')}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    aria-label={`${item.enabled ? t('停用') : t('启用')} ${item.name}`}
-                    disabled={toggle.isPending || editing !== undefined}
-                    onClick={() => toggle.mutate(item)}
-                  >
-                    {item.enabled ? t('停用') : t('启用')}
-                  </Button>
-                </div>
+      <ul
+        className="record-list tool-records"
+        ref={tools.listRef}
+        tabIndex={-1}
+      >
+        {tools.items.map((item) => (
+          <li key={item.id}>
+            <span className="tool-icon">
+              <Wrench aria-hidden="true" />
+            </span>
+            <div className="record-main">
+              <h2>{item.name}</h2>
+              <p>{item.description}</p>
+              <p>
+                <code>{item.key}</code> ·{' '}
+                {t('{credits} 额度 / 次', {
+                  credits: number(item.units_per_call, locale),
+                })}{' '}
+                · <span>{item.enabled ? t('可用') : t('已停用')}</span>
+                {admin && item.configured ? t(' · 已配置连接') : ''}
+              </p>
+              <Button
+                variant="ghost"
+                aria-expanded={expanded === item.id}
+                aria-label={t('查看参数 {value1}', { value1: item.name })}
+                onClick={() =>
+                  setExpanded(expanded === item.id ? null : item.id)
+                }
+              >
+                {t('查看参数')}
+              </Button>
+              {expanded === item.id && (
+                <pre className="schema-code">
+                  <code>{JSON.stringify(item.input_schema, null, 2)}</code>
+                </pre>
               )}
-            </li>
-          ))}
+            </div>
+            {admin && (
+              <div className="action-row">
+                <Button
+                  variant="outline"
+                  aria-label={t('编辑 {value1}', { value1: item.name })}
+                  disabled={editing !== undefined}
+                  onClick={() => setEditing(item)}
+                >
+                  {t('编辑')}
+                </Button>
+                <Button
+                  variant="outline"
+                  aria-label={`${item.enabled ? t('停用') : t('启用')} ${item.name}`}
+                  disabled={toggle.isPending || editing !== undefined}
+                  onClick={() => toggle.mutate(item)}
+                >
+                  {item.enabled ? t('停用') : t('启用')}
+                </Button>
+              </div>
+            )}
+          </li>
+        ))}
       </ul>
-      <More
-        hasNext={tools.hasNextPage}
-        pending={tools.isFetchingNextPage}
-        onClick={() => void tools.fetchNextPage()}
-      />
+      <Pagination label={t('工具')} {...tools.pagination} />
     </>
   );
 }

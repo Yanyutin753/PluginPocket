@@ -76,7 +76,7 @@ export default function LandingPage() {
           <div className="landing-feature-grid">
             <article className="landing-feature landing-feature-tools">
               <img
-                src="/images/workshop-loading.webp"
+                src="/images/workshop-tools.webp"
                 alt=""
                 width="900"
                 height="600"
@@ -95,7 +95,7 @@ export default function LandingPage() {
             <article className="landing-feature">
               <img
                 className="landing-card-art"
-                src="/images/workshop-welcome.webp"
+                src="/images/workshop-security-v2.webp"
                 alt=""
                 width="900"
                 height="600"
@@ -111,7 +111,7 @@ export default function LandingPage() {
             <article className="landing-feature">
               <img
                 className="landing-card-art"
-                src="/images/workshop-credits.webp"
+                src="/images/workshop-insights-v2.webp"
                 alt=""
                 width="900"
                 height="600"
@@ -123,7 +123,7 @@ export default function LandingPage() {
             <article className="landing-feature landing-feature-team">
               <img
                 className="landing-team-art"
-                src="/images/workshop-hero.webp"
+                src="/images/workshop-team-v2.webp"
                 alt=""
                 width="900"
                 height="600"
@@ -178,10 +178,10 @@ export default function LandingPage() {
 
         <section className="landing-close">
           <img
-            src="/images/workshop-hero.webp"
+            src="/images/workshop-credits.webp"
             alt=""
-            width="1200"
-            height="800"
+            width="900"
+            height="600"
             loading="lazy"
           />
           <div>

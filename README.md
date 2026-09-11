@@ -120,6 +120,8 @@ make down
 
 ## 开发规范
 
+本地完整演示数据、管理员账号和 MCP 热重载验证见 [演示与测试说明](docs/DEMO.md)。演示工具使用真实 API 写入指定本地数据库；本次按用户要求已填充 5173 当前数据库，MCP 外部上游另在隔离环境验证。
+
 - **[AGENTS.md](AGENTS.md)**：强制 Superpowers + Ponytail + Impeccable，以及 RED → GREEN → REFACTOR → 完整验证。
 - **[docs/HARNESS.md](docs/HARNESS.md)**：测试分层、可执行命令、隔离、证据与失败排查。
 - **[docs/FRONTEND.md](docs/FRONTEND.md)**：React、shadcn/ui、Tailwind、Query、Zod、无障碍与前端测试规范。
