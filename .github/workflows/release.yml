@@ -21,11 +21,11 @@ jobs:
             name: loadout-linux-amd64
             ext: ""
             use-cross: true
-          - os: ubuntu-latest
+          - os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-musl
             name: loadout-linux-arm64
             ext: ""
-            use-cross: true
+            use-cross: false
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             name: loadout-windows-amd64
@@ -171,7 +171,7 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: 'Loadout ${{ github.ref_name }}'
           releaseDraft: false
-          args: --target universal-apple-darwin
+          args: --target aarch64-apple-darwin
 
       - name: Build Tauri (Windows)
         if: runner.os == 'Windows'
@@ -187,6 +187,7 @@ jobs:
   # 收集 CLI 产物到 Release
   release-cli:
     needs: [cli]
+    if: always() && !cancelled()
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
