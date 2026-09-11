@@ -21,7 +21,7 @@ func TestProductJourneyMCPHotReload(t *testing.T) {
 	admin := a.admin()
 	user, id := b.register("hot-reload-user")
 	token := b.token(user)
-	bridge := b.bridge(token, os.Getenv("LOADOUT_CLI_BINARY"))
+	bridge := b.bridge(token, os.Getenv("PLUGINPOCKET_CLI_BINARY"))
 	direct := a.mcp(token)
 	entered, release := make(chan struct{}), make(chan struct{})
 	var once sync.Once

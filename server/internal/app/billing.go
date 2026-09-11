@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Yanyutin753/loadout/server/internal/auth"
+	"github.com/Yanyutin753/PluginPocket/server/internal/auth"
 	"github.com/jackc/pgx/v5"
 )
 

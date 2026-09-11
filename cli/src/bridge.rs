@@ -33,25 +33,28 @@ impl Bridge {
 fn protocol_error(error: ServiceError) -> ErrorData {
     match error {
         ServiceError::McpError(mut error) => {
-            if !error.message.starts_with("[loadout]") {
-                error.message = format!("[loadout] {}", error.message).into();
+            if !error.message.starts_with("[pluginpocket]") {
+                error.message = format!("[pluginpocket] {}", error.message).into();
             }
             error
         }
         _ => ErrorData::internal_error(
-            "[loadout] gateway request failed; no tool call was retried",
+            "[pluginpocket] gateway request failed; no tool call was retried",
             None,
         ),
     }
 }
 fn call_error(message: &'static str) -> CallToolResponse {
-    CallToolResult::error(vec![ContentBlock::text(format!("[loadout] {message}"))]).into()
+    CallToolResult::error(vec![ContentBlock::text(format!(
+        "[pluginpocket] {message}"
+    ))])
+    .into()
 }
 impl ServerHandler for Bridge {
     fn get_info(&self) -> ServerInfo {
         let mut info = ServerInfo::default();
         info.capabilities = ServerCapabilities::builder().enable_tools().build();
-        info.server_info.name = "loadout".into();
+        info.server_info.name = "pluginpocket".into();
         info.server_info.version = env!("CARGO_PKG_VERSION").into();
         info
     }
@@ -60,15 +63,16 @@ impl ServerHandler for Bridge {
         request: Option<PaginatedRequestParams>,
         _: RequestContext<RoleServer>,
     ) -> std::result::Result<ListToolsResult, ErrorData> {
-        let mut upstream = self
-            .connect()
-            .await
-            .map_err(|message| ErrorData::internal_error(format!("[loadout] {message}"), None))?;
+        let mut upstream = self.connect().await.map_err(|message| {
+            ErrorData::internal_error(format!("[pluginpocket] {message}"), None)
+        })?;
         let result =
             tokio::time::timeout(Duration::from_secs(30), upstream.list_tools(request)).await;
         let _ = upstream.close().await;
         result
-            .map_err(|_| ErrorData::internal_error("[loadout] gateway request timed out", None))?
+            .map_err(|_| {
+                ErrorData::internal_error("[pluginpocket] gateway request timed out", None)
+            })?
             .map_err(protocol_error)
     }
     async fn call_tool(
@@ -90,9 +94,9 @@ impl ServerHandler for Bridge {
                 {
                     for content in &mut result.content {
                         if let ContentBlock::Text(text) = content
-                            && !text.text.starts_with("[loadout]")
+                            && !text.text.starts_with("[pluginpocket]")
                         {
-                            text.text = format!("[loadout] {}", text.text);
+                            text.text = format!("[pluginpocket] {}", text.text);
                         }
                     }
                 }

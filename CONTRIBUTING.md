@@ -1,12 +1,12 @@
 # 贡献指南
 
-Loadout 是开源自托管项目（全仓库 MIT）。本文只做入口，行为契约以 [AGENTS.md](AGENTS.md) 为唯一事实源，冲突时以它为准。
+PluginPocket 是开源自托管项目（全仓库 MIT）。本文只做入口，行为契约以 [AGENTS.md](AGENTS.md) 为唯一事实源，冲突时以它为准。
 
 ## 开发环境
 
 工具链版本与启动命令见 [README 快速开始](README.md#快速开始)：`make setup` 安装固定版本依赖，`make up` 后台启动开发服务（Go 自动重载 + Vite），或根目录 `pnpm run dev` 前台运行。
 
-服务端测试需要真实 PostgreSQL 与 Redis（`LOADOUT_TEST_DATABASE_URL`、`LOADOUT_TEST_REDIS_URL`，见 [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) 与 [docs/HARNESS.md](docs/HARNESS.md)）；本地可用 `make db-up` / `make redis-up` 起容器。
+服务端测试需要真实 PostgreSQL 与 Redis（`PLUGINPOCKET_TEST_DATABASE_URL`、`PLUGINPOCKET_TEST_REDIS_URL`，见 [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) 与 [docs/HARNESS.md](docs/HARNESS.md)）；本地可用 `make db-up` / `make redis-up` 起容器。
 
 ## 行为契约（摘要，全文见 AGENTS.md）
 

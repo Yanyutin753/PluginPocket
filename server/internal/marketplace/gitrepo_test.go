@@ -49,11 +49,11 @@ func readCloned(t *testing.T, dir, path string) string {
 }
 
 // BuildGitMarketplace 把导出树打包成哑 HTTP git 裸仓文件集：
-// 任何静态文件服务器（含 Loadout 自身）即可被 `git clone`，从而被
+// 任何静态文件服务器（含 PluginPocket 自身）即可被 `git clone`，从而被
 // `codex plugin marketplace add http://host/marketplace.git` 接入。
 func TestGitMarketplaceCloneableViaDumbHTTP(t *testing.T) {
 	tree := map[string][]byte{
-		".agents/plugins/marketplace.json":           []byte(`{"name":"loadout","plugins":[]}`),
+		".agents/plugins/marketplace.json":           []byte(`{"name":"pluginpocket","plugins":[]}`),
 		"plugins/deepwiki/mcp.json":                  []byte(`{"mcpServers":{"deepwiki":{"type":"streamable-http","url":"https://mcp.deepwiki.com/mcp"}}}`),
 		"plugins/deepwiki/.codex-plugin/plugin.json": []byte(`{"name":"deepwiki","version":"1.0.0"}`),
 	}
@@ -70,7 +70,7 @@ func TestGitMarketplaceCloneableViaDumbHTTP(t *testing.T) {
 	server := serveRepo(t, func() map[string][]byte { return repo })
 	clone := filepath.Join(t.TempDir(), "clone")
 	gitClone(t, server.URL, clone)
-	if got := readCloned(t, clone, ".agents/plugins/marketplace.json"); !strings.Contains(got, "loadout") {
+	if got := readCloned(t, clone, ".agents/plugins/marketplace.json"); !strings.Contains(got, "pluginpocket") {
 		t.Fatalf("cloned manifest wrong: %s", got)
 	}
 	if got := readCloned(t, clone, "plugins/deepwiki/mcp.json"); !strings.Contains(got, "streamable-http") {
@@ -145,7 +145,7 @@ func TestGitRegistryServesAndInvalidates(t *testing.T) {
 	mu.Unlock()
 	cloneB := filepath.Join(t.TempDir(), "b")
 	gitClone(t, server.URL, cloneB)
-	if got := readCloned(t, cloneB, "plugins/fresh-probe/mcp.json"); !strings.Contains(got, "loadout") {
+	if got := readCloned(t, cloneB, "plugins/fresh-probe/mcp.json"); !strings.Contains(got, "pluginpocket") {
 		t.Fatalf("invalidated registry must serve new gateway plugin: %s", got)
 	}
 }

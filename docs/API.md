@@ -7,16 +7,16 @@
 - `POST /api/v1/admin/marketplace/bundles`：输入 `slug,name,description,includes`，1–32 个唯一技能或可安装 MCP（gateway 或带端点的 HTTP），不支持嵌套装备组。新建 201、同类型更新 200、跨类型冲突 409、非法成员 400。重复无变化提交保留版本。
 - `GET /api/v1/admin/marketplace`：包含 `kind,version,spec`，供管理表单编辑；公开目录不返回管理配置。
 
-机器可读定义：[OpenAPI 3.1](openapi.json)。本文件与 `server/internal/app`、`server/internal/identity`、`server/internal/gateway`、`server/cmd/loadout-server/application.go` 的实际处理器同步；不把未配置支付或身份服务写成可用功能。
+机器可读定义：[OpenAPI 3.1](openapi.json)。本文件与 `server/internal/app`、`server/internal/identity`、`server/internal/gateway`、`server/cmd/pluginpocket-server/application.go` 的实际处理器同步；不把未配置支付或身份服务写成可用功能。
 
 ## 通用规则
 
 用量详情：`GET /api/v1/account/usage/{callID}`、`GET /api/v1/account/teams/{id}/usage/{callID}`、`GET /api/v1/admin/usage/{callID}` 返回 `{item: UsageDetail}`。权限与对应列表相同（本人 / 当前团队成员 / 管理员）；越权记录返回 404，非管理员访问全局详情返回 403。UsageDetail 在原用量字段上增加 `input_data:string|null`、`output_data:string|null`、`input_truncated:boolean`、`output_truncated:boolean`。数据为网关收到的工具参数和返回客户端的 MCP 结果 JSON 文本，按用户要求不额外脱敏；既有网关错误摘要与结算注记保留。每方向最多 64 KiB，UTF-8 边界截断后可能不再是完整 JSON，消费者须以文本展示；`null` 为未记录（如历史/恢复记录）。列表、汇总与 CSV 不携带这些字段，不额外采集 HTTP 头和上游配置。
 
 - 业务 REST 前缀为 `/api/v1`，网页同源访问；请求和响应使用 JSON。业务处理器错误为 `{ "error": "stable_code" }`，不返回原始上游内容或秘密。全部 HTTP 错误码以 `server/internal/httpapi/codes.go` 注册表为唯一事实源，机器契约同步到 `web/src/i18n/error-codes.json`（`go test ./internal/httpapi -run TestErrorCodes -update` 再生成），前端 `web/src/i18n/errors.ts` 按码提供中英文案并测试锁定覆盖。
-- 网页使用 `loadout_session` AT（默认 900 秒）与 `loadout_refresh` RT（默认 604800 秒）Cookie：opaque 随机凭据，服务端只保存哈希，均 HttpOnly/SameSite=Lax/Path=/，生产 Secure。POST `/auth/refresh` 返回 204 与新 AT；RT 绝对到期不延长，固定 RT 在期限内可重复兑换，多标签 AT 互不失效。退出删除父会话和全部 AT；停用账号立即拒绝。旧单 Cookie 会话在原期限内兼容。凭据不进 JSON 或 Web storage。
+- 网页使用 `pluginpocket_session` AT（默认 900 秒）与 `pluginpocket_refresh` RT（默认 604800 秒）Cookie：opaque 随机凭据，服务端只保存哈希，均 HttpOnly/SameSite=Lax/Path=/，生产 Secure。POST `/auth/refresh` 返回 204 与新 AT；RT 绝对到期不延长，固定 RT 在期限内可重复兑换，多标签 AT 互不失效。退出删除父会话和全部 AT；停用账号立即拒绝。旧单 Cookie 会话在原期限内兼容。凭据不进 JSON 或 Web storage。
 - REST 写请求必须提供匹配部署公开源的 `Origin`；浏览器同源请求自动携带。只有公开的 `/device/authorize`、`/device/token` 不要求 Origin。邮箱验证仍要求同源 Origin，即使不要求登录。
-- CLI/MCP 使用 `Authorization: Bearer ldt_…`，与网页 Cookie 分离；`/account/verify` 和 `/mcp` 不接受网页会话替代 Bearer。
+- CLI/MCP 使用 `Authorization: Bearer ppt_…`，与网页 Cookie 分离；`/account/verify` 和 `/mcp` 不接受网页会话替代 Bearer。
 - 普通业务 JSON body 上限 16 KiB，工具保存与结算试算上限 512 KiB，身份模块上限 4 KiB；未知字段、多个 JSON 值、非法 body 返回 `400 invalid_request`。工具/套餐 PATCH 是完整定义更新；工具 PATCH 省略 config/icon/settlement 保留原值；团队 PATCH 是按字段更新。
 - 金额为整数 credit；价格字段 `price_cents` 为整数分，不使用浮点金额。单次额度调整、兑换、转入和工具成本上限为 `1e12`。Go 的字符串长度校验按 UTF-8 **字节**计算；OpenAPI 的 `maxLength` 为客户端提示，非字节长度证明。
 - 时间为带时区的 ISO/RFC3339 时间字符串。概览今日/月度与汇总日期边界使用 UTC。
@@ -89,7 +89,7 @@
 
 | 方法与路径 | 响应 |
 |---|---|
-| `GET /healthz`、`GET /api/v1/health` | `200 {status:"ok",service:"loadout",version}` |
+| `GET /healthz`、`GET /api/v1/health` | `200 {status:"ok",service:"pluginpocket",version}` |
 | `HEAD /healthz`、`HEAD /api/v1/health` | 相同状态，无 body |
 | `GET /readyz` | 数据库可用：`200 {status:"ready",redis:"ready"\|"degraded"\|"disabled"}`；不可用：`503 {status:"unavailable"}`；未配置数据库：`503 {error:"database_unconfigured"}` |
 | `GET /metrics` | Prometheus/OpenMetrics 文本；导出超时或并发过多可返回 503 |
@@ -107,7 +107,7 @@
 | `POST /auth/login` | `{username,password}` | `200 {user}` + session Cookie |
 | `POST /auth/logout` | 不要求 body | `204`，清除 Cookie/对应会话；未登录也可调用 |
 | `GET /account/me` | Cookie | `{user,summary:{today_calls,month_cost,token_count}}` |
-| `GET /account/verify` | ldt_ Bearer | `{username,balance,tools:["echo",...]}` |
+| `GET /account/verify` | ppt_ Bearer | `{username,balance,tools:["echo",...]}` |
 
 `user` 为 `{id,username,role:"user"|"admin",balance,enabled}`。用户名为 3–32 个 ASCII 字母、数字、下划线、横线；注册密码 12–1024 字节。注册赠额来自部署配置，默认 1000，显式配置 0 可关闭；UI 必须读响应余额，不能写死赠额。账号、钱包、赠额账本和会话同事务创建。
 
@@ -123,7 +123,7 @@
 | `POST /account/tokens` | `{name,team_id?}` | `201 {token,item:Token}` |
 | `DELETE /account/tokens/:id` | 无 body | `204` |
 
-`Token` 为 `{id,wallet_id,name,prefix,created_at,revoked_at,last_used_at}`，后两项可为 `null`。名称 1–80 字节。省略或 `team_id=0` 使用个人钱包，正整数要求当前团队成员。列表不会返回明文或哈希；创建的 `ldt_` 明文只出现一次，网页离页/隐藏后清除。撤销只允许令牌创建者，重复撤销保持原撤销时间；越权或不存在返回 404。
+`Token` 为 `{id,wallet_id,name,prefix,created_at,revoked_at,last_used_at}`，后两项可为 `null`。名称 1–80 字节。省略或 `team_id=0` 使用个人钱包，正整数要求当前团队成员。列表不会返回明文或哈希；创建的 `ppt_` 明文只出现一次，网页离页/隐藏后清除。撤销只允许令牌创建者，重复撤销保持原撤销时间；越权或不存在返回 404。
 
 ## 工具目录与管理
 
@@ -165,7 +165,7 @@
 
 汇总默认最近 7 个 UTC 日期，含今天；`days=1` 表示 UTC 今天。汇总按分组分页，支持 `days,limit,cursor`（默认50组，最大100组），`next_cursor` 为空时结束；不继承明细的用户/工具筛选。控制台可加载后续分组，失败重试保留已显示结果。
 
-CSV 响应为 `text/csv; charset=utf-8`，`Content-Disposition: attachment; filename="loadout-usage.csv"`。每个响应仅一页；从 `X-Next-Cursor` 继续，空字符串结束。列为 `id,user_id,tool,cost,status,duration_ms,created_at`。字符串单元格进行公式转义；客户端不能把单页文件宣称为全部用量导出。
+CSV 响应为 `text/csv; charset=utf-8`，`Content-Disposition: attachment; filename="pluginpocket-usage.csv"`。每个响应仅一页；从 `X-Next-Cursor` 继续，空字符串结束。列为 `id,user_id,tool,cost,status,duration_ms,created_at`。字符串单元格进行公式转义；客户端不能把单页文件宣称为全部用量导出。
 
 ## 用户管理、余额和账本
 
@@ -226,7 +226,7 @@ fund 从当前 owner 个人钱包转入团队；credits 正整数且最多 `1e12
 1. CLI/桌面调用 `POST /device/authorize`，body `{}`，无需 Cookie/Origin，返回 `{device_code,user_code,verification_uri,expires_in:600,interval:5}`。
 2. 用户打开返回的 `verification_uri`（当前为站点 `/devices`），输入 **10 字符** user_code 并明确批准。网页也支持 `/device` 别名；授权码大小写不敏感。
 3. 登录网页调用 `POST /account/devices/approve`，body `{user_code}`，成功 `204`。无效、过期或已批准：`409 invalid_device_code`。
-4. 设备调用 `POST /device/token`，body `{device_code}`；批准后首次返回 `{token:"ldt_…"}`。未批准 `400 authorization_pending`；轮询过快 `429 slow_down` 并带 `Retry-After:5`；过期 `400 expired_token`；已消费或无效 `400 invalid_grant`。
+4. 设备调用 `POST /device/token`，body `{device_code}`；批准后首次返回 `{token:"ppt_…"}`。未批准 `400 authorization_pending`；轮询过快 `429 slow_down` 并带 `Retry-After:5`；过期 `400 expired_token`；已消费或无效 `400 invalid_grant`。
 
 客户端只按服务端 interval 轮询授权，不自动批准；领取的网关令牌只出现一次。网页会话与设备的长期网关令牌不共用同一个秘密。
 
@@ -250,7 +250,7 @@ meta.github 为 true 才显示 GitHub 登录入口。未配置返回 `503 github
 
 标准流程为 `initialize` → `notifications/initialized` → `tools/list` / `tools/call`。OpenAPI 仅描述传输边界，不重新发明 SDK 的完整消息协议。内置工具为 `echo/time_now/tools_catalog/account_usage/account_balance`；远程 HTTP/stdio 工具带预设池命名空间。初始化和列表不收费，调用经过鉴权、限频、预占和结算：成功保留扣费，失败退款，异常待结算由恢复任务处理；查询实际账本确认结果。工具业务错误可通过 `result.isError=true` 返回，不等同于 HTTP 非 2xx。
 
-网关鉴权/方法/上游目录不可用等 HTTP 级错误统一为 JSON `{"error":"stable_code"}`（见错误码注册表）；客户端不得打印原始上游 body、令牌或包含凭证的 URL。网络失败后不得自动重放非幂等工具调用；`loadout bridge` 的 stdout 专用于协议，诊断写 stderr。
+网关鉴权/方法/上游目录不可用等 HTTP 级错误统一为 JSON `{"error":"stable_code"}`（见错误码注册表）；客户端不得打印原始上游 body、令牌或包含凭证的 URL。网络失败后不得自动重放非幂等工具调用；`pluginpocket bridge` 的 stdout 专用于协议，诊断写 stderr。
 
 ## 文档校验
 

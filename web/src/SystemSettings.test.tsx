@@ -48,7 +48,7 @@ const defaults = {
   github_client_secret_set: true,
   smtp_enabled: true,
   smtp_address: 'smtp.example.com:587',
-  smtp_from: 'Loadout <mail@example.com>',
+  smtp_from: 'PluginPocket <mail@example.com>',
   smtp_username: 'mailer',
   smtp_password_set: true,
 };
@@ -165,7 +165,7 @@ it('keeps system settings behind the administrator route', async () => {
 });
 
 it('localizes system settings and recovers from a failed load', async () => {
-  localStorage.setItem('loadout.locale', 'en');
+  localStorage.setItem('pluginpocket.locale', 'en');
   let failed = false;
   const user = mount(() => {
     if (!failed) {

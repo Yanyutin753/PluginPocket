@@ -19,14 +19,17 @@ fn file(bytes: &[u8], executable: bool) -> Value {
     json!({"encoding":"base64","content":STANDARD.encode(bytes),"sha256":hash,"size":bytes.len(),"executable":executable})
 }
 
-fn install(files: Value, bundle: bool) -> (tempfile::TempDir, loadout::Result<()>, Vec<String>) {
+fn install(
+    files: Value,
+    bundle: bool,
+) -> (tempfile::TempDir, pluginpocket::Result<()>, Vec<String>) {
     install_with_setup(files, bundle, |_| {})
 }
 fn install_with_setup(
     files: Value,
     bundle: bool,
     setup: impl FnOnce(&std::path::Path),
-) -> (tempfile::TempDir, loadout::Result<()>, Vec<String>) {
+) -> (tempfile::TempDir, pluginpocket::Result<()>, Vec<String>) {
     install_with_delay(files, bundle, setup, Duration::ZERO)
 }
 fn install_with_delay(
@@ -34,7 +37,7 @@ fn install_with_delay(
     bundle: bool,
     setup: impl FnOnce(&std::path::Path),
     delay: Duration,
-) -> (tempfile::TempDir, loadout::Result<()>, Vec<String>) {
+) -> (tempfile::TempDir, pluginpocket::Result<()>, Vec<String>) {
     let dir = tempfile::tempdir().unwrap();
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     listener.set_nonblocking(true).unwrap();
@@ -83,12 +86,12 @@ fn install_with_delay(
         requests
     });
     let local = local(&dir);
-    credentials(&local, &server, "ldt_secret");
+    credentials(&local, &server, "ppt_secret");
     setup(dir.path());
     let result = local.install(
         if bundle { "kit" } else { "binary" },
         None,
-        &[loadout::ClientKind::Codex],
+        &[pluginpocket::ClientKind::Codex],
     );
     (dir, result, task.join().unwrap())
 }
@@ -157,7 +160,7 @@ fn all_destination_paths_are_checked_before_writing() {
             fs::write(home.join("outside"), "secret").unwrap();
             std::os::unix::fs::symlink(home.join("outside"), root.join("z")).unwrap();
             fs::write(
-                home.join(".loadout/managed-clients.json"),
+                home.join(".pluginpocket/managed-clients.json"),
                 json!({"skill:codex:binary":["SKILL.md","z"]}).to_string(),
             )
             .unwrap();

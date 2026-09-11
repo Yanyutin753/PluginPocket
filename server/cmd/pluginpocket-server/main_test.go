@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Yanyutin753/loadout/server/internal/config"
+	"github.com/Yanyutin753/PluginPocket/server/internal/config"
 )
 
 func TestRunReturnsBindFailure(t *testing.T) {

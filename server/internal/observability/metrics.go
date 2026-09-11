@@ -19,12 +19,12 @@ type Metrics struct {
 
 func New(pool *pgxpool.Pool) *Metrics {
 	registry := prometheus.NewRegistry()
-	requests := prometheus.NewCounterVec(prometheus.CounterOpts{Name: "loadout_http_requests_total", Help: "HTTP requests by normalized method and status code."}, []string{"code", "method"})
-	duration := prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: "loadout_http_request_duration_seconds", Help: "HTTP handler duration.", Buckets: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10, 30}}, []string{"method"})
+	requests := prometheus.NewCounterVec(prometheus.CounterOpts{Name: "pluginpocket_http_requests_total", Help: "HTTP requests by normalized method and status code."}, []string{"code", "method"})
+	duration := prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: "pluginpocket_http_request_duration_seconds", Help: "HTTP handler duration.", Buckets: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10, 30}}, []string{"method"})
 	registry.MustRegister(requests, duration, collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 	if pool != nil {
-		registry.MustRegister(prometheus.NewGaugeFunc(prometheus.GaugeOpts{Name: "loadout_db_connections_in_use", Help: "Currently acquired PostgreSQL connections."}, func() float64 { return float64(pool.Stat().AcquiredConns()) }))
-		registry.MustRegister(prometheus.NewGaugeFunc(prometheus.GaugeOpts{Name: "loadout_db_connections_total", Help: "Current PostgreSQL pool size."}, func() float64 { return float64(pool.Stat().TotalConns()) }))
+		registry.MustRegister(prometheus.NewGaugeFunc(prometheus.GaugeOpts{Name: "pluginpocket_db_connections_in_use", Help: "Currently acquired PostgreSQL connections."}, func() float64 { return float64(pool.Stat().AcquiredConns()) }))
+		registry.MustRegister(prometheus.NewGaugeFunc(prometheus.GaugeOpts{Name: "pluginpocket_db_connections_total", Help: "Current PostgreSQL pool size."}, func() float64 { return float64(pool.Stat().TotalConns()) }))
 	}
 	return &Metrics{registry, requests, duration}
 }

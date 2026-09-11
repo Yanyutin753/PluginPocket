@@ -10,7 +10,7 @@ import (
 	"testing"
 	"testing/synctest"
 
-	"github.com/Yanyutin753/loadout/server/internal/store"
+	"github.com/Yanyutin753/PluginPocket/server/internal/store"
 )
 
 func replicaStore(t *testing.T, s *store.Store) *store.Store {

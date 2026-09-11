@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Yanyutin753/loadout/server/internal/auth"
+	"github.com/Yanyutin753/PluginPocket/server/internal/auth"
 	"github.com/jackc/pgx/v5"
 	"golang.org/x/oauth2"
 )
@@ -45,7 +45,7 @@ func TestReviewTransientDatabaseFailureIsNotUnauthorized(t *testing.T) {
 	}
 	h := New(s, Options{Origin: "http://local.test"})
 	r := httptest.NewRequest("GET", "/api/v1/account/email", nil)
-	r.AddCookie(&http.Cookie{Name: "loadout_session", Value: "valid_session"})
+	r.AddCookie(&http.Cookie{Name: "pluginpocket_session", Value: "valid_session"})
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
 	if w.Code != 503 || !strings.Contains(w.Body.String(), "temporarily_unavailable") {
@@ -62,7 +62,7 @@ func TestReviewTransientDatabaseFailureIsNotUnauthorized(t *testing.T) {
 	for _, session := range []string{"", "invalid_session"} {
 		r := httptest.NewRequest("GET", "/api/v1/account/email", nil)
 		if session != "" {
-			r.AddCookie(&http.Cookie{Name: "loadout_session", Value: session})
+			r.AddCookie(&http.Cookie{Name: "pluginpocket_session", Value: session})
 		}
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, r)
@@ -95,7 +95,7 @@ func TestReviewFailedResendPreservesPreviouslyDeliveredVerification(t *testing.T
 	send := func() *httptest.ResponseRecorder {
 		r := httptest.NewRequest("POST", "/api/v1/account/email/request", strings.NewReader(`{"email":"owner@example.com"}`))
 		r.Header.Set("Origin", "http://local.test")
-		r.AddCookie(&http.Cookie{Name: "loadout_session", Value: "valid_session"})
+		r.AddCookie(&http.Cookie{Name: "pluginpocket_session", Value: "valid_session"})
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, r)
 		return w
@@ -153,7 +153,7 @@ func TestFailedResendSerializesWithVerificationAndLaterResend(t *testing.T) {
 			request := func(h http.Handler, path, body string) int {
 				r := httptest.NewRequest("POST", path, strings.NewReader(body))
 				r.Header.Set("Origin", "http://local.test")
-				r.AddCookie(&http.Cookie{Name: "loadout_session", Value: "session"})
+				r.AddCookie(&http.Cookie{Name: "pluginpocket_session", Value: "session"})
 				w := httptest.NewRecorder()
 				h.ServeHTTP(w, r)
 				return w.Code

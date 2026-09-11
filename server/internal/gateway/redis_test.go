@@ -9,15 +9,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Yanyutin753/loadout/server/internal/cache"
-	"github.com/Yanyutin753/loadout/server/internal/store"
+	"github.com/Yanyutin753/PluginPocket/server/internal/cache"
+	"github.com/Yanyutin753/PluginPocket/server/internal/store"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/redis/go-redis/v9"
 )
 
 func redisGatewayFixture(t *testing.T) (*Gateway, *Gateway, *mcp.Server, *atomic.Int64, *redis.Client, string) {
 	t.Helper()
-	raw := os.Getenv("LOADOUT_TEST_REDIS_URL")
+	raw := os.Getenv("PLUGINPOCKET_TEST_REDIS_URL")
 	if raw == "" {
 		t.Skip("real Redis URL required")
 	}
@@ -233,7 +233,7 @@ func TestRedisDoesNotShareMachineLocalStdioMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	raw, err := json.Marshal(UpstreamConfig{Command: "fixture", Args: []string{"-test.run=^TestStdioUpstreamHelper$"}, Env: map[string]string{"LOADOUT_STDIO_TEST_HELPER": "1"}})
+	raw, err := json.Marshal(UpstreamConfig{Command: "fixture", Args: []string{"-test.run=^TestStdioUpstreamHelper$"}, Env: map[string]string{"PLUGINPOCKET_STDIO_TEST_HELPER": "1"}})
 	if err != nil {
 		t.Fatal(err)
 	}

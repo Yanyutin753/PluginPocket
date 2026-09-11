@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"unicode/utf8"
 
-	"github.com/Yanyutin753/loadout/server/internal/store"
+	"github.com/Yanyutin753/PluginPocket/server/internal/store"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/Yanyutin753/loadout/server/internal/auth"
-	"github.com/Yanyutin753/loadout/server/internal/filestore"
-	"github.com/Yanyutin753/loadout/server/internal/gateway"
-	"github.com/Yanyutin753/loadout/server/internal/httpapi"
-	"github.com/Yanyutin753/loadout/server/internal/marketplace"
-	"github.com/Yanyutin753/loadout/server/internal/settings"
-	"github.com/Yanyutin753/loadout/server/internal/store"
+	"github.com/Yanyutin753/PluginPocket/server/internal/auth"
+	"github.com/Yanyutin753/PluginPocket/server/internal/filestore"
+	"github.com/Yanyutin753/PluginPocket/server/internal/gateway"
+	"github.com/Yanyutin753/PluginPocket/server/internal/httpapi"
+	"github.com/Yanyutin753/PluginPocket/server/internal/marketplace"
+	"github.com/Yanyutin753/PluginPocket/server/internal/settings"
+	"github.com/Yanyutin753/PluginPocket/server/internal/store"
 )
 
 type Options struct {

@@ -1,5 +1,5 @@
 {
-  "name": "loadout-workspace",
+  "name": "pluginpocket-workspace",
   "private": true,
   "packageManager": "pnpm@12.3.4",
   "engines": {

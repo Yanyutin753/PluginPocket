@@ -20,7 +20,7 @@ func TestMetricsDoNotLabelUserPathsAndRequestsHaveIDs(t *testing.T) {
 	w := httptest.NewRecorder()
 	metrics.Handler().ServeHTTP(w, httptest.NewRequest("GET", "/metrics", nil))
 	body := w.Body.String()
-	if !strings.Contains(body, "loadout_http_requests_total") || !strings.Contains(body, `code="404"`) {
+	if !strings.Contains(body, "pluginpocket_http_requests_total") || !strings.Contains(body, `code="404"`) {
 		t.Fatalf("no request metrics: %s", body)
 	}
 	if strings.Contains(body, "secret") {

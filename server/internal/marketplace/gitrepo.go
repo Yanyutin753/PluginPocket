@@ -45,12 +45,12 @@ func BuildGitMarketplace(tree map[string][]byte, parent *[20]byte, executable ..
 	}
 	treeSHA := writeGitTree(root, store)
 	timestamp := time.Now().UTC().Unix()
-	identity := fmt.Sprintf("Loadout Marketplace <marketplace@loadout.dev> %d +0000", timestamp)
+	identity := fmt.Sprintf("PluginPocket Marketplace <marketplace@pluginpocket.dev> %d +0000", timestamp)
 	commit := fmt.Sprintf("tree %s\n", hex.EncodeToString(treeSHA[:]))
 	if parent != nil {
 		commit += fmt.Sprintf("parent %s\n", hex.EncodeToString(parent[:]))
 	}
-	commit += fmt.Sprintf("author %s\ncommitter %s\n\nLoadout marketplace snapshot\n", identity, identity)
+	commit += fmt.Sprintf("author %s\ncommitter %s\n\nPluginPocket marketplace snapshot\n", identity, identity)
 	commitSHA := store("commit", []byte(commit))
 	head := hex.EncodeToString(commitSHA[:])
 	repo["HEAD"] = []byte("ref: refs/heads/main\n")
@@ -59,7 +59,7 @@ func BuildGitMarketplace(tree map[string][]byte, parent *[20]byte, executable ..
 	repo["info/refs"] = []byte(head + "\trefs/heads/main\n")
 	repo["objects/info/packs"] = []byte("")
 	repo["config"] = []byte("[core]\n\trepositoryformatversion = 0\n\tfilemode = true\n\tbare = true\n")
-	repo["description"] = []byte("Loadout marketplace (served live)\n")
+	repo["description"] = []byte("PluginPocket marketplace (served live)\n")
 	return repo, nil
 }
 

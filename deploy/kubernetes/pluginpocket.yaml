@@ -1,12 +1,12 @@
 # Runbook: docs/CLUSTER.md; variable contract: docs/ENVIRONMENT.md
-# Application only. Requires namespace loadout, Secret loadout-runtime,
+# Application only. Requires namespace pluginpocket, Secret pluginpocket-runtime,
 # externally operated PostgreSQL/Redis, and an existing HTTPS ingress/gateway.
 # Replace the image with your built immutable release digest before applying.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: loadout
-  namespace: loadout
+  name: pluginpocket
+  namespace: pluginpocket
 spec:
   replicas: 3
   revisionHistoryLimit: 3
@@ -19,11 +19,11 @@ spec:
       maxSurge: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: loadout
+      app.kubernetes.io/name: pluginpocket
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: loadout
+        app.kubernetes.io/name: pluginpocket
     spec:
       automountServiceAccountToken: false
       terminationGracePeriodSeconds: 70
@@ -39,22 +39,22 @@ spec:
           whenUnsatisfiable: DoNotSchedule
           labelSelector:
             matchLabels:
-              app.kubernetes.io/name: loadout
+              app.kubernetes.io/name: pluginpocket
       containers:
-        - name: loadout
-          image: registry.example.com/loadout:REPLACE_WITH_RELEASE
+        - name: pluginpocket
+          image: registry.example.com/pluginpocket:REPLACE_WITH_RELEASE
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
               containerPort: 8787
           envFrom:
             - secretRef:
-                name: loadout-runtime
+                name: pluginpocket-runtime
           # These two paths belong to the supplied container, not the host.
           env:
-            - name: LOADOUT_ADDR
+            - name: PLUGINPOCKET_ADDR
               value: 0.0.0.0:8787
-            - name: LOADOUT_WEB_DIR
+            - name: PLUGINPOCKET_WEB_DIR
               value: /app/web/dist
           resources:
             requests:
@@ -99,13 +99,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: loadout
-  namespace: loadout
+  name: pluginpocket
+  namespace: pluginpocket
 spec:
   type: ClusterIP
   sessionAffinity: None
   selector:
-    app.kubernetes.io/name: loadout
+    app.kubernetes.io/name: pluginpocket
   ports:
     - name: http
       port: 8787
@@ -114,10 +114,10 @@ spec:
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: loadout
-  namespace: loadout
+  name: pluginpocket
+  namespace: pluginpocket
 spec:
   minAvailable: 2
   selector:
     matchLabels:
-      app.kubernetes.io/name: loadout
+      app.kubernetes.io/name: pluginpocket

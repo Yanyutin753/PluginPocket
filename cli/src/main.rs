@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand, ValueEnum};
-use loadout::{ClientKind, LocalClient, Result};
+use pluginpocket::{ClientKind, LocalClient, Result};
 use std::{
     io::{self, IsTerminal, Write},
     process::ExitCode,
@@ -7,9 +7,9 @@ use std::{
 
 #[derive(Parser)]
 #[command(
-    name = "loadout",
+    name = "pluginpocket",
     version,
-    about = "Local companion for the Loadout MCP gateway"
+    about = "Local companion for the PluginPocket MCP gateway"
 )]
 struct Cli {
     #[command(subcommand)]
@@ -60,7 +60,7 @@ enum Commands {
         #[arg(long, conflicts_with = "direct")]
         remove: bool,
     },
-    /// Remove managed Loadout client entries.
+    /// Remove managed PluginPocket client entries.
     Remove {
         #[arg(long, value_enum, value_delimiter = ',')]
         clients: Vec<Client>,
@@ -94,7 +94,7 @@ enum Commands {
 }
 fn run(command: Commands) -> Result<()> {
     if matches!(command, Commands::Version) {
-        println!("loadout {}", env!("CARGO_PKG_VERSION"));
+        println!("pluginpocket {}", env!("CARGO_PKG_VERSION"));
         return Ok(());
     }
     let local = LocalClient::from_env()?;
@@ -123,7 +123,7 @@ fn run(command: Commands) -> Result<()> {
                     Some(token) => token,
                     None => {
                         if io::stdin().is_terminal() {
-                            rpassword::prompt_password("Loadout token: ")
+                            rpassword::prompt_password("PluginPocket token: ")
                                 .map_err(|_| "could not read token")?
                         } else {
                             let mut line = String::new();
@@ -155,7 +155,7 @@ fn run(command: Commands) -> Result<()> {
         }
         Commands::Doctor { server } => {
             let doctor = local.doctor(server.as_deref())?;
-            println!("Loadout {} is reachable", doctor.version);
+            println!("PluginPocket {} is reachable", doctor.version);
             println!(
                 "Credentials: {}",
                 if doctor.authenticated {
@@ -180,7 +180,7 @@ fn run(command: Commands) -> Result<()> {
             print_clients(&states);
             if direct {
                 eprintln!(
-                    "Direct mode: tokens are stored in Claude/Cursor configuration. Codex requires LOADOUT_TOKEN in its environment."
+                    "Direct mode: tokens are stored in Claude/Cursor configuration. Codex requires PLUGINPOCKET_TOKEN in its environment."
                 );
             }
         }
@@ -215,7 +215,7 @@ fn run(command: Commands) -> Result<()> {
             let clients: Vec<_> = clients.into_iter().map(Into::into).collect();
             let updated = local.update(&clients)?;
             if updated.is_empty() {
-                println!("Nothing managed to update; run loadout install first");
+                println!("Nothing managed to update; run pluginpocket install first");
             } else {
                 for slug in updated {
                     println!("Updated {slug}");
@@ -230,13 +230,13 @@ fn run(command: Commands) -> Result<()> {
         Commands::Bridge => {
             return tokio::runtime::Runtime::new()
                 .map_err(|_| "could not start bridge runtime")?
-                .block_on(loadout::bridge::run(local.config_path));
+                .block_on(pluginpocket::bridge::run(local.config_path));
         }
         Commands::Version => {}
     }
     Ok(())
 }
-fn print_clients(clients: &[loadout::ClientState]) {
+fn print_clients(clients: &[pluginpocket::ClientState]) {
     for client in clients {
         println!(
             "{:?}: {}",
@@ -255,7 +255,7 @@ fn main() -> ExitCode {
     match run(Cli::parse().command) {
         Ok(()) => ExitCode::SUCCESS,
         Err(message) => {
-            eprintln!("loadout: {message}");
+            eprintln!("pluginpocket: {message}");
             ExitCode::FAILURE
         }
     }

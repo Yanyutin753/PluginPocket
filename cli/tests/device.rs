@@ -16,7 +16,7 @@ fn fixture(
     listener.set_nonblocking(true).unwrap();
     let url = format!("http://{}", listener.local_addr().unwrap());
     let uri = if unsafe_uri {
-        "https://user:ldt_uri_secret@example.com/devices".to_owned()
+        "https://user:ppt_uri_secret@example.com/devices".to_owned()
     } else {
         format!("{url}/devices")
     };
@@ -79,7 +79,7 @@ fn device_login_polls_pending_and_slow_down_then_verifies_and_stores_token_witho
         vec![
             (400, r#"{"error":"authorization_pending"}"#),
             (429, r#"{"error":"slow_down"}"#),
-            (200, r#"{"token":"ldt_device_secret"}"#),
+            (200, r#"{"token":"ppt_device_secret"}"#),
             (200, r#"{"username":"alice","balance":42,"tools":["echo"]}"#),
         ],
         30,
@@ -91,7 +91,7 @@ fn device_login_polls_pending_and_slow_down_then_verifies_and_stores_token_witho
     assert!(stdout.contains("ABCD-1234"));
     assert!(stdout.contains(&format!("{server}/devices")));
     assert!(stdout.contains("alice"));
-    for secret in ["ldt_device_secret", "ldd_private_device"] {
+    for secret in ["ppt_device_secret", "ldd_private_device"] {
         assert!(!stdout.contains(secret));
         assert!(!String::from_utf8_lossy(&output.stderr).contains(secret));
     }
@@ -108,29 +108,29 @@ fn device_login_polls_pending_and_slow_down_then_verifies_and_stores_token_witho
         requests[4]
             .0
             .to_lowercase()
-            .contains("authorization: bearer ldt_device_secret")
+            .contains("authorization: bearer ppt_device_secret")
     );
     assert!(requests[1].1.duration_since(requests[0].1) >= Duration::from_millis(900));
     assert!(requests[3].1.duration_since(requests[2].1) >= Duration::from_millis(5900));
     let stored: serde_json::Value =
-        serde_json::from_slice(&fs::read(dir.path().join(".loadout/config.json")).unwrap())
+        serde_json::from_slice(&fs::read(dir.path().join(".pluginpocket/config.json")).unwrap())
             .unwrap();
-    assert_eq!(stored["token"], "ldt_device_secret");
+    assert_eq!(stored["token"], "ppt_device_secret");
 }
 #[test]
 fn expired_or_consumed_device_requests_preserve_old_credentials_and_report_safe_error() {
     for error in ["expired_token", "invalid_grant"] {
         let dir = tempfile::tempdir().unwrap();
         let local = common::local(&dir);
-        common::credentials(&local, "https://example.com", "ldt_old");
+        common::credentials(&local, "https://example.com", "ppt_old");
         let before = fs::read(&local.config_path).unwrap();
         let (server, task) = fixture(
             vec![(
                 400,
                 if error == "expired_token" {
-                    r#"{"error":"expired_token","secret":"ldt_never_echo"}"#
+                    r#"{"error":"expired_token","secret":"ppt_never_echo"}"#
                 } else {
-                    r#"{"error":"invalid_grant","secret":"ldt_never_echo"}"#
+                    r#"{"error":"invalid_grant","secret":"ppt_never_echo"}"#
                 },
             )],
             30,
@@ -138,7 +138,7 @@ fn expired_or_consumed_device_requests_preserve_old_credentials_and_report_safe_
         );
         let output = common::cli(&dir, &["login", "--device", "--server", &server], "");
         assert!(!output.status.success());
-        assert!(!String::from_utf8_lossy(&output.stderr).contains("ldt_never_echo"));
+        assert!(!String::from_utf8_lossy(&output.stderr).contains("ppt_never_echo"));
         assert_eq!(fs::read(&local.config_path).unwrap(), before);
         assert_eq!(task.join().unwrap().len(), 2);
     }
@@ -150,13 +150,13 @@ fn device_login_rejects_unsafe_verification_uri_expiry_and_token_option_conflict
         let (server, task) = fixture(vec![], 1, unsafe_uri);
         let output = common::cli(&dir, &["login", "--device", "--server", &server], "");
         assert!(!output.status.success());
-        assert!(!String::from_utf8_lossy(&output.stdout).contains("ldt_uri_secret"));
-        assert!(!String::from_utf8_lossy(&output.stderr).contains("ldt_uri_secret"));
-        assert!(!dir.path().join(".loadout/config.json").exists());
+        assert!(!String::from_utf8_lossy(&output.stdout).contains("ppt_uri_secret"));
+        assert!(!String::from_utf8_lossy(&output.stderr).contains("ppt_uri_secret"));
+        assert!(!dir.path().join(".pluginpocket/config.json").exists());
         assert_eq!(task.join().unwrap().len(), 1);
     }
     let dir = tempfile::tempdir().unwrap();
-    let output = common::cli(&dir, &["login", "--device", "--token", "ldt_secret"], "");
+    let output = common::cli(&dir, &["login", "--device", "--token", "ppt_secret"], "");
     assert!(!output.status.success());
-    assert!(!String::from_utf8_lossy(&output.stderr).contains("ldt_secret"));
+    assert!(!String::from_utf8_lossy(&output.stderr).contains("ppt_secret"));
 }

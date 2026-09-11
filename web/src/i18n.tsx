@@ -59,19 +59,19 @@ const Preferences = createContext({
 });
 export function PreferencesProvider({ children }: { children: ReactNode }) {
   const [locale, setLocale] = useState<Locale>(() =>
-    stored('loadout.locale') === 'en' ? 'en' : 'zh-CN',
+    stored('pluginpocket.locale') === 'en' ? 'en' : 'zh-CN',
   );
   const [theme, setTheme] = useState<Theme>(() => {
-    const value = stored('loadout.theme');
+    const value = stored('pluginpocket.theme');
     return value === 'light' || value === 'dark' ? value : 'system';
   });
   useEffect(() => {
     document.documentElement.lang = locale;
     document.title =
       locale === 'en'
-        ? 'Loadout · Your AI, fully loaded.'
-        : 'Loadout · 你的 AI，准备就绪';
-    save('loadout.locale', locale);
+        ? 'PluginPocket · Your AI superpowers, in your pocket.'
+        : 'PluginPocket · 把 AI 的超能力，装进口袋';
+    save('pluginpocket.locale', locale);
   }, [locale]);
   useEffect(() => {
     const media = window.matchMedia?.('(prefers-color-scheme: dark)');
@@ -85,7 +85,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
         ?.setAttribute('content', resolved === 'dark' ? '#161719' : '#f5f5f7');
     };
     apply();
-    save('loadout.theme', theme);
+    save('pluginpocket.theme', theme);
     media?.addEventListener('change', apply);
     return () => media?.removeEventListener('change', apply);
   }, [theme]);

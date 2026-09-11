@@ -39,15 +39,15 @@ pub fn fixture(status: &str, body: &str) -> (String, thread::JoinHandle<String>)
     });
     (url, handle)
 }
-pub fn local(dir: &tempfile::TempDir) -> loadout::LocalClient {
-    loadout::LocalClient::new(
+pub fn local(dir: &tempfile::TempDir) -> pluginpocket::LocalClient {
+    pluginpocket::LocalClient::new(
         dir.path().to_path_buf(),
-        dir.path().join(".loadout/config.json"),
+        dir.path().join(".pluginpocket/config.json"),
         std::env::current_exe().unwrap(),
     )
     .unwrap()
 }
-pub fn credentials(local: &loadout::LocalClient, server: &str, token: &str) {
+pub fn credentials(local: &pluginpocket::LocalClient, server: &str, token: &str) {
     std::fs::create_dir_all(local.config_path.parent().unwrap()).unwrap();
     std::fs::write(
         &local.config_path,
@@ -59,11 +59,11 @@ pub fn credentials(local: &loadout::LocalClient, server: &str, token: &str) {
     .unwrap();
 }
 pub fn cli(dir: &tempfile::TempDir, args: &[&str], input: &str) -> Output {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_loadout"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_pluginpocket"))
         .args(args)
         .env("HOME", dir.path())
         .env("USERPROFILE", dir.path())
-        .env_remove("LOADOUT_CONFIG")
+        .env_remove("PLUGINPOCKET_CONFIG")
         .env("NO_PROXY", "*")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

@@ -98,5 +98,5 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v7.0.1
         with:
-          name: loadout-${{ matrix.name }}
-          path: cli/target/${{ matrix.target }}/release/loadout${{ matrix.ext }}
+          name: pluginpocket-${{ matrix.name }}
+          path: cli/target/${{ matrix.target }}/release/pluginpocket${{ matrix.ext }}

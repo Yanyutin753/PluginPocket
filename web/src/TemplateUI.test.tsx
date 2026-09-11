@@ -41,7 +41,7 @@ it('introduces the workshop with ordered setup instructions and a keyboard-acces
   mount();
   expect(
     await screen.findByRole('heading', {
-      name: '给你的 AI，装上超能力',
+      name: '把 AI 的超能力，装进口袋',
       level: 1,
     }),
   ).toBeVisible();
@@ -77,7 +77,7 @@ it('copies the complete connection commands and reports success', async () => {
   mount();
   await user.click(await screen.findByRole('button', { name: '复制接入命令' }));
   expect(write).toHaveBeenCalledWith(
-    `loadout login --server ${window.location.origin}\nloadout apply`,
+    `pluginpocket login --server ${window.location.origin}\npluginpocket apply`,
   );
   expect(await screen.findByRole('status')).toHaveTextContent('接入命令已复制');
 });
@@ -91,5 +91,5 @@ it('keeps commands available for manual copying when clipboard access fails', as
   expect(await screen.findByRole('status')).toHaveTextContent(
     '无法自动复制，请选中命令并手动复制',
   );
-  expect(screen.getByText(/loadout login --server/)).toBeVisible();
+  expect(screen.getByText(/pluginpocket login --server/)).toBeVisible();
 });

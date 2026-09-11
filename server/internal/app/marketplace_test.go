@@ -11,9 +11,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Yanyutin753/loadout/server/internal/gateway"
-	"github.com/Yanyutin753/loadout/server/internal/marketplace"
-	"github.com/Yanyutin753/loadout/server/internal/store"
+	"github.com/Yanyutin753/PluginPocket/server/internal/gateway"
+	"github.com/Yanyutin753/PluginPocket/server/internal/marketplace"
+	"github.com/Yanyutin753/PluginPocket/server/internal/store"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

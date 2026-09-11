@@ -11,7 +11,7 @@ fn login_verifies_token_atomically_persists_private_credentials_and_status_refre
         r#"{"username":"alice","balance":42,"tools":["echo","time_now"]}"#,
     );
     let account = local
-        .login(&server, "ldt_private")
+        .login(&server, "ppt_private")
         .expect("valid login must succeed");
     assert_eq!(account.balance, 42);
     let request = request.join().unwrap();
@@ -19,11 +19,11 @@ fn login_verifies_token_atomically_persists_private_credentials_and_status_refre
     assert!(
         request
             .to_lowercase()
-            .contains("authorization: bearer ldt_private")
+            .contains("authorization: bearer ppt_private")
     );
     let stored: serde_json::Value =
         serde_json::from_slice(&fs::read(&local.config_path).unwrap()).unwrap();
-    assert_eq!(stored["token"], "ldt_private");
+    assert_eq!(stored["token"], "ppt_private");
     assert_eq!(stored["serverUrl"], format!("{server}/"));
     #[cfg(unix)]
     {
@@ -41,7 +41,7 @@ fn login_verifies_token_atomically_persists_private_credentials_and_status_refre
         "200 OK",
         r#"{"username":"alice","balance":11,"tools":["echo","time_now","other"]}"#,
     );
-    credentials(&local, &server, "ldt_new");
+    credentials(&local, &server, "ppt_new");
     assert_eq!(local.status().unwrap().account.balance, 11);
     request.join().unwrap();
     local.logout().unwrap();
@@ -53,20 +53,20 @@ fn login_verifies_token_atomically_persists_private_credentials_and_status_refre
 fn failed_login_preserves_existing_credentials_and_never_returns_raw_response() {
     let dir = tempfile::tempdir().unwrap();
     let local = local(&dir);
-    credentials(&local, "https://example.com", "ldt_old");
+    credentials(&local, "https://example.com", "ppt_old");
     let before = fs::read(&local.config_path).unwrap();
     for (status, body) in [
-        ("401 Unauthorized", "ldt_secret"),
-        ("200 OK", "ldt_secret"),
-        ("302 Found", "ldt_secret"),
+        ("401 Unauthorized", "ppt_secret"),
+        ("200 OK", "ppt_secret"),
+        ("302 Found", "ppt_secret"),
         (
             "200 OK",
             r#"{"username":"bad\u001b[2J","balance":1,"tools":["echo","time_now"]}"#,
         ),
     ] {
         let (server, request) = fixture(status, body);
-        let error = local.login(&server, "ldt_secret").unwrap_err();
-        assert!(!error.contains("ldt_secret"));
+        let error = local.login(&server, "ppt_secret").unwrap_err();
+        assert!(!error.contains("ppt_secret"));
         assert_eq!(fs::read(&local.config_path).unwrap(), before);
         request.join().unwrap();
     }
@@ -76,7 +76,7 @@ fn failed_login_preserves_existing_credentials_and_never_returns_raw_response() 
         "https://example.com/?token=secret",
         "https://example.com/prefix",
     ] {
-        assert!(local.login(server, "ldt_secret").is_err());
+        assert!(local.login(server, "ppt_secret").is_err());
     }
     assert!(local.login("https://example.com", "invalid").is_err());
 }
@@ -93,10 +93,10 @@ fn cli_reads_secret_from_stdin_and_relogin_leaves_client_config_unchanged() {
         "200 OK",
         r#"{"username":"alice","balance":42,"tools":["echo","time_now"]}"#,
     );
-    let output = cli(&dir, &["login", "--server", &server], "ldt_stdin_secret\n");
+    let output = cli(&dir, &["login", "--server", &server], "ppt_stdin_secret\n");
     assert!(output.status.success(), "{output:?}");
-    assert!(!String::from_utf8_lossy(&output.stdout).contains("ldt_"));
-    assert!(!String::from_utf8_lossy(&output.stderr).contains("ldt_stdin_secret"));
+    assert!(!String::from_utf8_lossy(&output.stdout).contains("ppt_"));
+    assert!(!String::from_utf8_lossy(&output.stderr).contains("ppt_stdin_secret"));
     request.join().unwrap();
     assert_eq!(fs::read(dir.path().join(".claude.json")).unwrap(), before);
     assert!(cli(&dir, &["logout"], "").status.success());
@@ -113,16 +113,16 @@ fn credentials_reject_symlink_target_or_parent_without_touching_target() {
         fs::create_dir(&external).unwrap();
         fs::write(external.join("config.json"), "untouched").unwrap();
         if parent_link {
-            symlink(&external, dir.path().join(".loadout")).unwrap()
+            symlink(&external, dir.path().join(".pluginpocket")).unwrap()
         } else {
-            fs::create_dir(dir.path().join(".loadout")).unwrap();
+            fs::create_dir(dir.path().join(".pluginpocket")).unwrap();
             symlink(external.join("config.json"), &local.config_path).unwrap();
         }
         let (server, request) = fixture(
             "200 OK",
             r#"{"username":"alice","balance":42,"tools":["echo","time_now"]}"#,
         );
-        assert!(local.login(&server, "ldt_secret").is_err());
+        assert!(local.login(&server, "ppt_secret").is_err());
         assert!(local.logout().is_err());
         assert_eq!(
             fs::read_to_string(external.join("config.json")).unwrap(),
@@ -141,7 +141,7 @@ fn verify_accepts_tool_catalog_array_from_product_api() {
         r#"{"username":"alice","balance":42,"tools":["echo","time_now"]}"#,
     );
     let account = local
-        .login(&server, "ldt_private")
+        .login(&server, "ppt_private")
         .expect("verify returns the actual tool catalog array");
     assert_eq!(serde_json::to_value(account).unwrap()["tools"][0], "echo");
     request.join().unwrap();

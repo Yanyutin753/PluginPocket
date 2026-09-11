@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generatedAt": "2026-09-10T16:44:28.496713+00:00",
-  "title": "Design System: Loadout · AI 装备工坊",
+  "title": "Design System: PluginPocket · AI 装备工坊",
   "extensions": {
     "colorMeta": {
       "background": {
@@ -403,7 +403,7 @@
       "kind": "custom",
       "refersTo": "command-block",
       "description": "完整命令采用等宽字，独立终端色面与安全提示。",
-      "html": "<section class=\"ds-command\"><div aria-hidden=\"true\">● ● ●</div><pre>loadout login --server http://127.0.0.1:5173\nloadout apply</pre><p>登录时粘贴令牌，不要把令牌写在命令行参数中。</p></section>",
+      "html": "<section class=\"ds-command\"><div aria-hidden=\"true\">● ● ●</div><pre>pluginpocket login --server http://127.0.0.1:5173\npluginpocket apply</pre><p>登录时粘贴令牌，不要把令牌写在命令行参数中。</p></section>",
       "css": ".ds-command{padding:24px;border-radius:16px;background:#202124;color:#f4f4f7}.ds-command div{color:#f2ce60}.ds-command pre{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}.ds-command p{font-size:12px;color:#c4c7b7}"
     }
   ],

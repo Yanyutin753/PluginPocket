@@ -4,7 +4,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/Yanyutin753/loadout/server/internal/demo"
+	"github.com/Yanyutin753/PluginPocket/server/internal/demo"
 )
 
 func TestProductJourneyDemoData(t *testing.T) {

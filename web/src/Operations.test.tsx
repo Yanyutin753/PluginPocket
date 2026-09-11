@@ -373,11 +373,11 @@ it('creates a token charged to the selected team wallet', async () => {
     if (url.startsWith('/api/v1/account/tokens') && init.method === 'POST') {
       bodies.push(JSON.parse(String(init.body)));
       return Response.json({
-        token: 'ldt_team_secret',
+        token: 'ppt_team_secret',
         item: {
           id: 1,
           name: '团队电脑',
-          prefix: 'ldt_team',
+          prefix: 'ppt_team',
           wallet_id: 2,
           created_at: '2026-09-10T10:00:00Z',
           revoked_at: null,
@@ -390,7 +390,7 @@ it('creates a token charged to the selected team wallet', async () => {
   await user.type(await screen.findByLabelText('令牌名称'), '团队电脑');
   await chooseOption(user, screen.getByLabelText('扣费钱包'), '研发组');
   await user.click(screen.getByRole('button', { name: '创建令牌' }));
-  expect(await screen.findByText('ldt_team_secret')).toBeVisible();
+  expect(await screen.findByText('ppt_team_secret')).toBeVisible();
   expect(bodies).toEqual([{ name: '团队电脑', team_id: 1 }]);
 });
 it('requires explicit approval before authorizing a local device', async () => {
@@ -439,7 +439,7 @@ it('filters global usage and exports one server-provided CSV page at a time', as
   expect(await screen.findByText('echo')).toBeVisible();
   await user.click(screen.getByRole('button', { name: '导出 CSV' }));
   const download = await screen.findByRole('link', { name: '下载 CSV' });
-  expect(download).toHaveAttribute('download', 'loadout-usage.csv');
+  expect(download).toHaveAttribute('download', 'pluginpocket-usage.csv');
   expect(decodeURIComponent(download.getAttribute('href') ?? '')).toContain(
     'echo,1',
   );

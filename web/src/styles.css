@@ -9,6 +9,7 @@
   font-display: swap;
 }
 .brand-wordmark {
+  font-size: 20px;
   white-space: nowrap;
   font-family: "Bricolage Grotesque", Manrope, sans-serif;
   font-weight: 750;
@@ -1430,7 +1431,7 @@
   @media (min-width: 900px) {
     .app-shell {
       display: grid;
-      grid-template-columns: 228px minmax(0, 1fr);
+      grid-template-columns: 264px minmax(0, 1fr);
     }
     .app-sidebar {
       position: sticky;
@@ -1495,7 +1496,7 @@
   }
   @media (min-width: 1280px) {
     .app-shell {
-      grid-template-columns: 248px minmax(0, 1fr);
+      grid-template-columns: 264px minmax(0, 1fr);
     }
     .app-sidebar {
       padding-inline: 0.75rem;

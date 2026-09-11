@@ -1,6 +1,7 @@
 .git
 .agents
 .impeccable
+.pluginpocket
 .loadout
 node_modules
 **/node_modules

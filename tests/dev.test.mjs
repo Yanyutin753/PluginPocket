@@ -34,20 +34,20 @@ async function port() {
 }
 
 async function fixture(t) {
-  const dir = await mkdtemp(join(tmpdir(), 'loadout-dev-'));
+  const dir = await mkdtemp(join(tmpdir(), 'pluginpocket-dev-'));
   const apiPort = await port();
   const webPort = await port();
   const env = {
     ...process.env,
-    LOADOUT_DATABASE_URL: '',
-    LOADOUT_REDIS_URL: '',
-    LOADOUT_REDIS_NAMESPACE: '',
-    LOADOUT_ADMIN_USERNAME: '',
-    LOADOUT_ADMIN_PASSWORD: '',
-    LOADOUT_RUN_DIR: dir,
-    LOADOUT_ADDR: `127.0.0.1:${apiPort}`,
-    LOADOUT_API_ORIGIN: `http://127.0.0.1:${apiPort}`,
-    LOADOUT_DEV_PORT: String(webPort),
+    PLUGINPOCKET_DATABASE_URL: '',
+    PLUGINPOCKET_REDIS_URL: '',
+    PLUGINPOCKET_REDIS_NAMESPACE: '',
+    PLUGINPOCKET_ADMIN_USERNAME: '',
+    PLUGINPOCKET_ADMIN_PASSWORD: '',
+    PLUGINPOCKET_RUN_DIR: dir,
+    PLUGINPOCKET_ADDR: `127.0.0.1:${apiPort}`,
+    PLUGINPOCKET_API_ORIGIN: `http://127.0.0.1:${apiPort}`,
+    PLUGINPOCKET_DEV_PORT: String(webPort),
   };
   const make = async (target) => {
     try {
@@ -74,13 +74,13 @@ const request = (port, path = '/api/v1/health') =>
   });
 
 test('Make commands read the runtime directory from a local env file', async (t) => {
-  const dir = await mkdtemp(join(tmpdir(), 'loadout-env-'));
+  const dir = await mkdtemp(join(tmpdir(), 'pluginpocket-env-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
   await mkdir(join(dir, 'scripts'));
   await mkdir(join(dir, 'custom-run'));
   await copyFile('Makefile', join(dir, 'Makefile'));
   await copyFile('scripts/dev.mjs', join(dir, 'scripts/dev.mjs'));
-  await writeFile(join(dir, '.env'), 'LOADOUT_RUN_DIR=custom-run\n');
+  await writeFile(join(dir, '.env'), 'PLUGINPOCKET_RUN_DIR=custom-run\n');
   // An inaccessible control socket must be detected in the configured directory.
   await exec(process.execPath, [
     '-e',
@@ -90,7 +90,7 @@ test('Make commands read the runtime directory from a local env file', async (t)
     join(dir, 'custom-run/dev.sock'),
   ]);
   const env = { ...process.env };
-  delete env.LOADOUT_RUN_DIR;
+  delete env.PLUGINPOCKET_RUN_DIR;
   await assert.rejects(
     exec('make', ['status'], { cwd: dir, env, timeout: 5_000 }),
     (error) => /Unreachable control socket/.test(error.stderr),
@@ -127,7 +127,7 @@ test('background Make commands start ready services, preserve a repeated start, 
   const started = await f.make('up');
   assert.equal(started.code, 0, started.output);
   for (const port of [f.apiPort, f.webPort]) {
-    assert.equal((await (await request(port)).json()).service, 'loadout');
+    assert.equal((await (await request(port)).json()).service, 'pluginpocket');
   }
   assert.match(await (await request(f.webPort, '/')).text(), /id="root"/);
   const status = await f.make('status');
@@ -141,7 +141,10 @@ test('background Make commands start ready services, preserve a repeated start, 
   assert.match(repeated.output, /already running/i);
   const restarted = await f.make('restart');
   assert.equal(restarted.code, 0, restarted.output);
-  assert.equal((await (await request(f.webPort)).json()).service, 'loadout');
+  assert.equal(
+    (await (await request(f.webPort)).json()).service,
+    'pluginpocket',
+  );
   const stopped = await f.make('down');
   assert.equal(stopped.code, 0, stopped.output);
   for (const port of [f.apiPort, f.webPort]) {
@@ -157,7 +160,7 @@ test('a blocked development port fails startup without stopping the unrelated li
   const f = await fixture(t);
   const blocked = await listen();
   t.after(() => blocked.close());
-  f.env.LOADOUT_DEV_PORT = String(blocked.address().port);
+  f.env.PLUGINPOCKET_DEV_PORT = String(blocked.address().port);
   const started = await f.make('up');
   assert.notEqual(started.code, 0, started.output);
   assert.match(started.output, /in use|EADDRINUSE/);
@@ -237,13 +240,17 @@ test('a healthy proxy destination cannot hide failure to start the local Go serv
   const upstream = http.createServer((_req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.end(
-      JSON.stringify({ service: 'loadout', status: 'ok', version: '0.1.0' }),
+      JSON.stringify({
+        service: 'pluginpocket',
+        status: 'ok',
+        version: '0.1.0',
+      }),
     );
   });
   upstream.listen(0, '127.0.0.1');
   await once(upstream, 'listening');
   t.after(() => upstream.close());
-  f.env.LOADOUT_API_ORIGIN = `http://127.0.0.1:${upstream.address().port}`;
+  f.env.PLUGINPOCKET_API_ORIGIN = `http://127.0.0.1:${upstream.address().port}`;
   // Simulate a delayed compiler failure while Vite can already serve/proxy.
   const bin = join(f.dir, 'bin');
   await mkdir(bin);

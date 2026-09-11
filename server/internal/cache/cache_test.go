@@ -51,9 +51,9 @@ func TestOpenValidatesWithoutConnectingAndHidesCredentials(t *testing.T) {
 
 func redisFixture(t *testing.T, namespace string) *Client {
 	t.Helper()
-	raw := os.Getenv("LOADOUT_TEST_REDIS_URL")
+	raw := os.Getenv("PLUGINPOCKET_TEST_REDIS_URL")
 	if raw == "" {
-		t.Skip("LOADOUT_TEST_REDIS_URL required for real Redis integration")
+		t.Skip("PLUGINPOCKET_TEST_REDIS_URL required for real Redis integration")
 	}
 	c, err := Open(raw, namespace)
 	if err != nil {
@@ -195,7 +195,7 @@ func TestCacheCommandHonorsContextWithUnresponsiveServer(t *testing.T) {
 func TestWatchReconnectsAfterItsRedisConnectionIsLost(t *testing.T) {
 	ns := namespace(t)
 	publisher := redisFixture(t, ns)
-	u, err := url.Parse(os.Getenv("LOADOUT_TEST_REDIS_URL"))
+	u, err := url.Parse(os.Getenv("PLUGINPOCKET_TEST_REDIS_URL"))
 	if err != nil {
 		t.Fatal(err)
 	}

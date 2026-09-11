@@ -142,7 +142,7 @@ export default function UsagePage({
               <a
                 className="inline-action"
                 href={`data:text/csv;charset=utf-8,${encodeURIComponent(`\uFEFF${exporter.data.text}`)}`}
-                download="loadout-usage.csv"
+                download="pluginpocket-usage.csv"
               >
                 {t('下载 CSV')}
               </a>

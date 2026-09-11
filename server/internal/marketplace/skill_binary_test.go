@@ -16,7 +16,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/Yanyutin753/loadout/server/internal/filestore"
+	"github.com/Yanyutin753/PluginPocket/server/internal/filestore"
 )
 
 func TestGitHubSkillBinaryAndExecutable(t *testing.T) {
@@ -178,7 +178,7 @@ func TestSkillManifestExportAndGitClone(t *testing.T) {
 	if err != nil || len(unresolved) > 0 {
 		t.Fatalf("load: %v %v", err, unresolved)
 	}
-	tree, _, err := ExportCodexMarketplace("loadout", "Loadout", entries)
+	tree, _, err := ExportCodexMarketplace("pluginpocket", "PluginPocket", entries)
 	if err != nil {
 		t.Fatal(err)
 	}

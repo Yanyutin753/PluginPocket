@@ -1,5 +1,5 @@
-use loadout::LocalClient;
-use loadout_desktop::{LocalCommand, execute};
+use pluginpocket::LocalClient;
+use pluginpocket_desktop::{LocalCommand, execute};
 use std::{process::ExitCode, sync::Arc};
 use tauri::{
     Manager, WebviewWindowBuilder,
@@ -40,7 +40,7 @@ fn start() -> Result<(), Box<dyn std::error::Error>> {
                 })
                 .on_new_window(|_, _| tauri::webview::NewWindowResponse::Deny)
                 .build()?;
-            let show = MenuItem::with_id(app, "show", "显示 Loadout", true, None::<&str>)?;
+            let show = MenuItem::with_id(app, "show", "显示 PluginPocket", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show, &quit])?;
             let icon = app
@@ -49,7 +49,7 @@ fn start() -> Result<(), Box<dyn std::error::Error>> {
                 .ok_or("application icon is missing")?;
             TrayIconBuilder::new()
                 .icon(icon)
-                .tooltip("Loadout 本地接入")
+                .tooltip("PluginPocket 本地接入")
                 .menu(&menu)
                 .show_menu_on_left_click(true)
                 .on_menu_event(|app, event| match event.id.as_ref() {
@@ -81,22 +81,22 @@ fn main() -> ExitCode {
         let result = LocalClient::from_env().and_then(|local| {
             tokio::runtime::Runtime::new()
                 .map_err(|_| "could not start bridge runtime")?
-                .block_on(loadout::bridge::run(local.config_path))
+                .block_on(pluginpocket::bridge::run(local.config_path))
         });
         return match result {
             Ok(()) => ExitCode::SUCCESS,
             Err(message) => {
-                eprintln!("loadout: {message}");
+                eprintln!("pluginpocket: {message}");
                 ExitCode::FAILURE
             }
         };
     }
     if !args.is_empty() {
-        eprintln!("loadout: unsupported desktop arguments");
+        eprintln!("pluginpocket: unsupported desktop arguments");
         return ExitCode::FAILURE;
     }
     if start().is_err() {
-        eprintln!("loadout: desktop could not start; check the local desktop environment");
+        eprintln!("pluginpocket: desktop could not start; check the local desktop environment");
         return ExitCode::FAILURE;
     }
     ExitCode::SUCCESS

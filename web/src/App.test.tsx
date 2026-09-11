@@ -19,7 +19,11 @@ function renderApp() {
   );
 }
 
-const health = { status: 'ok', service: 'loadout', version: 'test-version' };
+const health = {
+  status: 'ok',
+  service: 'pluginpocket',
+  version: 'test-version',
+};
 
 describe('gateway connection', () => {
   it('ends a hanging request with a recoverable timeout', async () => {
@@ -141,7 +145,7 @@ describe('gateway connection', () => {
     Response.json(health, { status: 503 }),
     Response.json({ ...health, service: 'other' }),
     Response.json({ ...health, status: 'down' }),
-    Response.json({ status: 'ok', service: 'loadout' }),
+    Response.json({ status: 'ok', service: 'pluginpocket' }),
     Response.json({ ...health, version: 'test\u001b[2J\nfake' }),
     new Response('<html>not the API</html>'),
   ])(

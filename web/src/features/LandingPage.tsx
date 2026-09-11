@@ -15,7 +15,7 @@ export default function LandingPage() {
       <main id="landing-main">
         <section className="landing-hero">
           <div className="landing-hero-copy">
-            <h1>{t('给你的 AI，装上超能力。')}</h1>
+            <h1>{t('把 AI 的超能力，装进口袋。')}</h1>
             <p className="landing-lead">
               {t(
                 '把工具接入一个 MCP 网关。让你熟悉的 AI 客户端，带着合适的装备开始工作。',
@@ -134,7 +134,7 @@ export default function LandingPage() {
             <li>
               <span>01</span>
               <h3>{t('创建账号')}</h3>
-              <p>{t('进入你的 Loadout 工作空间。')}</p>
+              <p>{t('进入你的 PluginPocket 工作空间。')}</p>
             </li>
             <li>
               <span>02</span>
@@ -150,10 +150,10 @@ export default function LandingPage() {
           <div className="landing-terminal">
             <div>
               <Terminal aria-hidden="true" />
-              <span>{t('已安装 Loadout CLI？从终端连接。')}</span>
+              <span>{t('已安装 PluginPocket CLI？从终端连接。')}</span>
             </div>
             <pre>
-              <code>{`loadout login --server ${window.location.origin}\nloadout apply`}</code>
+              <code>{`pluginpocket login --server ${window.location.origin}\npluginpocket apply`}</code>
             </pre>
             <p>{t('登录会引导你完成授权；也可以使用桌面端配置客户端。')}</p>
           </div>
@@ -180,7 +180,7 @@ export default function LandingPage() {
         </section>
       </main>
       <footer className="landing-footer">
-        <span>{t('Loadout · AI 装备工坊')}</span>
+        <span>{t('PluginPocket · AI 装备工坊')}</span>
         <a className="inline-action" href="/overview">
           {t('进入工作空间')}
         </a>

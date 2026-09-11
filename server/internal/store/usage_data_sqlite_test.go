@@ -7,7 +7,7 @@ func TestSQLiteUsageDataRoundTrip(t *testing.T) {
 	for _, q := range []string{
 		"INSERT INTO users(id,username,password_hash) VALUES(1,'payload','h')",
 		"INSERT INTO wallets(id,user_id) VALUES(1,1)",
-		"INSERT INTO tokens(id,user_id,wallet_id,name,prefix,token_hash) VALUES(1,1,1,'test','ldt_','hash')",
+		"INSERT INTO tokens(id,user_id,wallet_id,name,prefix,token_hash) VALUES(1,1,1,'test','ppt_','hash')",
 		"INSERT INTO usage_logs(user_id,token_id,wallet_id,tool,request_key,status) VALUES(1,1,1,'echo','payload','ok')",
 	} {
 		if _, err := db.Exec(q); err != nil {

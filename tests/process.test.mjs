@@ -13,7 +13,7 @@ function request(url) {
 }
 
 async function runDir(t) {
-  const dir = await mkdtemp(join(tmpdir(), 'loadout-process-'));
+  const dir = await mkdtemp(join(tmpdir(), 'pluginpocket-process-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
   return dir;
 }
@@ -45,11 +45,11 @@ function launch(command, args, env) {
   const child = spawn(command, args, {
     env: {
       ...process.env,
-      LOADOUT_DATABASE_URL: '',
-      LOADOUT_REDIS_URL: '',
-      LOADOUT_REDIS_NAMESPACE: '',
-      LOADOUT_ADMIN_USERNAME: '',
-      LOADOUT_ADMIN_PASSWORD: '',
+      PLUGINPOCKET_DATABASE_URL: '',
+      PLUGINPOCKET_REDIS_URL: '',
+      PLUGINPOCKET_REDIS_NAMESPACE: '',
+      PLUGINPOCKET_ADMIN_USERNAME: '',
+      PLUGINPOCKET_ADMIN_PASSWORD: '',
       ...env,
     },
     detached: true,
@@ -79,8 +79,8 @@ test('server executable fails on an occupied address', {
 }, async (t) => {
   const listener = await listen();
   t.after(() => listener.close());
-  const proc = launch('./build/loadout-server', [], {
-    LOADOUT_ADDR: `127.0.0.1:${listener.address().port}`,
+  const proc = launch('./build/pluginpocket-server', [], {
+    PLUGINPOCKET_ADDR: `127.0.0.1:${listener.address().port}`,
   });
   t.after(() => cleanup(proc));
   const [code] = await proc.exited;
@@ -91,8 +91,8 @@ test('SIGTERM shuts down the actual server and releases its port', {
   timeout: 20_000,
 }, async (t) => {
   const port = await unusedPort();
-  const proc = launch('./build/loadout-server', [], {
-    LOADOUT_ADDR: `127.0.0.1:${port}`,
+  const proc = launch('./build/pluginpocket-server', [], {
+    PLUGINPOCKET_ADDR: `127.0.0.1:${port}`,
   });
   t.after(() => cleanup(proc));
   await waitUntil(async () => {
@@ -114,16 +114,16 @@ test('terminal interruption stops both development services', {
   const apiPort = await unusedPort();
   const webPort = await unusedPort();
   const proc = launch('pnpm', ['dev'], {
-    LOADOUT_RUN_DIR: await runDir(t),
-    LOADOUT_ADDR: `127.0.0.1:${apiPort}`,
-    LOADOUT_DEV_PORT: String(webPort),
-    LOADOUT_API_ORIGIN: `http://127.0.0.1:${apiPort}`,
+    PLUGINPOCKET_RUN_DIR: await runDir(t),
+    PLUGINPOCKET_ADDR: `127.0.0.1:${apiPort}`,
+    PLUGINPOCKET_DEV_PORT: String(webPort),
+    PLUGINPOCKET_API_ORIGIN: `http://127.0.0.1:${apiPort}`,
   });
   t.after(() => cleanup(proc));
   await waitUntil(async () => {
     try {
       const res = await request(`http://127.0.0.1:${webPort}/api/v1/health`);
-      return res.ok && (await res.json()).service === 'loadout';
+      return res.ok && (await res.json()).service === 'pluginpocket';
     } catch {
       return false;
     }
@@ -164,9 +164,9 @@ test('a development subprocess failure shuts down its sibling', {
   t.after(() => blocked.close());
   const apiPort = await unusedPort();
   const proc = launch('pnpm', ['dev'], {
-    LOADOUT_RUN_DIR: await runDir(t),
-    LOADOUT_ADDR: `127.0.0.1:${apiPort}`,
-    LOADOUT_DEV_PORT: String(blocked.address().port),
+    PLUGINPOCKET_RUN_DIR: await runDir(t),
+    PLUGINPOCKET_ADDR: `127.0.0.1:${apiPort}`,
+    PLUGINPOCKET_DEV_PORT: String(blocked.address().port),
   });
   t.after(() => cleanup(proc));
   const [code] = await proc.exited;

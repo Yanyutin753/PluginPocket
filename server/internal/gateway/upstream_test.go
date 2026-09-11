@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Yanyutin753/loadout/server/internal/store"
+	"github.com/Yanyutin753/PluginPocket/server/internal/store"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -169,7 +169,7 @@ func TestUpstreamFailuresRefundWithoutReplay(t *testing.T) {
 	if err := s.Pool.QueryRow(ctx, "INSERT INTO wallets(user_id,balance) VALUES($1,9) RETURNING id", user).Scan(&wallet); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Pool.QueryRow(ctx, "INSERT INTO tokens(user_id,wallet_id,name,prefix,token_hash) VALUES($1,$2,'refund','ldt_refund','refundhash') RETURNING id", user, wallet).Scan(&token); err != nil {
+	if err := s.Pool.QueryRow(ctx, "INSERT INTO tokens(user_id,wallet_id,name,prefix,token_hash) VALUES($1,$2,'refund','ppt_refund','refundhash') RETURNING id", user, wallet).Scan(&token); err != nil {
 		t.Fatal(err)
 	}
 	var calls atomic.Int64
@@ -239,7 +239,7 @@ func TestDisabledCallIsAudited(t *testing.T) {
 	if e := s.Pool.QueryRow(ctx, "INSERT INTO wallets(user_id,balance) VALUES($1,10) RETURNING id", uid).Scan(&wid); e != nil {
 		t.Fatal(e)
 	}
-	if e := s.Pool.QueryRow(ctx, "INSERT INTO tokens(user_id,wallet_id,name,prefix,token_hash) VALUES($1,$2,'token','ldt_','hash') RETURNING id", uid, wid).Scan(&tid); e != nil {
+	if e := s.Pool.QueryRow(ctx, "INSERT INTO tokens(user_id,wallet_id,name,prefix,token_hash) VALUES($1,$2,'token','ppt_','hash') RETURNING id", uid, wid).Scan(&tid); e != nil {
 		t.Fatal(e)
 	}
 	g := New(s, Options{})

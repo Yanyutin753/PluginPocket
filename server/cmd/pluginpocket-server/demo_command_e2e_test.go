@@ -13,7 +13,7 @@ import (
 func TestProductJourneyDemoCommand(t *testing.T) {
 	f := newProductFixture(t)
 	p := f.server()
-	binary := filepath.Join(f.root, "build/loadout-demo")
+	binary := filepath.Join(f.root, "build/pluginpocket-demo")
 	upstream := exec.CommandContext(f.ctx, binary, "-listen", "127.0.0.1:0")
 	stdout, err := upstream.StdoutPipe()
 	if err != nil {
@@ -57,7 +57,7 @@ func TestProductJourneyDemoCommand(t *testing.T) {
 		t.Fatal("mock startup timed out")
 	}
 	cmd := exec.CommandContext(f.ctx, binary, "-origin", p.origin, "-upstream", upstreamURL)
-	cmd.Env = append(cleanProductEnv(), "LOADOUT_ADMIN_USERNAME=operator", "LOADOUT_ADMIN_PASSWORD=correct horse battery staple")
+	cmd.Env = append(cleanProductEnv(), "PLUGINPOCKET_ADMIN_USERNAME=operator", "PLUGINPOCKET_ADMIN_PASSWORD=correct horse battery staple")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("demo command: %v %s", err, output)
@@ -66,7 +66,7 @@ func TestProductJourneyDemoCommand(t *testing.T) {
 		t.Fatalf("demo command did not report initialized data: %s", output)
 	}
 	client := p.client()
-	p.api(client, "POST", "/auth/login", map[string]string{"username": "demo_owner", "password": "Loadout-demo-only-2026!"}, 200)
+	p.api(client, "POST", "/auth/login", map[string]string{"username": "demo_owner", "password": "PluginPocket-demo-only-2026!"}, 200)
 	if len(p.api(client, "GET", "/account/teams", nil, 200)["items"].([]any)) != 1 {
 		t.Fatal("demo command did not populate team page")
 	}

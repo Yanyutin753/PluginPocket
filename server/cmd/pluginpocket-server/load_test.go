@@ -1,7 +1,7 @@
 //go:build load
 
 // 端到端压测：真实服务器子进程 + 隔离 schema + 真实 HTTP。
-// 运行：make load-test（需 LOADOUT_TEST_DATABASE_URL 与已构建二进制，限流放宽由 env 注入）。
+// 运行：make load-test（需 PLUGINPOCKET_TEST_DATABASE_URL 与已构建二进制，限流放宽由 env 注入）。
 package main
 
 import (
@@ -28,8 +28,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Yanyutin753/loadout/server/internal/gateway"
-	"github.com/Yanyutin753/loadout/server/internal/store"
+	"github.com/Yanyutin753/PluginPocket/server/internal/gateway"
+	"github.com/Yanyutin753/PluginPocket/server/internal/store"
 	"github.com/jackc/pgx/v5"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -72,7 +72,7 @@ type loadServer struct {
 // startLoadServer 起真实子进程 + 隔离 schema + 直接种子账号（放宽限流由 env 注入）。
 func startLoadServer(t *testing.T, users int) *loadServer {
 	t.Helper()
-	raw, binary := os.Getenv("LOADOUT_TEST_DATABASE_URL"), os.Getenv("LOADOUT_SERVER_BINARY")
+	raw, binary := os.Getenv("PLUGINPOCKET_TEST_DATABASE_URL"), os.Getenv("PLUGINPOCKET_SERVER_BINARY")
 	if raw == "" || binary == "" {
 		t.Skip("load test requires isolated PostgreSQL and built server binary")
 	}
@@ -105,11 +105,11 @@ func startLoadServer(t *testing.T, users int) *loadServer {
 
 	accounts := make([]account, users)
 	for i := range accounts {
-		accounts[i].raw = fmt.Sprintf("ldt_load_%d", i)
+		accounts[i].raw = fmt.Sprintf("ppt_load_%d", i)
 		sum := sha256.Sum256([]byte(accounts[i].raw))
 		if err = conn.QueryRow(ctx, `WITH u AS (INSERT INTO users(username,password_hash) VALUES ($1,'h') RETURNING id),
 		  w AS (INSERT INTO wallets(user_id,balance) SELECT id,1000000000000 FROM u RETURNING id,user_id)
-		  INSERT INTO tokens(user_id,wallet_id,name,prefix,token_hash) SELECT user_id,id,'t','ldt_l',$2 FROM w RETURNING id`,
+		  INSERT INTO tokens(user_id,wallet_id,name,prefix,token_hash) SELECT user_id,id,'t','ppt_l',$2 FROM w RETURNING id`,
 			fmt.Sprintf("load%d", i), hex.EncodeToString(sum[:])).Scan(&accounts[i].token); err != nil {
 			t.Fatal(err)
 		}
@@ -124,7 +124,7 @@ func startLoadServer(t *testing.T, users int) *loadServer {
 	origin := "http://" + addr
 	var env []string
 	for _, entry := range os.Environ() {
-		if !strings.HasPrefix(entry, "LOADOUT_") {
+		if !strings.HasPrefix(entry, "PLUGINPOCKET_") {
 			env = append(env, entry)
 		}
 	}
@@ -134,14 +134,14 @@ func startLoadServer(t *testing.T, users int) *loadServer {
 	}
 	cmd := exec.CommandContext(ctx, binary)
 	cmd.Env = append(env,
-		"LOADOUT_DATABASE_URL="+u.String(),
-		"LOADOUT_ADDR="+addr,
-		"LOADOUT_PUBLIC_URL="+origin,
-		"LOADOUT_WEB_DIR="+filepath.Join(filepath.Dir(filepath.Dir(binary)), "web/dist"),
-		"LOADOUT_ENCRYPTION_KEY="+base64.StdEncoding.EncodeToString(key),
-		"LOADOUT_RATE_TOKEN_PER_MINUTE=100000000",
-		"LOADOUT_RATE_USER_PER_DAY=100000000000",
-		"LOADOUT_ALLOW_PRIVATE_UPSTREAMS=true",
+		"PLUGINPOCKET_DATABASE_URL="+u.String(),
+		"PLUGINPOCKET_ADDR="+addr,
+		"PLUGINPOCKET_PUBLIC_URL="+origin,
+		"PLUGINPOCKET_WEB_DIR="+filepath.Join(filepath.Dir(filepath.Dir(binary)), "web/dist"),
+		"PLUGINPOCKET_ENCRYPTION_KEY="+base64.StdEncoding.EncodeToString(key),
+		"PLUGINPOCKET_RATE_TOKEN_PER_MINUTE=100000000",
+		"PLUGINPOCKET_RATE_USER_PER_DAY=100000000000",
+		"PLUGINPOCKET_ALLOW_PRIVATE_UPSTREAMS=true",
 	)
 	var logs bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &logs, &logs

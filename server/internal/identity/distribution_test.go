@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Yanyutin753/loadout/server/internal/auth"
-	"github.com/Yanyutin753/loadout/server/internal/store"
+	"github.com/Yanyutin753/PluginPocket/server/internal/auth"
+	"github.com/Yanyutin753/PluginPocket/server/internal/store"
 	"golang.org/x/oauth2"
 )
 
@@ -37,7 +37,7 @@ func identityHTTP(t *testing.T, method, endpoint, body string, cookies ...*http.
 		t.Fatal(err)
 	}
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Origin", "https://loadout.test")
+	request.Header.Set("Origin", "https://pluginpocket.test")
 	for _, cookie := range cookies {
 		request.AddCookie(cookie)
 	}
@@ -52,7 +52,7 @@ func identityHTTP(t *testing.T, method, endpoint, body string, cookies ...*http.
 
 func TestIdentityBudgetSurvivesReplicaChangeAndRestart(t *testing.T) {
 	s := identityDB(t)
-	options := Options{Origin: "https://loadout.test", GitHub: &oauth2.Config{ClientID: "test", Endpoint: oauth2.Endpoint{AuthURL: "https://provider.test/authorize"}}}
+	options := Options{Origin: "https://pluginpocket.test", GitHub: &oauth2.Config{ClientID: "test", Endpoint: oauth2.Endpoint{AuthURL: "https://provider.test/authorize"}}}
 	a, b := identityReplica(t, s, options), identityReplica(t, s, options)
 	for i := range 120 {
 		endpoint := a.URL
@@ -105,8 +105,8 @@ func TestGitHubStateCrossesReplicasAndSurvivesOriginatingReplicaLoss(t *testing.
 		}
 	}))
 	t.Cleanup(provider.Close)
-	options := Options{Origin: "https://loadout.test", UserURL: provider.URL + "/user", GitHub: &oauth2.Config{
-		ClientID: "fixture-client", ClientSecret: "fixture-secret", RedirectURL: "https://loadout.test/api/v1/auth/github/callback",
+	options := Options{Origin: "https://pluginpocket.test", UserURL: provider.URL + "/user", GitHub: &oauth2.Config{
+		ClientID: "fixture-client", ClientSecret: "fixture-secret", RedirectURL: "https://pluginpocket.test/api/v1/auth/github/callback",
 		Endpoint: oauth2.Endpoint{AuthURL: provider.URL + "/authorize", TokenURL: provider.URL + "/token", AuthStyle: oauth2.AuthStyleInParams},
 	}}
 	a := identityReplica(t, s, options)
@@ -128,7 +128,7 @@ func TestGitHubStateCrossesReplicasAndSurvivesOriginatingReplicaLoss(t *testing.
 	// Both callback replicas are created after the initiating server disappears.
 	b, c := identityReplica(t, s, options), identityReplica(t, s, options)
 	path := "/api/v1/auth/github/callback?code=fixture-code&state=" + url.QueryEscape(state)
-	forged := identityHTTP(t, "GET", b.URL+path, "", &http.Cookie{Name: "loadout_oauth_state", Value: "wrong-browser"})
+	forged := identityHTTP(t, "GET", b.URL+path, "", &http.Cookie{Name: "pluginpocket_oauth_state", Value: "wrong-browser"})
 	if forged.StatusCode != 400 {
 		t.Fatalf("state was not bound to its initiating browser: %d", forged.StatusCode)
 	}
@@ -142,7 +142,7 @@ func TestGitHubStateCrossesReplicasAndSurvivesOriginatingReplicaLoss(t *testing.
 				var session string
 				var cookieExpiry time.Time
 				for _, cookie := range response.Cookies() {
-					if cookie.Name == "loadout_session" && cookie.HttpOnly {
+					if cookie.Name == "pluginpocket_session" && cookie.HttpOnly {
 						session = cookie.Value
 						cookieExpiry = cookie.Expires
 					}
@@ -156,7 +156,7 @@ func TestGitHubStateCrossesReplicasAndSurvivesOriginatingReplicaLoss(t *testing.
 					t.Errorf("session cookie expiry differs from stored expiry: err=%v", err)
 				}
 				// The created session is immediately accepted on either replica.
-				status := identityHTTP(t, "GET", b.URL+"/api/v1/account/email", "", &http.Cookie{Name: "loadout_session", Value: session})
+				status := identityHTTP(t, "GET", b.URL+"/api/v1/account/email", "", &http.Cookie{Name: "pluginpocket_session", Value: session})
 				if status.StatusCode != 200 {
 					t.Errorf("new session rejected on peer replica: %d", status.StatusCode)
 				}
@@ -215,7 +215,7 @@ func TestEmailVerificationCrossesReplicasAndConsumesOnce(t *testing.T) {
 		t.Fatal(err)
 	}
 	mail := make(chan string, 1)
-	options := Options{Origin: "https://loadout.test", Mail: func(_ context.Context, recipient, link string) error {
+	options := Options{Origin: "https://pluginpocket.test", Mail: func(_ context.Context, recipient, link string) error {
 		if recipient != "owner@example.com" {
 			t.Errorf("unexpected verification recipient")
 		}
@@ -223,7 +223,7 @@ func TestEmailVerificationCrossesReplicasAndConsumesOnce(t *testing.T) {
 		return nil
 	}}
 	a := identityReplica(t, s, options)
-	cookie := &http.Cookie{Name: "loadout_session", Value: "fixture-session"}
+	cookie := &http.Cookie{Name: "pluginpocket_session", Value: "fixture-session"}
 	request := identityHTTP(t, "POST", a.URL+"/api/v1/account/email/request", `{"email":"owner@example.com"}`, cookie)
 	if request.StatusCode != 202 {
 		t.Fatalf("verification email request status=%d", request.StatusCode)

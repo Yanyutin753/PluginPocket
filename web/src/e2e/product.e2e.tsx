@@ -57,7 +57,7 @@ async function auth(
 async function logout(user: User) {
   await click(user, '账号菜单');
   await user.click(await screen.findByRole('menuitem', { name: '退出登录' }));
-  await screen.findByRole('heading', { name: '登录 Loadout' });
+  await screen.findByRole('heading', { name: '登录 PluginPocket' });
 }
 async function api(path: string, init?: RequestInit) {
   const response = await fetch(`/api/v1${path}`, init);
@@ -120,7 +120,7 @@ test('registers with a real cookie, creates and revokes a token, logs out and re
   });
   expect(expired.status).toBe(401);
   mount('/tokens');
-  await screen.findByRole('heading', { name: '登录 Loadout' });
+  await screen.findByRole('heading', { name: '登录 PluginPocket' });
   await fill(user, '用户名', username);
   await fill(user, '密码', 'wrong password');
   await click(user, '登录');
@@ -147,9 +147,9 @@ test('admin adjusts real credits, manages tools and plans, then a user redeems t
   await logout(user);
   await auth(
     user,
-    process.env.LOADOUT_E2E_ADMIN_USERNAME ?? 'operator',
+    process.env.PLUGINPOCKET_E2E_ADMIN_USERNAME ?? 'operator',
     false,
-    process.env.LOADOUT_E2E_ADMIN_PASSWORD ?? password,
+    process.env.PLUGINPOCKET_E2E_ADMIN_PASSWORD ?? password,
   );
   await nav(user, '用户管理');
   const row = await screen.findByRole('row', { name: new RegExp(username) });
@@ -370,7 +370,7 @@ test('shares a funded team through an invitation and explicitly authorizes a dev
   // Expire the real server session; a protected navigation must recover through login.
   await api('/auth/logout', { method: 'POST' });
   mount(`/device?user_code=${encodeURIComponent(codes.user_code)}`);
-  await screen.findByRole('heading', { name: '登录 Loadout' });
+  await screen.findByRole('heading', { name: '登录 PluginPocket' });
   await auth(user, member);
   await screen.findByRole('heading', { name: '设备授权', level: 1 });
   expect(screen.getByLabelText('设备授权码')).toHaveValue(codes.user_code);

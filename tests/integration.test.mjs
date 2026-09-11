@@ -23,16 +23,16 @@ before(
     const port = socket.address().port;
     await new Promise((resolve) => socket.close(resolve));
     origin = `http://127.0.0.1:${port}`;
-    server = spawn('./build/loadout-server', [], {
+    server = spawn('./build/pluginpocket-server', [], {
       env: {
         ...process.env,
-        LOADOUT_DATABASE_URL: '',
-        LOADOUT_REDIS_URL: '',
-        LOADOUT_REDIS_NAMESPACE: '',
-        LOADOUT_ADMIN_USERNAME: '',
-        LOADOUT_ADMIN_PASSWORD: '',
-        LOADOUT_ADDR: `127.0.0.1:${port}`,
-        LOADOUT_WEB_DIR: 'web/dist',
+        PLUGINPOCKET_DATABASE_URL: '',
+        PLUGINPOCKET_REDIS_URL: '',
+        PLUGINPOCKET_REDIS_NAMESPACE: '',
+        PLUGINPOCKET_ADMIN_USERNAME: '',
+        PLUGINPOCKET_ADMIN_PASSWORD: '',
+        PLUGINPOCKET_ADDR: `127.0.0.1:${port}`,
+        PLUGINPOCKET_WEB_DIR: 'web/dist',
       },
       stdio: ['ignore', 'ignore', 'pipe'],
     });
@@ -83,7 +83,7 @@ test('production health API exposes the canonical contract without caching', asy
     assert.equal(response.headers.get('cache-control'), 'no-store');
     assert.deepEqual(await response.json(), {
       status: 'ok',
-      service: 'loadout',
+      service: 'pluginpocket',
       version: '0.1.0',
     });
     const head = await request(path, { method: 'HEAD' });
@@ -126,27 +126,27 @@ test('Go serves built React HTML, SPA routes and their actual assets', async () 
 test('real Rust release CLI checks the same Go service', {
   timeout: 10_000,
 }, async (t) => {
-  const home = await mkdtemp(join(tmpdir(), 'loadout-doctor-'));
+  const home = await mkdtemp(join(tmpdir(), 'pluginpocket-doctor-'));
   t.after(() => rm(home, { recursive: true, force: true }));
   const { stdout, stderr } = await exec(
-    './cli/target/release/loadout',
+    './cli/target/release/pluginpocket',
     ['doctor', '--server', origin],
     {
       timeout: 8_000,
       env: {
         ...process.env,
-        LOADOUT_DATABASE_URL: '',
-        LOADOUT_REDIS_URL: '',
-        LOADOUT_REDIS_NAMESPACE: '',
-        LOADOUT_ADMIN_USERNAME: '',
-        LOADOUT_ADMIN_PASSWORD: '',
+        PLUGINPOCKET_DATABASE_URL: '',
+        PLUGINPOCKET_REDIS_URL: '',
+        PLUGINPOCKET_REDIS_NAMESPACE: '',
+        PLUGINPOCKET_ADMIN_USERNAME: '',
+        PLUGINPOCKET_ADMIN_PASSWORD: '',
         HOME: home,
         USERPROFILE: home,
-        LOADOUT_CONFIG: join(home, 'config.json'),
+        PLUGINPOCKET_CONFIG: join(home, 'config.json'),
         NO_PROXY: '*',
       },
     },
   );
-  assert.match(stdout, /Loadout 0\.1\.0 is reachable/);
+  assert.match(stdout, /PluginPocket 0\.1\.0 is reachable/);
   assert.equal(stderr, '');
 });

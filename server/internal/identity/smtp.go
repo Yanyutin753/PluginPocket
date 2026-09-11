@@ -75,7 +75,7 @@ func SMTPMailer(config SMTPConfig) func(context.Context, string, string) error {
 		if err != nil {
 			return errors.New("mail delivery unavailable")
 		}
-		_, err = fmt.Fprintf(writer, "From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n请打开下面的链接验证 Loadout 邮箱，链接 30 分钟内有效：\r\n%s\r\n", from.String(), recipient.String(), mime.QEncoding.Encode("utf-8", "验证你的 Loadout 邮箱"), link)
+		_, err = fmt.Fprintf(writer, "From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n请打开下面的链接验证 PluginPocket 邮箱，链接 30 分钟内有效：\r\n%s\r\n", from.String(), recipient.String(), mime.QEncoding.Encode("utf-8", "验证你的 PluginPocket 邮箱"), link)
 		if err != nil {
 			return errors.New("mail delivery unavailable")
 		}

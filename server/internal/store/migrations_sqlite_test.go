@@ -58,7 +58,7 @@ func TestSQLiteUpgradeOriginalFileLimitPreservesGitReferences(t *testing.T) {
 // 这是 ADR 0002 阶段 2 的地基验证：轨道必须可从零建出与 PG 等价的库。
 func sqliteMigrate(t *testing.T) *sql.DB {
 	t.Helper()
-	database, err := sql.Open("sqlite", filepath.Join(t.TempDir(), "loadout.db")+"?_pragma=foreign_keys(1)")
+	database, err := sql.Open("sqlite", filepath.Join(t.TempDir(), "pluginpocket.db")+"?_pragma=foreign_keys(1)")
 	if err != nil {
 		t.Fatal(err)
 	}

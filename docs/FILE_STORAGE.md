@@ -6,7 +6,7 @@
 
 ## 配置
 
-变量统一以 `LOADOUT_FILE_STORAGE_` 开头，服务端读取，重启生效；所有副本使用同一个数据库和同一云目标。
+变量统一以 `PLUGINPOCKET_FILE_STORAGE_` 开头，服务端读取，重启生效；所有副本使用同一个数据库和同一云目标。
 
 | 后缀 | 默认 / 说明 |
 |---|---|
@@ -16,7 +16,7 @@
 | `BUCKET` | 预先创建的私有bucket；留空关闭云存储 |
 | `ACCESS_KEY_ID` / `SECRET_ACCESS_KEY` | 云访问凭据，成对配置；只需目标前缀的PutObject/GetObject权限 |
 | `SESSION_TOKEN` | 可选STS会话令牌；当前使用显式凭据，不自动读取IAM角色 |
-| `PREFIX` | 对象键前缀，例如`loadout/prod/files`，默认空 |
+| `PREFIX` | 对象键前缀，例如`pluginpocket/prod/files`，默认空 |
 | `PATH_STYLE` | `false`；MinIO等需要path-style时设true |
 | `ALLOW_HTTP` | `false`；只在受控本地MinIO测试使用true，不关闭TLS证书校验 |
 

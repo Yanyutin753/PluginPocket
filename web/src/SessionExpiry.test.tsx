@@ -35,7 +35,7 @@ it('clears private data when a 401 arrived before the session listener mounted',
     </QueryClientProvider>,
   );
   expect(
-    await screen.findByRole('heading', { name: '登录 Loadout' }),
+    await screen.findByRole('heading', { name: '登录 PluginPocket' }),
   ).toBeVisible();
   expect(client.getQueryData(['private-ledger'])).toBeUndefined();
   expect(

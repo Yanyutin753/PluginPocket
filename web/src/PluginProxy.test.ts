@@ -6,15 +6,15 @@ import { createServer, resolveConfig } from 'vite';
 import { expect, it, vi } from 'vitest';
 
 it('keeps each development instance dependency cache inside its isolated run directory', async () => {
-  const first = await mkdtemp(join(tmpdir(), 'loadout-vite-first-'));
-  const second = await mkdtemp(join(tmpdir(), 'loadout-vite-second-'));
+  const first = await mkdtemp(join(tmpdir(), 'pluginpocket-vite-first-'));
+  const second = await mkdtemp(join(tmpdir(), 'pluginpocket-vite-second-'));
   try {
-    vi.stubEnv('LOADOUT_RUN_DIR', first);
+    vi.stubEnv('PLUGINPOCKET_RUN_DIR', first);
     const a = await resolveConfig(
       { configFile: resolve('vite.config.ts') },
       'serve',
     );
-    vi.stubEnv('LOADOUT_RUN_DIR', second);
+    vi.stubEnv('PLUGINPOCKET_RUN_DIR', second);
     const b = await resolveConfig(
       { configFile: resolve('vite.config.ts') },
       'serve',
@@ -32,8 +32,8 @@ it('keeps each development instance dependency cache inside its isolated run dir
 });
 
 it('serves anonymous plugin documents and git files through the real development proxy', async () => {
-  const runDir = await mkdtemp(join(tmpdir(), 'loadout-proxy-vite-'));
-  vi.stubEnv('LOADOUT_RUN_DIR', runDir);
+  const runDir = await mkdtemp(join(tmpdir(), 'pluginpocket-proxy-vite-'));
+  vi.stubEnv('PLUGINPOCKET_RUN_DIR', runDir);
   const upstream = createHTTPServer((req, res) => {
     if (req.url === '/api/v1/proxy-origin') {
       res.setHeader('content-type', 'application/json');
@@ -55,7 +55,7 @@ it('serves anonymous plugin documents and git files through the real development
   );
   const address = upstream.address();
   if (!address || typeof address === 'string') throw new Error('No port');
-  vi.stubEnv('LOADOUT_API_ORIGIN', `http://127.0.0.1:${address.port}`);
+  vi.stubEnv('PLUGINPOCKET_API_ORIGIN', `http://127.0.0.1:${address.port}`);
   const vite = await createServer({
     configFile: resolve('vite.config.ts'),
     server: { port: 0, host: '127.0.0.1' },

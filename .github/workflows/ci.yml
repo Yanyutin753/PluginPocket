@@ -26,16 +26,16 @@ jobs:
       postgres:
         image: postgres:18.6-alpine
         env:
-          POSTGRES_DB: loadout_test
-          POSTGRES_USER: loadout
+          POSTGRES_DB: pluginpocket_test
+          POSTGRES_USER: pluginpocket
           POSTGRES_PASSWORD: ci-only-isolated-test-password
         ports: [5432:5432]
         options: >-
-          --health-cmd "pg_isready -U loadout -d loadout_test"
+          --health-cmd "pg_isready -U pluginpocket -d pluginpocket_test"
           --health-interval 5s --health-timeout 3s --health-retries 20
     env:
-      LOADOUT_TEST_REDIS_URL: redis://127.0.0.1:6379/0
-      LOADOUT_TEST_DATABASE_URL: postgres://loadout:ci-only-isolated-test-password@127.0.0.1:5432/loadout_test?sslmode=disable
+      PLUGINPOCKET_TEST_REDIS_URL: redis://127.0.0.1:6379/0
+      PLUGINPOCKET_TEST_DATABASE_URL: postgres://pluginpocket:ci-only-isolated-test-password@127.0.0.1:5432/pluginpocket_test?sslmode=disable
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-node@v7.0.0
@@ -55,7 +55,7 @@ jobs:
         shell: bash
         run: make check 2>&1 | tee harness.log
       - name: Build container
-        run: docker build -t loadout:ci .
+        run: docker build -t pluginpocket:ci .
       - name: Upload test evidence
         if: always()
         uses: actions/upload-artifact@v7.0.1

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Yanyutin753/loadout/server/internal/gateway"
+	"github.com/Yanyutin753/PluginPocket/server/internal/gateway"
 )
 
 func adminFixture(t *testing.T) (*http.Cookie, *http.Cookie, http.Handler, func(string, ...any)) {

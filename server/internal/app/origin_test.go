@@ -16,8 +16,8 @@ func TestBrowserWritesUseRequestOrigin(t *testing.T) {
 			}{
 				{"localhost proxy", "localhost:5173", "http://localhost:5173", "", 401},
 				{"IP proxy", "127.0.0.1:5173", "http://127.0.0.1:5173", "", 401},
-				{"TLS terminating proxy", "loadout.example", "https://loadout.example", "", 401},
-				{"modern proxy rewrites host", "backend:8787", "https://loadout.example", "same-origin", 401},
+				{"TLS terminating proxy", "pluginpocket.example", "https://pluginpocket.example", "", 401},
+				{"modern proxy rewrites host", "backend:8787", "https://pluginpocket.example", "same-origin", 401},
 				{"external site", "localhost:5173", "https://evil.example", "", 403},
 				{"different port", "localhost:5173", "http://localhost:5174", "", 403},
 				{"public URL is not an allowlist", "localhost:5173", "http://127.0.0.1:5173", "", 403},

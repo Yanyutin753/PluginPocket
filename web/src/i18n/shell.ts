@@ -1,5 +1,5 @@
 export const shell: Record<string, string> = {
-  '给你的 AI，装上超能力。': 'Give your AI superpowers.',
+  '把 AI 的超能力，装进口袋。': 'Your AI superpowers, in your pocket.',
   '一次接入，让工具进入你的工作流。':
     'One connection. Better tools in your flow.',
   创建网关令牌: 'Create gateway token',
@@ -15,8 +15,8 @@ export const shell: Record<string, string> = {
   浅色: 'Light',
   深色: 'Dark',
   跟随系统: 'System',
-  '登录 Loadout': 'Log in to Loadout',
-  '创建 Loadout 账号': 'Create your Loadout account',
+  '登录 PluginPocket': 'Log in to PluginPocket',
+  '创建 PluginPocket 账号': 'Create your PluginPocket account',
   '你的工具、令牌与用量，尽在一处。':
     'Your tools, tokens, and usage. All in one place.',
   用户名: 'Username',
@@ -140,7 +140,6 @@ export const shell: Record<string, string> = {
   重新加载配置: 'Reload settings',
   '数据库、Redis、监听地址、公开访问地址和加密主密钥由部署配置管理，修改后需要重启。':
     'Database, Redis, listening address, public URL and encryption key are deployment settings. Changes require a restart.',
-  '你的 AI，准备就绪。': 'Your AI, fully loaded.',
   工欲善其事: 'Tools for',
   必先利其器: 'a brighter you.',
 };

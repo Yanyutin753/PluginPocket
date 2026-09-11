@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Yanyutin753/loadout/server/internal/auth"
+	"github.com/Yanyutin753/PluginPocket/server/internal/auth"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -297,7 +297,7 @@ func (s *Store) RecoverPending(ctx context.Context, before time.Time) (int64, er
 	}
 }
 func (s *Store) AuthToken(ctx context.Context, raw string) (Principal, error) {
-	if !strings.HasPrefix(raw, "ldt_") {
+	if !strings.HasPrefix(raw, "ppt_") {
 		return Principal{}, ErrUnauthorized
 	}
 	var p Principal

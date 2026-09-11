@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Yanyutin753/loadout/server/internal/auth"
-	"github.com/Yanyutin753/loadout/server/internal/store"
+	"github.com/Yanyutin753/PluginPocket/server/internal/auth"
+	"github.com/Yanyutin753/PluginPocket/server/internal/store"
 	"github.com/jackc/pgx/v5"
 )
 

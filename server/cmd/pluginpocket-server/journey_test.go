@@ -22,9 +22,9 @@ import (
 )
 
 func TestProductJourneyWithRealCLI(t *testing.T) {
-	cliBinary := os.Getenv("LOADOUT_CLI_BINARY")
-	serverBinary := os.Getenv("LOADOUT_SERVER_BINARY")
-	raw := os.Getenv("LOADOUT_TEST_DATABASE_URL")
+	cliBinary := os.Getenv("PLUGINPOCKET_CLI_BINARY")
+	serverBinary := os.Getenv("PLUGINPOCKET_SERVER_BINARY")
+	raw := os.Getenv("PLUGINPOCKET_TEST_DATABASE_URL")
 	if cliBinary == "" || serverBinary == "" || raw == "" {
 		t.Skip("product journey requires real database and built CLI/server binaries")
 	}
@@ -66,7 +66,7 @@ func TestProductJourneyWithRealCLI(t *testing.T) {
 	}
 	origin := "http://" + addr
 	command := exec.CommandContext(ctx, serverBinary)
-	command.Env = append(cleanProductEnv(), "LOADOUT_REDIS_URL="+os.Getenv("LOADOUT_TEST_REDIS_URL"), "LOADOUT_REDIS_NAMESPACE="+schema, "LOADOUT_DATABASE_URL="+u.String(), "LOADOUT_ADDR="+addr, "LOADOUT_PUBLIC_URL="+origin, "LOADOUT_ADMIN_USERNAME=operator", "LOADOUT_ADMIN_PASSWORD=correct horse battery staple", "LOADOUT_INITIAL_CREDITS=1000", "LOADOUT_WEB_DIR="+filepath.Join(filepath.Dir(filepath.Dir(serverBinary)), "web", "dist"))
+	command.Env = append(cleanProductEnv(), "PLUGINPOCKET_REDIS_URL="+os.Getenv("PLUGINPOCKET_TEST_REDIS_URL"), "PLUGINPOCKET_REDIS_NAMESPACE="+schema, "PLUGINPOCKET_DATABASE_URL="+u.String(), "PLUGINPOCKET_ADDR="+addr, "PLUGINPOCKET_PUBLIC_URL="+origin, "PLUGINPOCKET_ADMIN_USERNAME=operator", "PLUGINPOCKET_ADMIN_PASSWORD=correct horse battery staple", "PLUGINPOCKET_INITIAL_CREDITS=1000", "PLUGINPOCKET_WEB_DIR="+filepath.Join(filepath.Dir(filepath.Dir(serverBinary)), "web", "dist"))
 	var logs bytes.Buffer
 	command.Stdout = &logs
 	command.Stderr = &logs
@@ -126,8 +126,8 @@ func TestProductJourneyWithRealCLI(t *testing.T) {
 	token := created["token"].(string)
 	tokenID := int64(created["item"].(map[string]any)["id"].(float64))
 	home := t.TempDir()
-	configPath := filepath.Join(home, ".loadout", "config.json")
-	env := append(cleanProductEnv(), "HOME="+home, "USERPROFILE="+home, "LOADOUT_CONFIG="+configPath, "NO_PROXY=*")
+	configPath := filepath.Join(home, ".pluginpocket", "config.json")
+	env := append(cleanProductEnv(), "HOME="+home, "USERPROFILE="+home, "PLUGINPOCKET_CONFIG="+configPath, "NO_PROXY=*")
 	runCLI := func(args ...string) string {
 		t.Helper()
 		command := exec.CommandContext(ctx, cliBinary, args...)

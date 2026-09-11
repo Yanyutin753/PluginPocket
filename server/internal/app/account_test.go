@@ -13,15 +13,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Yanyutin753/loadout/server/internal/store"
+	"github.com/Yanyutin753/PluginPocket/server/internal/store"
 	"github.com/jackc/pgx/v5"
 )
 
 func setup(t *testing.T) (*store.Store, http.Handler) {
 	t.Helper()
-	raw := os.Getenv("LOADOUT_TEST_DATABASE_URL")
+	raw := os.Getenv("PLUGINPOCKET_TEST_DATABASE_URL")
 	if raw == "" {
-		t.Skip("LOADOUT_TEST_DATABASE_URL required for real PostgreSQL integration")
+		t.Skip("PLUGINPOCKET_TEST_DATABASE_URL required for real PostgreSQL integration")
 	}
 	ctx := context.Background()
 	c, e := pgx.Connect(ctx, raw)
@@ -108,7 +108,7 @@ func TestTokenIsolationRevocationAndOrigin(t *testing.T) {
 	if e := json.Unmarshal(w.Body.Bytes(), &created); e != nil {
 		t.Fatal(e)
 	}
-	if !strings.HasPrefix(created.Token, "ldt_") {
+	if !strings.HasPrefix(created.Token, "ppt_") {
 		t.Fatal("missing gateway secret")
 	}
 	w = request(h, "GET", "/api/v1/account/tokens", "", alice)

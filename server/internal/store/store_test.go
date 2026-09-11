@@ -15,9 +15,9 @@ import (
 
 func testStore(t testing.TB) *Store {
 	t.Helper()
-	raw := os.Getenv("LOADOUT_TEST_DATABASE_URL")
+	raw := os.Getenv("PLUGINPOCKET_TEST_DATABASE_URL")
 	if raw == "" {
-		t.Skip("LOADOUT_TEST_DATABASE_URL required for real PostgreSQL integration")
+		t.Skip("PLUGINPOCKET_TEST_DATABASE_URL required for real PostgreSQL integration")
 	}
 	ctx := context.Background()
 	conn, err := pgx.Connect(ctx, raw)
@@ -68,7 +68,7 @@ func fixture(t testing.TB, s *Store) (int64, int64, int64) {
 	if err := s.Pool.QueryRow(ctx, "INSERT INTO wallets(user_id,balance) VALUES ($1,10) RETURNING id", u).Scan(&w); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Pool.QueryRow(ctx, "INSERT INTO tokens(user_id,wallet_id,name,prefix,token_hash) VALUES ($1,$2,'test','ldt_x','hash') RETURNING id", u, w).Scan(&tok); err != nil {
+	if err := s.Pool.QueryRow(ctx, "INSERT INTO tokens(user_id,wallet_id,name,prefix,token_hash) VALUES ($1,$2,'test','ppt_x','hash') RETURNING id", u, w).Scan(&tok); err != nil {
 		t.Fatal(err)
 	}
 	return u, w, tok
@@ -343,7 +343,7 @@ func BenchmarkManyWallets(b *testing.B) {
 		if e := s.Pool.QueryRow(ctx, "INSERT INTO wallets(user_id,balance) VALUES ($1,1000000000000) RETURNING id", a.user).Scan(&a.wallet); e != nil {
 			b.Fatal(e)
 		}
-		if e := s.Pool.QueryRow(ctx, "INSERT INTO tokens(user_id,wallet_id,name,prefix,token_hash) VALUES ($1,$2,'t','ldt_b',$3) RETURNING id", a.user, a.wallet, fmt.Sprintf("h%d", i)).Scan(&a.token); e != nil {
+		if e := s.Pool.QueryRow(ctx, "INSERT INTO tokens(user_id,wallet_id,name,prefix,token_hash) VALUES ($1,$2,'t','ppt_b',$3) RETURNING id", a.user, a.wallet, fmt.Sprintf("h%d", i)).Scan(&a.token); e != nil {
 			b.Fatal(e)
 		}
 		accounts[i] = a

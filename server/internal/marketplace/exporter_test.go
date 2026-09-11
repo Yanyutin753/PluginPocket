@@ -24,7 +24,7 @@ var exportFixture = []ExportInput{
 
 func render(t *testing.T) (map[string][]byte, []string) {
 	t.Helper()
-	files, skipped, err := ExportCodexMarketplace("loadout", "Loadout 插件市场", exportFixture)
+	files, skipped, err := ExportCodexMarketplace("pluginpocket", "PluginPocket 插件市场", exportFixture)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +58,7 @@ func TestExportMarketplaceManifest(t *testing.T) {
 		} `json:"plugins"`
 	}
 	decode(t, files[".agents/plugins/marketplace.json"], &manifest)
-	if manifest.Name != "loadout" || manifest.Interface.DisplayName != "Loadout 插件市场" {
+	if manifest.Name != "pluginpocket" || manifest.Interface.DisplayName != "PluginPocket 插件市场" {
 		t.Fatalf("manifest identity wrong: %+v", manifest)
 	}
 	names := map[string]string{}
@@ -151,7 +151,7 @@ func TestLoadExportInputsAssemblesFromDatabase(t *testing.T) {
 	if entry := bySlug["starter"]; entry.Kind != "bundle" || entry.MemberFiles["commit-style"]["SKILL.md"] == "" {
 		t.Fatalf("bundle input wrong: %+v", entry)
 	}
-	files, skipped, err := ExportCodexMarketplace("loadout", "Loadout 插件市场", entries)
+	files, skipped, err := ExportCodexMarketplace("pluginpocket", "PluginPocket 插件市场", entries)
 	if err != nil || len(skipped) != 0 {
 		t.Fatalf("export skipped=%v err=%v", skipped, err)
 	}
@@ -168,7 +168,7 @@ func TestExportGatewayComponentUsesBridge(t *testing.T) {
 			MemberFiles: map[string]map[string]string{"commit-style": {"SKILL.md": "---\nname: commit-style\n---\nx"}}},
 		{Slug: "commit-style", Name: "提交规范", Kind: "skill", Files: map[string]string{"SKILL.md": "s"}},
 	}
-	files, skipped, err := ExportCodexMarketplace("loadout", "L", entries)
+	files, skipped, err := ExportCodexMarketplace("pluginpocket", "L", entries)
 	if err != nil || len(skipped) != 0 {
 		t.Fatalf("skipped=%v err=%v", skipped, err)
 	}
@@ -177,7 +177,7 @@ func TestExportGatewayComponentUsesBridge(t *testing.T) {
 	}
 	decode(t, files["plugins/seedance/mcp.json"], &mcp)
 	entry := mcp.McpServers["seedance"]
-	if entry["command"] != "loadout" {
+	if entry["command"] != "pluginpocket" {
 		t.Fatalf("gateway entry must be bridge stdio: %+v", entry)
 	}
 	args, _ := entry["args"].([]any)
@@ -188,7 +188,7 @@ func TestExportGatewayComponentUsesBridge(t *testing.T) {
 		t.Fatal("bridge entry must not pin env paths (~ does not expand)")
 	}
 	decode(t, files["plugins/video-pack/mcp.json"], &mcp)
-	if entry := mcp.McpServers["seedance"]; entry["command"] != "loadout" {
+	if entry := mcp.McpServers["seedance"]; entry["command"] != "pluginpocket" {
 		t.Fatalf("bundle gateway member wrong: %+v", entry)
 	}
 }

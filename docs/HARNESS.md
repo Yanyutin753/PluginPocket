@@ -46,7 +46,7 @@ pnpm --dir web test
 
 集成与进程测试使用操作系统分配的临时端口，启动本次构建的真实服务；测试退出清理自己创建的进程，不操作用户真实 HOME、客户端配置或凭证。请求、子进程及测试有独立超时，避免待测代码失去超时后拖死 harness。
 
-后台测试还使用临时 `LOADOUT_RUN_DIR`，不操作日常 `.loadout/` 实例。后台启动最多等待 30 秒就绪，关闭先发送 SIGTERM，6 秒后仍未退出的本次进程组使用 SIGKILL；这些超时不影响已有前台 `make dev`。本地状态来自主管进程，实际 HTTP 就绪由 `up` 检查；`status` 是进程状态，不是持续健康监控。
+后台测试还使用临时 `PLUGINPOCKET_RUN_DIR`，不操作日常 `.pluginpocket/` 实例。后台启动最多等待 30 秒就绪，关闭先发送 SIGTERM，6 秒后仍未退出的本次进程组使用 SIGKILL；这些超时不影响已有前台 `make dev`。本地状态来自主管进程，实际 HTTP 就绪由 `up` 检查；`status` 是进程状态，不是持续健康监控。
 
 正常测试不下载包；依赖变更后显式 `pnpm install`，避免 RED 阶段意外开始安装。pnpm 保留默认供应链检查，最新稳定版的精确发布等待期例外记录在 `pnpm-workspace.yaml`。
 
@@ -64,7 +64,7 @@ Web Vitest最多4个工作进程，避免与Go race或并行开发任务争抢CP
 
 ## 产品与数据库测试
 
-`make check` 强制要求 `LOADOUT_TEST_DATABASE_URL` 和 `LOADOUT_TEST_REDIS_URL`，未设置直接非零退出。Go 测试每例创建唯一 schema，结束删除该 schema；不要使用生产数据库。独立的 `go test ./...` 允许没有数据库时跳过集成部分，不能据此报告产品验收通过。
+`make check` 强制要求 `PLUGINPOCKET_TEST_DATABASE_URL` 和 `PLUGINPOCKET_TEST_REDIS_URL`，未设置直接非零退出。Go 测试每例创建唯一 schema，结束删除该 schema；不要使用生产数据库。独立的 `go test ./...` 允许没有数据库时跳过集成部分，不能据此报告产品验收通过。
 
 `make test-product` 启动刚构建的 Go 与 Rust，验证注册、一次性令牌、三客户端 apply、官方 SDK → Rust bridge → HTTP 网关、余额/账单、撤销、兑换幂等、团队转入与调用、设备码明确批准、注销清理。所有本地凭证在临时 HOME，基建进程测试强制清空业务数据库和管理员环境变量。
 
@@ -78,7 +78,7 @@ Web Vitest最多4个工作进程，避免与Go race或并行开发任务争抢CP
 
 OpenAPI 契约见 [openapi.json](openapi.json)，可用 `uvx --from openapi-spec-validator==0.9.0 openapi-spec-validator docs/openapi.json` 验证。完整 RED/GREEN 和评审修复证据见 [产品执行记录](superpowers/plans/2026-09-10-product-execution.md)。
 
-Redis测试连接通过 `LOADOUT_TEST_REDIS_URL` 指定。每例隔离namespace，TTL自动淘汰，不清空整库。真实进程旅程验证两个Go副本只进行一次上游发现，以及新实例无法连接Redis时仍返回可用目录、完成上游调用并按PG账本扣费；就绪接口明确报告degraded。Pub/Sub、过期、命名空间和连接取消另有真实Redis模块测试。
+Redis测试连接通过 `PLUGINPOCKET_TEST_REDIS_URL` 指定。每例隔离namespace，TTL自动淘汰，不清空整库。真实进程旅程验证两个Go副本只进行一次上游发现，以及新实例无法连接Redis时仍返回可用目录、完成上游调用并按PG账本扣费；就绪接口明确报告degraded。Pub/Sub、过期、命名空间和连接取消另有真实Redis模块测试。
 
 ## 部署契约验证
 

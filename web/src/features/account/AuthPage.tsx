@@ -65,14 +65,14 @@ export default function AuthPage({ register = false }: { register?: boolean }) {
             width="40"
             height="40"
           />
-          <span className="brand-wordmark">Loadout</span>
+          <span className="brand-wordmark">PluginPocket</span>
         </Link>
         <PreferencesControls />
       </header>
       <div className="auth-card">
         <section className="auth-welcome">
           <div className="auth-welcome-copy">
-            <h2>{t('给你的 AI，装上超能力。')}</h2>
+            <h2>{t('把 AI 的超能力，装进口袋。')}</h2>
             <p>{t('统一管理 MCP 工具，接入 Codex、Claude Code 和 Cursor。')}</p>
           </div>
           <img
@@ -107,7 +107,9 @@ export default function AuthPage({ register = false }: { register?: boolean }) {
               width="80"
               height="80"
             />
-            <h1>{t(register ? '创建 Loadout 账号' : '登录 Loadout')}</h1>
+            <h1>
+              {t(register ? '创建 PluginPocket 账号' : '登录 PluginPocket')}
+            </h1>
             <p>{t('少一点配置，多一点创造。')}</p>
           </div>
           <form
@@ -210,7 +212,7 @@ export default function AuthPage({ register = false }: { register?: boolean }) {
           </Link>
         </section>
       </div>
-      <p className="auth-tagline">{t('你的 AI，准备就绪。')}</p>
+      <p className="auth-tagline">{t('把 AI 的超能力，装进口袋。')}</p>
     </main>
   );
 }

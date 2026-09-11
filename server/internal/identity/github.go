@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Yanyutin753/loadout/server/internal/auth"
+	"github.com/Yanyutin753/PluginPocket/server/internal/auth"
 	"github.com/jackc/pgx/v5"
 	"golang.org/x/oauth2"
 )
@@ -31,7 +31,7 @@ func (a *identity) githubStart(w http.ResponseWriter, r *http.Request) {
 		failure(w, 500, "internal_error")
 		return
 	}
-	http.SetCookie(w, &http.Cookie{Name: "loadout_oauth_state", Value: browser, Path: "/api/v1/auth/github", HttpOnly: true, Secure: a.o.SecureCookies, SameSite: http.SameSiteLaxMode, MaxAge: 600})
+	http.SetCookie(w, &http.Cookie{Name: "pluginpocket_oauth_state", Value: browser, Path: "/api/v1/auth/github", HttpOnly: true, Secure: a.o.SecureCookies, SameSite: http.SameSiteLaxMode, MaxAge: 600})
 	http.Redirect(w, r, a.o.GitHub.AuthCodeURL(state, oauth2.S256ChallengeOption(verifier)), http.StatusFound)
 }
 func (a *identity) githubCallback(w http.ResponseWriter, r *http.Request) {
@@ -39,7 +39,7 @@ func (a *identity) githubCallback(w http.ResponseWriter, r *http.Request) {
 		failure(w, 503, "github_unavailable")
 		return
 	}
-	cookie, e := r.Cookie("loadout_oauth_state")
+	cookie, e := r.Cookie("pluginpocket_oauth_state")
 	state := r.URL.Query().Get("state")
 	code := r.URL.Query().Get("code")
 	if e != nil || state == "" || len(state) > 256 || code == "" || len(code) > 2048 {
@@ -52,7 +52,7 @@ func (a *identity) githubCallback(w http.ResponseWriter, r *http.Request) {
 		failure(w, 400, "invalid_state")
 		return
 	}
-	http.SetCookie(w, &http.Cookie{Name: "loadout_oauth_state", Value: "", Path: "/api/v1/auth/github", HttpOnly: true, Secure: a.o.SecureCookies, SameSite: http.SameSiteLaxMode, MaxAge: -1})
+	http.SetCookie(w, &http.Cookie{Name: "pluginpocket_oauth_state", Value: "", Path: "/api/v1/auth/github", HttpOnly: true, Secure: a.o.SecureCookies, SameSite: http.SameSiteLaxMode, MaxAge: -1})
 	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 	defer cancel()
 	ctx = context.WithValue(ctx, oauth2.HTTPClient, a.o.Client)

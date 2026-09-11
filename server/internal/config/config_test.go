@@ -12,12 +12,12 @@ func TestFileStorageConfiguration(t *testing.T) {
 	if err != nil || cfg.FileStorageInlineMaxBytes != 256<<10 {
 		t.Fatalf("default inline limit %d %v", cfg.FileStorageInlineMaxBytes, err)
 	}
-	t.Setenv("LOADOUT_FILE_STORAGE_ENDPOINT", "https://storage.example.com")
-	t.Setenv("LOADOUT_FILE_STORAGE_REGION", "auto")
-	t.Setenv("LOADOUT_FILE_STORAGE_BUCKET", "private")
-	t.Setenv("LOADOUT_FILE_STORAGE_ACCESS_KEY_ID", "test-key")
-	t.Setenv("LOADOUT_FILE_STORAGE_SECRET_ACCESS_KEY", "test-secret")
-	t.Setenv("LOADOUT_FILE_STORAGE_PATH_STYLE", "true")
+	t.Setenv("PLUGINPOCKET_FILE_STORAGE_ENDPOINT", "https://storage.example.com")
+	t.Setenv("PLUGINPOCKET_FILE_STORAGE_REGION", "auto")
+	t.Setenv("PLUGINPOCKET_FILE_STORAGE_BUCKET", "private")
+	t.Setenv("PLUGINPOCKET_FILE_STORAGE_ACCESS_KEY_ID", "test-key")
+	t.Setenv("PLUGINPOCKET_FILE_STORAGE_SECRET_ACCESS_KEY", "test-secret")
+	t.Setenv("PLUGINPOCKET_FILE_STORAGE_PATH_STYLE", "true")
 	cfg, err = Load()
 	if err != nil || cfg.FileStorageEndpoint != "https://storage.example.com" || !cfg.FileStoragePathStyle {
 		t.Fatalf("storage config not loaded: %v", err)
@@ -29,7 +29,7 @@ func TestFileStorageConfiguration(t *testing.T) {
 	}
 	for _, tc := range []struct{ key, value string }{{"INLINE_MAX_BYTES", "-1"}, {"INLINE_MAX_BYTES", "16777217"}, {"INLINE_MAX_BYTES", "no"}, {"PATH_STYLE", "no"}, {"ALLOW_HTTP", "no"}} {
 		t.Run(tc.key+tc.value, func(t *testing.T) {
-			t.Setenv("LOADOUT_FILE_STORAGE_"+tc.key, tc.value)
+			t.Setenv("PLUGINPOCKET_FILE_STORAGE_"+tc.key, tc.value)
 			if _, err := Load(); err == nil {
 				t.Fatal("invalid file storage option accepted")
 			}
@@ -45,7 +45,7 @@ func TestInitialCreditsConfiguration(t *testing.T) {
 		invalid bool
 	}{{"", 1000, false}, {"0", 0, false}, {"42", 42, false}, {"-1", 0, true}, {"1000000000001", 0, true}, {"1.5", 0, true}} {
 		t.Run(tc.raw, func(t *testing.T) {
-			t.Setenv("LOADOUT_INITIAL_CREDITS", tc.raw)
+			t.Setenv("PLUGINPOCKET_INITIAL_CREDITS", tc.raw)
 			cfg, err := Load()
 			if tc.invalid {
 				if err == nil {
@@ -62,7 +62,7 @@ func TestInitialCreditsConfiguration(t *testing.T) {
 
 func TestProductConfigurationValidation(t *testing.T) {
 	isolateConfig(t)
-	for _, pair := range [][2]string{{"LOADOUT_DATABASE_URL", "sqlite:///data.db"}, {"LOADOUT_PUBLIC_URL", "javascript:alert(1)"}, {"LOADOUT_ENCRYPTION_KEY", "short"}, {"LOADOUT_ADMIN_USERNAME", "admin"}, {"LOADOUT_ALLOW_PRIVATE_UPSTREAMS", "maybe"}} {
+	for _, pair := range [][2]string{{"PLUGINPOCKET_DATABASE_URL", "sqlite:///data.db"}, {"PLUGINPOCKET_PUBLIC_URL", "javascript:alert(1)"}, {"PLUGINPOCKET_ENCRYPTION_KEY", "short"}, {"PLUGINPOCKET_ADMIN_USERNAME", "admin"}, {"PLUGINPOCKET_ALLOW_PRIVATE_UPSTREAMS", "maybe"}} {
 		t.Run(pair[0], func(t *testing.T) {
 			t.Setenv(pair[0], pair[1])
 			if _, err := Load(); err == nil {
@@ -74,7 +74,7 @@ func TestProductConfigurationValidation(t *testing.T) {
 
 func TestIdentityConfigurationRequiresCompleteCredentials(t *testing.T) {
 	isolateConfig(t)
-	for _, pair := range [][2]string{{"LOADOUT_GITHUB_CLIENT_ID", "client-only"}, {"LOADOUT_SMTP_ADDRESS", "smtp.example.com:587"}, {"LOADOUT_SMTP_ALLOW_LOCAL_INSECURE", "maybe"}, {"LOADOUT_GITHUB_ORG", "org/../../user"}} {
+	for _, pair := range [][2]string{{"PLUGINPOCKET_GITHUB_CLIENT_ID", "client-only"}, {"PLUGINPOCKET_SMTP_ADDRESS", "smtp.example.com:587"}, {"PLUGINPOCKET_SMTP_ALLOW_LOCAL_INSECURE", "maybe"}, {"PLUGINPOCKET_GITHUB_ORG", "org/../../user"}} {
 		t.Run(pair[0], func(t *testing.T) {
 			t.Setenv(pair[0], pair[1])
 			if _, err := Load(); err == nil {
@@ -86,16 +86,16 @@ func TestIdentityConfigurationRequiresCompleteCredentials(t *testing.T) {
 
 func TestLoad(t *testing.T) {
 	isolateConfig(t)
-	t.Setenv("LOADOUT_ADDR", "")
-	t.Setenv("LOADOUT_WEB_DIR", "")
+	t.Setenv("PLUGINPOCKET_ADDR", "")
+	t.Setenv("PLUGINPOCKET_WEB_DIR", "")
 	cfg, err := Load()
 	if err != nil || cfg.Addr != "127.0.0.1:8787" || cfg.WebDir != "web/dist" {
 		t.Fatalf("defaults: %+v %v", cfg, err)
 	}
-	t.Setenv("LOADOUT_ADDR", "0.0.0.0:9000")
-	t.Setenv("LOADOUT_WEB_DIR", "/tmp/loadout-web")
+	t.Setenv("PLUGINPOCKET_ADDR", "0.0.0.0:9000")
+	t.Setenv("PLUGINPOCKET_WEB_DIR", "/tmp/pluginpocket-web")
 	cfg, err = Load()
-	if err != nil || cfg.Addr != "0.0.0.0:9000" || cfg.WebDir != "/tmp/loadout-web" {
+	if err != nil || cfg.Addr != "0.0.0.0:9000" || cfg.WebDir != "/tmp/pluginpocket-web" {
 		t.Fatalf("overrides: %+v %v", cfg, err)
 	}
 }
@@ -104,7 +104,7 @@ func TestRejectInvalidAddress(t *testing.T) {
 	isolateConfig(t)
 	for _, addr := range []string{"localhost", "127.0.0.1:abc", "127.0.0.1:70000", "127.0.0.1:-1"} {
 		t.Run(addr, func(t *testing.T) {
-			t.Setenv("LOADOUT_ADDR", addr)
+			t.Setenv("PLUGINPOCKET_ADDR", addr)
 			if _, err := Load(); err == nil {
 				t.Fatal("invalid address accepted")
 			}
@@ -117,7 +117,7 @@ func isolateConfig(t *testing.T) {
 	t.Helper()
 	for _, entry := range os.Environ() {
 		key, _, _ := strings.Cut(entry, "=")
-		if strings.HasPrefix(key, "LOADOUT_") {
+		if strings.HasPrefix(key, "PLUGINPOCKET_") {
 			t.Setenv(key, "")
 		}
 	}
@@ -126,25 +126,25 @@ func isolateConfig(t *testing.T) {
 func TestRedisConfiguration(t *testing.T) {
 	isolateConfig(t)
 	cfg, err := Load()
-	if err != nil || cfg.RedisNamespace != "loadout" || cfg.RedisURL != "" {
+	if err != nil || cfg.RedisNamespace != "pluginpocket" || cfg.RedisURL != "" {
 		t.Fatalf("redis defaults namespace=%q err=%v", cfg.RedisNamespace, err)
 	}
-	t.Setenv("LOADOUT_REDIS_URL", "redis://localhost:6380/2")
-	t.Setenv("LOADOUT_REDIS_NAMESPACE", "staging_1")
+	t.Setenv("PLUGINPOCKET_REDIS_URL", "redis://localhost:6380/2")
+	t.Setenv("PLUGINPOCKET_REDIS_NAMESPACE", "staging_1")
 	cfg, err = Load()
 	if err != nil || cfg.RedisURL != "redis://localhost:6380/2" || cfg.RedisNamespace != "staging_1" {
 		t.Fatalf("redis overrides not parsed: %v", err)
 	}
 	for _, raw := range []string{"http://name:TOP_SECRET@host:6379", "redis://name:TOP_SECRET@host:bad"} {
-		t.Setenv("LOADOUT_REDIS_URL", raw)
+		t.Setenv("PLUGINPOCKET_REDIS_URL", raw)
 		if _, err := Load(); err == nil {
 			t.Error("invalid redis URL accepted")
 		} else if strings.Contains(err.Error(), "TOP_SECRET") {
 			t.Error("redis credentials leaked")
 		}
 	}
-	t.Setenv("LOADOUT_REDIS_URL", "")
-	t.Setenv("LOADOUT_REDIS_NAMESPACE", "shared:namespace")
+	t.Setenv("PLUGINPOCKET_REDIS_URL", "")
+	t.Setenv("PLUGINPOCKET_REDIS_NAMESPACE", "shared:namespace")
 	if _, err := Load(); err == nil {
 		t.Error("invalid redis namespace accepted")
 	}

@@ -1,8 +1,8 @@
 mod common;
 use common::*;
-use loadout::ClientKind::{Claude, Codex, Cursor};
+use pluginpocket::ClientKind::{Claude, Codex, Cursor};
 use std::fs;
-const ALL: [loadout::ClientKind; 3] = [Codex, Claude, Cursor];
+const ALL: [pluginpocket::ClientKind; 3] = [Codex, Claude, Cursor];
 fn seed(dir: &tempfile::TempDir) {
     fs::create_dir_all(dir.path().join(".codex")).unwrap();
     fs::create_dir_all(dir.path().join(".cursor")).unwrap();
@@ -27,7 +27,7 @@ fn bridge_apply_preserves_other_settings_comments_and_is_idempotent_with_backup_
     let dir = tempfile::tempdir().unwrap();
     seed(&dir);
     let local = local(&dir);
-    credentials(&local, "https://example.com", "ldt_secret");
+    credentials(&local, "https://example.com", "ppt_secret");
     let original = fs::read_to_string(dir.path().join(".codex/config.toml")).unwrap();
     assert_eq!(
         local
@@ -39,9 +39,9 @@ fn bridge_apply_preserves_other_settings_comments_and_is_idempotent_with_backup_
     for path in [".codex/config.toml", ".claude.json", ".cursor/mcp.json"] {
         let file = dir.path().join(path);
         let applied = fs::read_to_string(&file).unwrap();
-        assert!(!applied.contains("ldt_secret"));
+        assert!(!applied.contains("ppt_secret"));
         assert_eq!(
-            fs::read_to_string(format!("{}.loadout.bak", file.display())).unwrap(),
+            fs::read_to_string(format!("{}.pluginpocket.bak", file.display())).unwrap(),
             if path.ends_with("toml") {
                 original.clone()
             } else if path == ".claude.json" {
@@ -57,11 +57,11 @@ fn bridge_apply_preserves_other_settings_comments_and_is_idempotent_with_backup_
     assert!(toml.starts_with(&original));
     let doc = toml.parse::<toml_edit::DocumentMut>().unwrap();
     assert_eq!(
-        doc["mcp_servers"]["loadout"]["args"][0].as_str(),
+        doc["mcp_servers"]["pluginpocket"]["args"][0].as_str(),
         Some("bridge")
     );
     assert_eq!(
-        doc["mcp_servers"]["loadout"]["env"]["LOADOUT_CONFIG"].as_str(),
+        doc["mcp_servers"]["pluginpocket"]["env"]["PLUGINPOCKET_CONFIG"].as_str(),
         local.config_path.to_str()
     );
     for path in [".claude.json", ".cursor/mcp.json"] {
@@ -69,7 +69,7 @@ fn bridge_apply_preserves_other_settings_comments_and_is_idempotent_with_backup_
             serde_json::from_slice(&fs::read(dir.path().join(path)).unwrap()).unwrap();
         assert_eq!(doc["mcpServers"]["other"]["command"], "custom");
         assert_eq!(
-            doc["mcpServers"]["loadout"]["command"],
+            doc["mcpServers"]["pluginpocket"]["command"],
             local.executable.to_str().unwrap()
         );
     }
@@ -82,7 +82,7 @@ fn bridge_apply_preserves_other_settings_comments_and_is_idempotent_with_backup_
     let doc: serde_json::Value =
         serde_json::from_slice(&fs::read(dir.path().join(".claude.json")).unwrap()).unwrap();
     assert_eq!(doc["theme"], "dark");
-    assert!(doc["mcpServers"].get("loadout").is_none());
+    assert!(doc["mcpServers"].get("pluginpocket").is_none());
 }
 #[test]
 fn refuses_manual_entries_malformed_documents_and_links_without_overwriting() {
@@ -90,29 +90,29 @@ fn refuses_manual_entries_malformed_documents_and_links_without_overwriting() {
         (
             Codex,
             ".codex/config.toml",
-            "[mcp_servers.loadout]\ncommand='mine'\n",
+            "[mcp_servers.pluginpocket]\ncommand='mine'\n",
         ),
         (
             Codex,
             ".codex/config.toml",
-            "mcp_servers={loadout={command='mine'}}",
+            "mcp_servers={pluginpocket={command='mine'}}",
         ),
         (
             Codex,
             ".codex/config.toml",
-            "# --- loadout begin ---\nbroken",
+            "# --- pluginpocket begin ---\nbroken",
         ),
         (
             Claude,
             ".claude.json",
-            r#"{"mcpServers":{"loadout":{"command":"mine"}}}"#,
+            r#"{"mcpServers":{"pluginpocket":{"command":"mine"}}}"#,
         ),
         (Cursor, ".cursor/mcp.json", r#"{"mcpServers":[]}"#),
         (Claude, ".claude.json", "not json"),
     ] {
         let dir = tempfile::tempdir().unwrap();
         let local = local(&dir);
-        credentials(&local, "https://example.com", "ldt_secret");
+        credentials(&local, "https://example.com", "ppt_secret");
         fs::create_dir_all(dir.path().join(path).parent().unwrap()).unwrap();
         fs::write(dir.path().join(path), body).unwrap();
         assert!(local.apply(&[kind], false).is_err(), "accepted {body}");
@@ -124,48 +124,48 @@ fn refuses_manual_entries_malformed_documents_and_links_without_overwriting() {
 fn direct_mode_is_explicit_and_generated_strings_survive_parsing() {
     let dir = tempfile::tempdir().unwrap();
     let exe = dir.path().join("目录 C:\\bin\\load\"out.exe");
-    let local = loadout::LocalClient::new(
+    let local = pluginpocket::LocalClient::new(
         dir.path().into(),
         dir.path().join("令牌/config.json"),
         exe.clone(),
     )
     .unwrap();
-    credentials(&local, "https://example.com", "ldt_secret");
+    credentials(&local, "https://example.com", "ppt_secret");
     local.apply(&ALL, false).unwrap();
     let doc = fs::read_to_string(dir.path().join(".codex/config.toml"))
         .unwrap()
         .parse::<toml_edit::DocumentMut>()
         .unwrap();
     assert_eq!(
-        doc["mcp_servers"]["loadout"]["command"].as_str(),
+        doc["mcp_servers"]["pluginpocket"]["command"].as_str(),
         exe.to_str()
     );
     local.apply(&ALL, true).unwrap();
     let doc: serde_json::Value =
         serde_json::from_slice(&fs::read(dir.path().join(".claude.json")).unwrap()).unwrap();
     assert_eq!(
-        doc["mcpServers"]["loadout"]["url"],
+        doc["mcpServers"]["pluginpocket"]["url"],
         "https://example.com/mcp"
     );
     assert_eq!(
-        doc["mcpServers"]["loadout"]["headers"]["Authorization"],
-        "Bearer ldt_secret"
+        doc["mcpServers"]["pluginpocket"]["headers"]["Authorization"],
+        "Bearer ppt_secret"
     );
     let doc = fs::read_to_string(dir.path().join(".codex/config.toml"))
         .unwrap()
         .parse::<toml_edit::DocumentMut>()
         .unwrap();
     assert_eq!(
-        doc["mcp_servers"]["loadout"]["bearer_token_env_var"].as_str(),
-        Some("LOADOUT_TOKEN")
+        doc["mcp_servers"]["pluginpocket"]["bearer_token_env_var"].as_str(),
+        Some("PLUGINPOCKET_TOKEN")
     );
-    assert!(doc["mcp_servers"]["loadout"].get("command").is_none());
+    assert!(doc["mcp_servers"]["pluginpocket"].get("command").is_none());
 }
 #[test]
 fn unknown_clients_fail_without_writes_and_no_detection_has_no_fake_success() {
     let dir = tempfile::tempdir().unwrap();
     let local = local(&dir);
-    credentials(&local, "https://example.com", "ldt_secret");
+    credentials(&local, "https://example.com", "ppt_secret");
     assert!(local.apply(&[], false).is_err());
     let output = cli(&dir, &["apply", "--clients", "unknown"], "");
     assert!(!output.status.success());
@@ -178,11 +178,11 @@ fn client_and_backup_symlinks_are_rejected() {
     for backup in [false, true] {
         let dir = tempfile::tempdir().unwrap();
         let local = local(&dir);
-        credentials(&local, "https://example.com", "ldt_secret");
+        credentials(&local, "https://example.com", "ppt_secret");
         let target = dir.path().join("target");
         fs::write(&target, "unchanged").unwrap();
         let path = dir.path().join(if backup {
-            ".claude.json.loadout.bak"
+            ".claude.json.pluginpocket.bak"
         } else {
             ".claude.json"
         });
@@ -199,9 +199,9 @@ fn client_and_backup_symlinks_are_rejected() {
 fn markers_inside_user_strings_cannot_authorize_deleting_the_string() {
     let dir = tempfile::tempdir().unwrap();
     let local = local(&dir);
-    credentials(&local, "https://example.com", "ldt_secret");
+    credentials(&local, "https://example.com", "ppt_secret");
     fs::create_dir(dir.path().join(".codex")).unwrap();
-    let original = "description = '''\n# --- loadout begin ---\n[mcp_servers.loadout]\ncommand = \"text only\"\n# --- loadout end ---\n'''\n";
+    let original = "description = '''\n# --- pluginpocket begin ---\n[mcp_servers.pluginpocket]\ncommand = \"text only\"\n# --- pluginpocket end ---\n'''\n";
     let path = dir.path().join(".codex/config.toml");
     fs::write(&path, original).unwrap();
     assert!(
@@ -215,11 +215,11 @@ fn markers_inside_user_strings_cannot_authorize_deleting_the_string() {
 fn modified_managed_entry_and_conflict_in_later_client_leave_all_files_unchanged() {
     let dir = tempfile::tempdir().unwrap();
     let local = local(&dir);
-    credentials(&local, "https://example.com", "ldt_secret");
+    credentials(&local, "https://example.com", "ppt_secret");
     local.apply(&[Claude], false).unwrap();
     let path = dir.path().join(".claude.json");
     let mut changed: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
-    changed["mcpServers"]["loadout"]["args"] = serde_json::json!(["user-edited"]);
+    changed["mcpServers"]["pluginpocket"]["args"] = serde_json::json!(["user-edited"]);
     fs::write(&path, serde_json::to_vec(&changed).unwrap()).unwrap();
     assert!(local.apply(&[Codex, Claude], false).is_err());
     assert!(!dir.path().join(".codex/config.toml").exists());
@@ -234,7 +234,7 @@ fn modified_managed_entry_and_conflict_in_later_client_leave_all_files_unchanged
 fn explicit_client_apply_does_not_fail_after_writing_due_to_an_unselected_bad_config() {
     let dir = tempfile::tempdir().unwrap();
     let local = local(&dir);
-    credentials(&local, "https://example.com", "ldt_secret");
+    credentials(&local, "https://example.com", "ppt_secret");
     fs::create_dir(dir.path().join(".codex")).unwrap();
     fs::write(dir.path().join(".codex/config.toml"), "invalid TOML").unwrap();
     let result = local
@@ -252,7 +252,7 @@ fn explicit_client_apply_does_not_fail_after_writing_due_to_an_unselected_bad_co
 fn modified_codex_managed_block_is_never_overwritten_or_removed() {
     let dir = tempfile::tempdir().unwrap();
     let local = local(&dir);
-    credentials(&local, "https://example.com", "ldt_secret");
+    credentials(&local, "https://example.com", "ppt_secret");
     local.apply(&[Codex], false).unwrap();
     let path = dir.path().join(".codex/config.toml");
     let changed = fs::read_to_string(&path)
@@ -272,14 +272,14 @@ fn partially_written_clients_remain_owned_and_removable_after_later_io_failure()
     let dir = tempfile::tempdir().unwrap();
     seed(&dir);
     let local = local(&dir);
-    credentials(&local, "https://example.com", "ldt_secret");
-    fs::create_dir(dir.path().join(".cursor/mcp.json.loadout.bak")).unwrap();
+    credentials(&local, "https://example.com", "ppt_secret");
+    fs::create_dir(dir.path().join(".cursor/mcp.json.pluginpocket.bak")).unwrap();
     assert!(local.apply(&[Claude, Cursor], false).is_err());
     local
         .remove(&[Claude])
         .expect("an interrupted apply must leave successful entries recoverable");
     let doc: serde_json::Value =
         serde_json::from_slice(&fs::read(dir.path().join(".claude.json")).unwrap()).unwrap();
-    assert!(doc["mcpServers"].get("loadout").is_none());
+    assert!(doc["mcpServers"].get("pluginpocket").is_none());
     assert_eq!(doc["mcpServers"]["other"]["command"], "custom");
 }

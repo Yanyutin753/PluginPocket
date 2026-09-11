@@ -16,7 +16,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-const Password = "Loadout-demo-only-2026!"
+const Password = "PluginPocket-demo-only-2026!"
 
 type response struct {
 	User struct {
@@ -86,7 +86,7 @@ func (s *seeder) call(token, name string, args any, wantError bool) {
 	if s.err != nil {
 		return
 	}
-	c := mcp.NewClient(&mcp.Implementation{Name: "loadout-demo", Version: "1"}, nil)
+	c := mcp.NewClient(&mcp.Implementation{Name: "pluginpocket-demo", Version: "1"}, nil)
 	session, err := c.Connect(s.ctx, &mcp.StreamableClientTransport{Endpoint: s.origin + "/mcp", HTTPClient: &http.Client{Transport: bearer{token}, Timeout: 10 * time.Second}, MaxRetries: -1, DisableStandaloneSSE: true}, nil)
 	if err != nil {
 		s.err = errors.New("demo MCP connection failed")

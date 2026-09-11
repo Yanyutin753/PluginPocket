@@ -1,4 +1,4 @@
-# Loadout
+# PluginPocket
 
 <!-- impeccable:product-schema 1 -->
 
@@ -24,7 +24,7 @@ web
 
 ## Brand Commitments
 
-Loadout，口号 “Your AI, fully loaded.”，中文为主。用户先选择 AI 装备工坊角色方向，随后明确要求更精致的 iOS 风格、升级登录和加载页面并适配多端。最新视觉以中性灰白与柔和圆角为基础，保留黄色动作、原创薄荷绿工具箱角色；登录和加载增加细腻陶瓷质感插画。保留浅色、深色和跟随系统。页面直接呈现真实额度、调用状态和可执行的恢复操作。
+PluginPocket（插件口袋），覆盖 MCP 插件、Agent Skill 与装备组。口号 “Your AI superpowers, in your pocket.”，中文为主。用户先选择 AI 装备工坊角色方向，随后明确要求更精致的 iOS 风格、升级登录和加载页面并适配多端。最新视觉以中性灰白与柔和圆角为基础，保留黄色动作、原创薄荷绿工具箱角色；登录和加载增加细腻陶瓷质感插画。保留浅色、深色和跟随系统。页面直接呈现真实额度、调用状态和可执行的恢复操作。
 
 ## Evidence on Hand
 

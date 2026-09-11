@@ -67,7 +67,7 @@ Web 正文优先自托管 Manrope 与中文系统字体；桌面端优先系统 
 
 Web 的 index.html 提供中文初始标题、产品描述、theme-color 与 color-scheme，运行时标题随实际语言更新。favicon 从原创 workshop-mark 本地派生：透明 16/32/48px ICO 和 16/32px PNG；apple-touch-icon 为中性底 180px，manifest 引用透明 192/512px PNG（purpose any）。图标以同一角色与安全留白保持一致；不使用生产站绝对 URL。site.webmanifest 只声明应用展示元数据，未注册 Service Worker，不承诺离线可用。
 
-桌面 index.html 使用“Loadout · 本地接入”初始标题与打包内相对 favicon，不硬编码 dark class；主题由现有设置逻辑决定。两端构建后应检查 HTML/manifest 引用都落在各自 dist 内。
+桌面 index.html 使用“PluginPocket · 本地接入”初始标题与打包内相对 favicon，不硬编码 dark class；主题由现有设置逻辑决定。两端构建后应检查 HTML/manifest 引用都落在各自 dist 内。
 
 
 公共首页为 LandingPage，账户概览使用 /overview。品牌专用 Bricolage 字体只用于字标，许可与原始字体来源随仓库保存。偏好控件前置图标必须在可点击 trigger 内；选中、hover、键盘焦点分别表达。桌面侧栏可收起为图标栏，所有链接保留可访问名称；账号退出在右上菜单，失败可重试。左下账号设置入口是导航，不直接执行退出。

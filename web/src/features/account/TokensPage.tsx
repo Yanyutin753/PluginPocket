@@ -59,7 +59,7 @@ export default function TokensPage() {
       const data = await request(
         '/account/tokens',
         z.object({
-          token: z.string().regex(/^ldt_[A-Za-z0-9_-]+$/),
+          token: z.string().regex(/^ppt_[A-Za-z0-9_-]+$/),
           item: tokenSchema,
         }),
         {

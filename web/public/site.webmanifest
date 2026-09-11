@@ -1,6 +1,6 @@
 {
-  "name": "Loadout",
-  "short_name": "Loadout",
+  "name": "PluginPocket",
+  "short_name": "PluginPocket",
   "description": "统一管理 MCP 工具，连接你的 AI 开发工作流。",
   "lang": "zh-CN",
   "start_url": "/",

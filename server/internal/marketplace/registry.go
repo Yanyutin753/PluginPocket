@@ -8,7 +8,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/Yanyutin753/loadout/server/internal/filestore"
+	"github.com/Yanyutin753/PluginPocket/server/internal/filestore"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -66,7 +66,7 @@ func (g *GitRegistry) ensureBuilt(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	tree, _, err := ExportCodexMarketplace("loadout", "Loadout 插件市场", entries)
+	tree, _, err := ExportCodexMarketplace("pluginpocket", "PluginPocket 插件市场", entries)
 	if err != nil {
 		return err
 	}

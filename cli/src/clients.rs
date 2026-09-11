@@ -2,8 +2,8 @@ use crate::{ClientKind, ClientState, LocalClient, Result, config};
 use serde_json::{Map, Value, json};
 use std::{collections::HashSet, path::PathBuf};
 use toml_edit::{DocumentMut, Item, Table, value};
-const BEGIN: &str = "# --- loadout begin ---";
-const END: &str = "# --- loadout end ---";
+const BEGIN: &str = "# --- pluginpocket begin ---";
+const END: &str = "# --- pluginpocket end ---";
 const ALL: [ClientKind; 3] = [ClientKind::Codex, ClientKind::Claude, ClientKind::Cursor];
 
 impl ClientKind {
@@ -24,7 +24,7 @@ impl LocalClient {
         })
     }
     pub(crate) fn manifest_path(&self) -> PathBuf {
-        self.home.join(".loadout/managed-clients.json")
+        self.home.join(".pluginpocket/managed-clients.json")
     }
     pub(crate) fn manifest(&self) -> Result<Map<String, Value>> {
         match config::read(&self.manifest_path())? {
@@ -61,7 +61,7 @@ impl LocalClient {
                                 .map_err(|_| "invalid client JSON configuration")?;
                             document
                                 .get("mcpServers")
-                                .and_then(|v| v.get("loadout"))
+                                .and_then(|v| v.get("pluginpocket"))
                                 .is_some_and(|entry| owns(&manifest, client.name(), entry))
                         }
                     }
@@ -104,7 +104,7 @@ impl LocalClient {
         for client in selected.iter().copied().filter(|c| seen.insert(c.name())) {
             let path = self.client_path(client);
             let old = config::read(&path)?;
-            let backup = PathBuf::from(format!("{}.loadout.bak", path.display()));
+            let backup = PathBuf::from(format!("{}.pluginpocket.bak", path.display()));
             config::safe_path(&backup)?;
             let entry = if let Some(credentials) = &credentials {
                 self.entry(client, direct, credentials)?
@@ -119,7 +119,7 @@ impl LocalClient {
                     .is_some_and(|block| !owns(&manifest, client.name(), &Value::String(block)))
                 {
                     return Err(
-                        "existing loadout configuration is unmanaged or modified; resolve it manually",
+                        "existing pluginpocket configuration is unmanaged or modified; resolve it manually",
                     );
                 }
                 let mut output = remaining;
@@ -127,7 +127,7 @@ impl LocalClient {
                     if !output.is_empty() && !output.ends_with('\n') {
                         output.push('\n');
                     }
-                    let block = format!("{BEGIN}\n{}{END}\n", toml_entry("loadout", &entry)?);
+                    let block = format!("{BEGIN}\n{}{END}\n", toml_entry("pluginpocket", &entry)?);
                     output.push_str(&block);
                     manifest.insert(client.name().into(), Value::String(block));
                 } else {
@@ -151,18 +151,18 @@ impl LocalClient {
                     .or_insert_with(|| json!({}))
                     .as_object_mut()
                     .ok_or("mcpServers must be an object")?;
-                if let Some(existing) = servers.get("loadout")
+                if let Some(existing) = servers.get("pluginpocket")
                     && !owns(&manifest, client.name(), existing)
                 {
                     return Err(
-                        "existing loadout configuration is unmanaged or modified; resolve it manually",
+                        "existing pluginpocket configuration is unmanaged or modified; resolve it manually",
                     );
                 }
                 if remove {
-                    servers.remove("loadout");
+                    servers.remove("pluginpocket");
                     manifest.remove(client.name());
                 } else {
-                    servers.insert("loadout".into(), entry.clone());
+                    servers.insert("pluginpocket".into(), entry.clone());
                     manifest.insert(client.name().into(), entry);
                 }
                 let mut bytes = serde_json::to_vec_pretty(&document)
@@ -223,13 +223,13 @@ impl LocalClient {
             let mut url = config::root_url(&credentials.server)?;
             url.set_path("/mcp");
             if client == ClientKind::Codex {
-                return Ok(json!({"url":url.as_str(),"bearer_token_env_var":"LOADOUT_TOKEN"}));
+                return Ok(json!({"url":url.as_str(),"bearer_token_env_var":"PLUGINPOCKET_TOKEN"}));
             }
             Ok(
                 json!({"type":"http","url":url.as_str(),"headers":{"Authorization":format!("Bearer {}",credentials.token)}}),
             )
         } else {
-            let mut entry = json!({"command":self.executable.to_str().ok_or("executable path must be UTF-8")?,"args":["bridge"],"env":{"LOADOUT_CONFIG":self.config_path.to_str().ok_or("configuration path must be UTF-8")?}});
+            let mut entry = json!({"command":self.executable.to_str().ok_or("executable path must be UTF-8")?,"args":["bridge"],"env":{"PLUGINPOCKET_CONFIG":self.config_path.to_str().ok_or("configuration path must be UTF-8")?}});
             if client == ClientKind::Claude {
                 entry["type"] = json!("stdio");
             }
@@ -246,7 +246,7 @@ pub(crate) fn owns(manifest: &Map<String, Value>, name: &str, entry: &Value) -> 
     })
 }
 fn toml_without_managed(text: &str) -> Result<(String, Option<String>)> {
-    toml_splice(text, BEGIN, END, "loadout")
+    toml_splice(text, BEGIN, END, "pluginpocket")
 }
 pub(crate) fn toml_splice(
     text: &str,
@@ -267,20 +267,20 @@ pub(crate) fn toml_splice(
             .and_then(|i| i.get(key))
             .is_none()
     {
-        return Err("Loadout markers do not enclose an actual client entry");
+        return Err("PluginPocket markers do not enclose an actual client entry");
     }
     let remaining = if begins.is_empty() && ends.is_empty() {
         text.to_owned()
     } else {
         if begins.len() != 1 || ends.len() != 1 || begins[0].0 >= ends[0].0 {
-            return Err("invalid Loadout configuration markers");
+            return Err("invalid PluginPocket configuration markers");
         }
         let start = begins[0].0;
         let mut end = ends[0].0 + end.len();
         if (start > 0 && !text[..start].ends_with('\n'))
             || !text[end..].starts_with(['\n', '\r']) && end != text.len()
         {
-            return Err("invalid Loadout configuration markers");
+            return Err("invalid PluginPocket configuration markers");
         }
         if text[end..].starts_with("\r\n") {
             end += 2;
@@ -292,13 +292,15 @@ pub(crate) fn toml_splice(
     };
     let document = remaining
         .parse::<DocumentMut>()
-        .map_err(|_| "invalid TOML outside Loadout markers")?;
+        .map_err(|_| "invalid TOML outside PluginPocket markers")?;
     if document
         .get("mcp_servers")
         .and_then(|i| i.get(key))
         .is_some()
     {
-        return Err("existing loadout configuration has no managed markers; resolve it manually");
+        return Err(
+            "existing pluginpocket configuration has no managed markers; resolve it manually",
+        );
     }
     Ok((remaining, managed_block))
 }
@@ -306,9 +308,9 @@ pub(crate) fn toml_entry(key: &str, entry: &Value) -> Result<String> {
     let mut document = DocumentMut::new();
     let mut servers = Table::new();
     servers.set_implicit(true);
-    let mut loadout = Table::new();
+    let mut pluginpocket = Table::new();
     for (key, v) in entry.as_object().ok_or("invalid client entry")? {
-        loadout[key] = match v {
+        pluginpocket[key] = match v {
             Value::String(s) => value(s),
             Value::Array(values) => {
                 let mut a = toml_edit::Array::new();
@@ -327,7 +329,7 @@ pub(crate) fn toml_entry(key: &str, entry: &Value) -> Result<String> {
             _ => return Err("invalid client entry"),
         };
     }
-    servers[key] = Item::Table(loadout);
+    servers[key] = Item::Table(pluginpocket);
     document["mcp_servers"] = Item::Table(servers);
     Ok(document.to_string())
 }

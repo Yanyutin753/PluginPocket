@@ -96,7 +96,7 @@ build-web:
 
 build-server:
 	mkdir -p build
-	cd server && CGO_ENABLED=0 go build -trimpath -o ../build/loadout-server ./cmd/loadout-server
+	cd server && CGO_ENABLED=0 go build -trimpath -o ../build/pluginpocket-server ./cmd/pluginpocket-server
 
 build-cli:
 	cargo build --manifest-path cli/Cargo.toml --locked --release
@@ -104,7 +104,7 @@ build-cli:
 .PHONY: build-demo
 build-demo: ## 构建本地演示数据与 mock MCP 工具
 	mkdir -p build
-	cd server && go build -trimpath -o ../build/loadout-demo ./cmd/loadout-demo
+	cd server && go build -trimpath -o ../build/pluginpocket-demo ./cmd/pluginpocket-demo
 
 integration: build ## 构建并验证真实 HTTP / CLI 集成
 	node --test tests/integration.test.mjs
@@ -157,25 +157,25 @@ build-desktop: build-desktop-ui ## 构建 Linux 桌面 release 与 Debian 安装
 .PHONY: database-check redis-check test-product test-e2e benchmark db-up redis-up
 
 database-check: ## 要求真实 PostgreSQL；避免业务测试被跳过仍报告成功
-	@test -n "$$LOADOUT_TEST_DATABASE_URL" || { echo "Set LOADOUT_TEST_DATABASE_URL to an isolated PostgreSQL 18 test database."; exit 1; }
+	@test -n "$$PLUGINPOCKET_TEST_DATABASE_URL" || { echo "Set PLUGINPOCKET_TEST_DATABASE_URL to an isolated PostgreSQL 18 test database."; exit 1; }
 
 test-product: database-check build-server build-cli build-demo ## 真实数据库、Go 服务、Rust bridge 全链路
-	cd server && LOADOUT_SERVER_BINARY="$(CURDIR)/build/loadout-server" LOADOUT_CLI_BINARY="$(CURDIR)/cli/target/release/loadout" go test -race ./cmd/loadout-server -run TestProductJourney -count=1 -v
+	cd server && PLUGINPOCKET_SERVER_BINARY="$(CURDIR)/build/pluginpocket-server" PLUGINPOCKET_CLI_BINARY="$(CURDIR)/cli/target/release/pluginpocket" go test -race ./cmd/pluginpocket-server -run TestProductJourney -count=1 -v
 
 test-e2e: database-check redis-check build build-desktop ## 真实 Web（生产/开发）、CLI、桌面 bridge、数据库与故障恢复
-	cd server && LOADOUT_WEB_E2E=1 LOADOUT_SERVER_BINARY="$(CURDIR)/build/loadout-server" LOADOUT_CLI_BINARY="$(CURDIR)/cli/target/release/loadout" LOADOUT_DESKTOP_BINARY="$(CURDIR)/desktop/target/release/loadout-desktop" go test -race ./cmd/loadout-server -run TestProductJourney -count=1 -v
+	cd server && PLUGINPOCKET_WEB_E2E=1 PLUGINPOCKET_SERVER_BINARY="$(CURDIR)/build/pluginpocket-server" PLUGINPOCKET_CLI_BINARY="$(CURDIR)/cli/target/release/pluginpocket" PLUGINPOCKET_DESKTOP_BINARY="$(CURDIR)/desktop/target/release/pluginpocket-desktop" go test -race ./cmd/pluginpocket-server -run TestProductJourney -count=1 -v
 
 benchmark: database-check ## PostgreSQL 同钱包串行/并发扣费基准（不含网络上游延迟）
 	cd server && go test ./internal/store -run '^$$' -bench BenchmarkReserveFinish -benchmem -benchtime=2s -count=3
 
-load-test: database-check build-server ## 真实子进程端到端压测（QPS/分位数/计量一致性），需 LOADOUT_SERVER_BINARY
-	cd server && LOADOUT_SERVER_BINARY="$(CURDIR)/build/loadout-server" go test -tags load -count=1 -run TestLoadGatewayQPS -timeout 8m -v ./cmd/loadout-server
+load-test: database-check build-server ## 真实子进程端到端压测（QPS/分位数/计量一致性），需 PLUGINPOCKET_SERVER_BINARY
+	cd server && PLUGINPOCKET_SERVER_BINARY="$(CURDIR)/build/pluginpocket-server" go test -tags load -count=1 -run TestLoadGatewayQPS -timeout 8m -v ./cmd/pluginpocket-server
 
 db-up: ## 仅启动本地 PostgreSQL，供源码开发
 	docker compose up -d db
 
 redis-check: ## 要求真实 Redis，避免共享缓存验证被静默跳过
-	@test -n "$$LOADOUT_TEST_REDIS_URL" || { echo "Set LOADOUT_TEST_REDIS_URL to an isolated Redis test instance."; exit 1; }
+	@test -n "$$PLUGINPOCKET_TEST_REDIS_URL" || { echo "Set PLUGINPOCKET_TEST_REDIS_URL to an isolated Redis test instance."; exit 1; }
 
 redis-up: ## 仅启动本地 Redis，供源码开发
 	docker compose up -d redis

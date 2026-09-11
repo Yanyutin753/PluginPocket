@@ -11,7 +11,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Yanyutin753/loadout/server/internal/filestore"
+	"github.com/Yanyutin753/PluginPocket/server/internal/filestore"
 )
 
 const MaxSkillBytes = 32 << 20

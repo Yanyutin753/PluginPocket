@@ -28,7 +28,7 @@ func ResolveSkillFilesV2(ctx context.Context, o Options, repo, skillPath string)
 			return err
 		}
 		req.Header.Set("Accept", "application/vnd.github+json")
-		req.Header.Set("User-Agent", "loadout-marketplace")
+		req.Header.Set("User-Agent", "pluginpocket-marketplace")
 		if o.Token != "" {
 			req.Header.Set("Authorization", "Bearer "+o.Token)
 		}

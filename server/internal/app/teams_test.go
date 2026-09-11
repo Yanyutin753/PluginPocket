@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Yanyutin753/loadout/server/internal/store"
+	"github.com/Yanyutin753/PluginPocket/server/internal/store"
 )
 
 func newTeam(t *testing.T, h http.Handler, c *http.Cookie) int64 {

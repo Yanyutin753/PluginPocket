@@ -20,8 +20,8 @@ export const en: Record<string, string> = {
   暂时无法连接: 'Unable to connect',
   接入控制台: 'Connection console',
   接入状态: 'Connection status',
-  '让你的 AI 工具，准备就绪。从这里确认 Loadout 服务是否可用。':
-    'Get your AI tools ready. Check whether your Loadout service is available.',
+  '让你的 AI 工具，准备就绪。从这里确认 PluginPocket 服务是否可用。':
+    'Get your AI tools ready. Check whether your PluginPocket service is available.',
   服务连接: 'Service connection',
   '正在与网关建立连接，请稍候。': 'Connecting to the gateway. Please wait.',
   '网关可以响应请求。你可以继续在本地检查连接。':
@@ -312,8 +312,8 @@ export const en: Record<string, string> = {
   消耗额度: 'Credits used',
   失败次数: 'Failures',
   验证邮箱: 'Verify email',
-  '确认将此邮箱用于你的 Loadout 账号。':
-    'Confirm this email address for your Loadout account.',
+  '确认将此邮箱用于你的 PluginPocket 账号。':
+    'Confirm this email address for your PluginPocket account.',
   '邮箱验证成功。': 'Email verified successfully.',
   '正在验证…': 'Verifying…',
   确认验证邮箱: 'Confirm email verification',
@@ -389,7 +389,7 @@ export const en: Record<string, string> = {
   '覆盖 {value1} 元数据': 'Override metadata of {value1}',
   保存覆盖: 'Save override',
   技能: 'Skill',
-  装备组: 'Loadout bundle',
-  '用 CLI 安装：loadout install {value1}':
-    'Install via CLI: loadout install {value1}',
+  装备组: 'PluginPocket bundle',
+  '用 CLI 安装：pluginpocket install {value1}':
+    'Install via CLI: pluginpocket install {value1}',
 };

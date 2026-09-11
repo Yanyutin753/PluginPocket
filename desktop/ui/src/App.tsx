@@ -80,7 +80,7 @@ export function App() {
       await cache.invalidateQueries({ queryKey: ['clients'] });
       setMessage(
         remove
-          ? '已移除所选客户端的 Loadout 配置'
+          ? '已移除所选客户端的 PluginPocket 配置'
           : '配置已写入 重启客户端后即可使用',
       );
       setError('');
@@ -118,7 +118,7 @@ export function App() {
         <div className="desktop-brand">
           <img src={workshopMark} alt="" width="48" height="48" />
           <span>
-            <span className="brand-wordmark">Loadout</span>
+            <span className="brand-wordmark">PluginPocket</span>
             <small>AI 装备工坊</small>
           </span>
         </div>
@@ -150,7 +150,7 @@ export function App() {
       </header>
       <div className="desktop-intro">
         <div>
-          <h1>让你的 AI，准备就绪</h1>
+          <h1>让把 AI 的超能力，装进口袋</h1>
           <p>登录一次，将工具接入这台电脑上的 AI 客户端</p>
         </div>
         <img src={workshopDesktop} alt="" width="900" height="600" />
@@ -226,13 +226,13 @@ export function App() {
                 disabled={pending}
                 autoComplete="url"
               />
-              <label htmlFor="token">Loadout 令牌</label>
+              <label htmlFor="token">PluginPocket 令牌</label>
               <Input
                 id="token"
                 type="password"
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
-                placeholder="ldt_…"
+                placeholder="ppt_…"
                 required
                 disabled={pending}
                 autoComplete="off"
@@ -294,7 +294,7 @@ export function App() {
                   <strong>{labels[client.client]}</strong>
                   <small>
                     {client.configured
-                      ? '已配置 Loadout'
+                      ? '已配置 PluginPocket'
                       : client.detected
                         ? '已检测到 · 尚未配置'
                         : '未检测到 · 可创建配置'}
@@ -322,7 +322,7 @@ export function App() {
             </Button>
           </div>
           <p className="muted small">
-            已有配置会先备份；遇到手写的 Loadout 条目时会停止，供你确认处理
+            已有配置会先备份；遇到手写的 PluginPocket 条目时会停止，供你确认处理
           </p>
         </section>
       </div>

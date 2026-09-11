@@ -14,14 +14,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Yanyutin753/loadout/server/internal/auth"
-	"github.com/Yanyutin753/loadout/server/internal/config"
-	"github.com/Yanyutin753/loadout/server/internal/store"
+	"github.com/Yanyutin753/PluginPocket/server/internal/auth"
+	"github.com/Yanyutin753/PluginPocket/server/internal/config"
+	"github.com/Yanyutin753/PluginPocket/server/internal/store"
 	"github.com/jackc/pgx/v5"
 )
 
 func TestApplicationReloadsPersistedSettingsWithoutRestart(t *testing.T) {
-	raw := os.Getenv("LOADOUT_TEST_DATABASE_URL")
+	raw := os.Getenv("PLUGINPOCKET_TEST_DATABASE_URL")
 	if raw == "" {
 		t.Skip("real PostgreSQL required")
 	}
@@ -54,7 +54,7 @@ func TestApplicationReloadsPersistedSettingsWithoutRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	key := bytes.Repeat([]byte{1}, 32)
-	cfg := config.Config{DatabaseURL: u.String(), PublicURL: "https://loadout.test", InitialCredits: 17, GitHubClientID: "environment-client", GitHubClientSecret: "environment-secret", EncryptionKey: key}
+	cfg := config.Config{DatabaseURL: u.String(), PublicURL: "https://pluginpocket.test", InitialCredits: 17, GitHubClientID: "environment-client", GitHubClientSecret: "environment-secret", EncryptionKey: key}
 	h, closeHandler, err := applicationHandler(ctx, cfg, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err != nil {
 		t.Fatal(err)
@@ -70,7 +70,7 @@ func TestApplicationReloadsPersistedSettingsWithoutRestart(t *testing.T) {
 	}
 	patch := httptest.NewRequest("PATCH", cfg.PublicURL+"/api/v1/admin/settings", strings.NewReader(`{"revision":0,"initial_credits":73,"github_enabled":false,"github_client_id":"","github_org":"","smtp_enabled":false,"smtp_address":"","smtp_from":"","smtp_username":""}`))
 	patch.Header.Set("Origin", cfg.PublicURL)
-	patch.AddCookie(&http.Cookie{Name: "loadout_session", Value: "admin-session"})
+	patch.AddCookie(&http.Cookie{Name: "pluginpocket_session", Value: "admin-session"})
 	w = httptest.NewRecorder()
 	h.ServeHTTP(w, patch)
 	if w.Code != 200 || strings.Contains(w.Body.String(), cfg.GitHubClientSecret) {

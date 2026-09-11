@@ -13,14 +13,14 @@ WORKDIR /src
 COPY server/go.mod server/go.sum ./
 RUN go mod download
 COPY server/ ./
-RUN CGO_ENABLED=0 go build -trimpath -o /loadout-server ./cmd/loadout-server
+RUN CGO_ENABLED=0 go build -trimpath -o /pluginpocket-server ./cmd/pluginpocket-server
 
 FROM scratch
 WORKDIR /app
-COPY --from=server /loadout-server /app/loadout-server
+COPY --from=server /pluginpocket-server /app/pluginpocket-server
 COPY --from=server /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=web /src/web/dist /app/web/dist
 USER 65532:65532
-ENV LOADOUT_ADDR=0.0.0.0:8787
+ENV PLUGINPOCKET_ADDR=0.0.0.0:8787
 EXPOSE 8787
-ENTRYPOINT ["/app/loadout-server"]
+ENTRYPOINT ["/app/pluginpocket-server"]

@@ -38,7 +38,7 @@ export default function HealthPage() {
               width="48"
               height="48"
             />
-            <span className="brand-wordmark text-lg">Loadout</span>
+            <span className="brand-wordmark text-lg">PluginPocket</span>
           </div>
           <span className="text-sm text-muted-foreground">
             {t('接入控制台')}
@@ -49,7 +49,9 @@ export default function HealthPage() {
 
       <main className="mx-auto flex max-w-5xl flex-col gap-10 px-5 py-10 sm:px-8 sm:py-14">
         <Heading title={t('接入状态')} artwork="health">
-          {t('让你的 AI 工具，准备就绪。从这里确认 Loadout 服务是否可用。')}
+          {t(
+            '让你的 AI 工具，准备就绪。从这里确认 PluginPocket 服务是否可用。',
+          )}
         </Heading>
 
         <section
@@ -171,7 +173,7 @@ export default function HealthPage() {
             className="overflow-x-auto rounded-lg border border-border bg-card p-5 text-sm leading-6"
           >
             <pre>
-              <code>loadout doctor --server http://127.0.0.1:8787</code>
+              <code>pluginpocket doctor --server http://127.0.0.1:8787</code>
             </pre>
           </section>
         </section>
@@ -180,7 +182,7 @@ export default function HealthPage() {
           <a href="/overview" className="inline-action">
             {t('进入控制台')}
           </a>
-          <p>{t('你的 AI，准备就绪。')}</p>
+          <p>{t('把 AI 的超能力，装进口袋。')}</p>
         </footer>
       </main>
     </div>

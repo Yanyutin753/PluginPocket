@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Yanyutin753/loadout/server/internal/filestore"
+	"github.com/Yanyutin753/PluginPocket/server/internal/filestore"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -43,7 +43,7 @@ func Fetch(ctx context.Context, o Options) ([]Item, error) {
 		return nil, err
 	}
 	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("User-Agent", "loadout-marketplace")
+	req.Header.Set("User-Agent", "pluginpocket-marketplace")
 	if o.Token != "" {
 		req.Header.Set("Authorization", "Bearer "+o.Token)
 	}

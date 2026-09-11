@@ -7,6 +7,8 @@ build/
 *.tsbuildinfo
 
 # runtime data
+.pluginpocket/
+# Previous local runtime data; never commit credentials or logs.
 .loadout/
 server/data/
 *.db

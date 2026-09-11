@@ -41,7 +41,7 @@ type productProcess struct {
 
 func newProductFixture(t *testing.T) *productFixture {
 	t.Helper()
-	raw, binary := os.Getenv("LOADOUT_TEST_DATABASE_URL"), os.Getenv("LOADOUT_SERVER_BINARY")
+	raw, binary := os.Getenv("PLUGINPOCKET_TEST_DATABASE_URL"), os.Getenv("PLUGINPOCKET_SERVER_BINARY")
 	if raw == "" || binary == "" {
 		t.Skip("product E2E requires isolated PostgreSQL and built server")
 	}
@@ -73,7 +73,7 @@ func newProductFixture(t *testing.T) *productFixture {
 	if _, err = conn.Exec(ctx, "SET search_path TO "+pgx.Identifier{schema}.Sanitize()); err != nil {
 		t.Fatal(err)
 	}
-	return &productFixture{t: t, ctx: ctx, conn: conn, databaseURL: u.String(), redisURL: os.Getenv("LOADOUT_TEST_REDIS_URL"), redisNamespace: schema, binary: binary, root: filepath.Dir(filepath.Dir(binary))}
+	return &productFixture{t: t, ctx: ctx, conn: conn, databaseURL: u.String(), redisURL: os.Getenv("PLUGINPOCKET_TEST_REDIS_URL"), redisNamespace: schema, binary: binary, root: filepath.Dir(filepath.Dir(binary))}
 }
 func (f *productFixture) server() *productProcess {
 	return f.serverWithOrigin("")
@@ -95,7 +95,7 @@ func (f *productFixture) serverWithOrigin(publicOrigin string) *productProcess {
 func cleanProductEnv() []string {
 	var env []string
 	for _, entry := range os.Environ() {
-		if !strings.HasPrefix(entry, "LOADOUT_") {
+		if !strings.HasPrefix(entry, "PLUGINPOCKET_") {
 			env = append(env, entry)
 		}
 	}
@@ -109,7 +109,7 @@ func (p *productProcess) start() {
 	if publicOrigin == "" {
 		publicOrigin = p.origin
 	}
-	cmd.Env = append(cleanProductEnv(), "LOADOUT_REDIS_URL="+p.f.redisURL, "LOADOUT_REDIS_NAMESPACE="+p.f.redisNamespace, "LOADOUT_DATABASE_URL="+p.f.databaseURL, "LOADOUT_ADDR="+p.addr, "LOADOUT_PUBLIC_URL="+publicOrigin, "LOADOUT_WEB_DIR="+filepath.Join(p.f.root, "web/dist"), "LOADOUT_ADMIN_USERNAME=operator", "LOADOUT_ADMIN_PASSWORD=correct horse battery staple", "LOADOUT_INITIAL_CREDITS=1000", "LOADOUT_ALLOW_PRIVATE_UPSTREAMS=true", "LOADOUT_ENCRYPTION_KEY="+base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{7}, 32)))
+	cmd.Env = append(cleanProductEnv(), "PLUGINPOCKET_REDIS_URL="+p.f.redisURL, "PLUGINPOCKET_REDIS_NAMESPACE="+p.f.redisNamespace, "PLUGINPOCKET_DATABASE_URL="+p.f.databaseURL, "PLUGINPOCKET_ADDR="+p.addr, "PLUGINPOCKET_PUBLIC_URL="+publicOrigin, "PLUGINPOCKET_WEB_DIR="+filepath.Join(p.f.root, "web/dist"), "PLUGINPOCKET_ADMIN_USERNAME=operator", "PLUGINPOCKET_ADMIN_PASSWORD=correct horse battery staple", "PLUGINPOCKET_INITIAL_CREDITS=1000", "PLUGINPOCKET_ALLOW_PRIVATE_UPSTREAMS=true", "PLUGINPOCKET_ENCRYPTION_KEY="+base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{7}, 32)))
 	cmd.Stdout = &p.logs
 	cmd.Stderr = &p.logs
 	if err := cmd.Start(); err != nil {
@@ -238,7 +238,7 @@ func (f *productFixture) balance(id int64) int64 {
 	return balance
 }
 func TestProductJourneyWeb(t *testing.T) {
-	if os.Getenv("LOADOUT_WEB_E2E") != "1" {
+	if os.Getenv("PLUGINPOCKET_WEB_E2E") != "1" {
 		t.Skip("Web E2E is launched explicitly by make test-e2e")
 	}
 	for _, mode := range []string{"production", "development"} {
@@ -261,7 +261,7 @@ func (p *productProcess) webJourney() {
 	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	command.Cancel = func() error { return syscall.Kill(-command.Process.Pid, syscall.SIGKILL) }
 	command.WaitDelay = 2 * time.Second
-	command.Env = append(cleanProductEnv(), "LOADOUT_E2E_ORIGIN="+p.origin, "LOADOUT_E2E_ADMIN_USERNAME=operator", "LOADOUT_E2E_ADMIN_PASSWORD=correct horse battery staple")
+	command.Env = append(cleanProductEnv(), "PLUGINPOCKET_E2E_ORIGIN="+p.origin, "PLUGINPOCKET_E2E_ADMIN_USERNAME=operator", "PLUGINPOCKET_E2E_ADMIN_PASSWORD=correct horse battery staple")
 	command.Stdout = os.Stdout
 	command.Stderr = os.Stderr
 	if err := command.Run(); err != nil {
@@ -289,15 +289,15 @@ func (f *productFixture) development() *productProcess {
 	apiAddr, webAddr := freeAddress(), freeAddress()
 	_, webPort, _ := net.SplitHostPort(webAddr)
 	p := &productProcess{f: f, origin: "http://" + webAddr, addr: webAddr}
-	env := append(cleanProductEnv(), "LOADOUT_REDIS_URL="+f.redisURL, "LOADOUT_REDIS_NAMESPACE="+f.redisNamespace, "LOADOUT_DATABASE_URL="+f.databaseURL,
-		"LOADOUT_ADDR="+apiAddr, "LOADOUT_API_ORIGIN=http://"+apiAddr,
-		"LOADOUT_DEV_PORT="+webPort, "LOADOUT_PUBLIC_URL="+p.origin,
-		"LOADOUT_RUN_DIR="+f.t.TempDir(), "LOADOUT_ADMIN_USERNAME=operator",
-		"LOADOUT_ADMIN_PASSWORD=correct horse battery staple", "LOADOUT_INITIAL_CREDITS=1000",
-		"LOADOUT_ENCRYPTION_KEY="+base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{7}, 32)),
-		"LOADOUT_WEB_DIR="+filepath.Join(f.root, "web/dist"), "LOADOUT_ALLOW_PRIVATE_UPSTREAMS=false",
-		"LOADOUT_STDIO_COMMANDS=", "LOADOUT_GITHUB_CLIENT_ID=", "LOADOUT_GITHUB_CLIENT_SECRET=", "LOADOUT_GITHUB_ORG=",
-		"LOADOUT_SMTP_ADDRESS=", "LOADOUT_SMTP_FROM=", "LOADOUT_SMTP_USERNAME=", "LOADOUT_SMTP_PASSWORD=", "LOADOUT_SMTP_ALLOW_LOCAL_INSECURE=false")
+	env := append(cleanProductEnv(), "PLUGINPOCKET_REDIS_URL="+f.redisURL, "PLUGINPOCKET_REDIS_NAMESPACE="+f.redisNamespace, "PLUGINPOCKET_DATABASE_URL="+f.databaseURL,
+		"PLUGINPOCKET_ADDR="+apiAddr, "PLUGINPOCKET_API_ORIGIN=http://"+apiAddr,
+		"PLUGINPOCKET_DEV_PORT="+webPort, "PLUGINPOCKET_PUBLIC_URL="+p.origin,
+		"PLUGINPOCKET_RUN_DIR="+f.t.TempDir(), "PLUGINPOCKET_ADMIN_USERNAME=operator",
+		"PLUGINPOCKET_ADMIN_PASSWORD=correct horse battery staple", "PLUGINPOCKET_INITIAL_CREDITS=1000",
+		"PLUGINPOCKET_ENCRYPTION_KEY="+base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{7}, 32)),
+		"PLUGINPOCKET_WEB_DIR="+filepath.Join(f.root, "web/dist"), "PLUGINPOCKET_ALLOW_PRIVATE_UPSTREAMS=false",
+		"PLUGINPOCKET_STDIO_COMMANDS=", "PLUGINPOCKET_GITHUB_CLIENT_ID=", "PLUGINPOCKET_GITHUB_CLIENT_SECRET=", "PLUGINPOCKET_GITHUB_ORG=",
+		"PLUGINPOCKET_SMTP_ADDRESS=", "PLUGINPOCKET_SMTP_FROM=", "PLUGINPOCKET_SMTP_USERNAME=", "PLUGINPOCKET_SMTP_PASSWORD=", "PLUGINPOCKET_SMTP_ALLOW_LOCAL_INSECURE=false")
 	f.t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
@@ -345,12 +345,12 @@ func TestProductJourneyDevelopmentMCP(t *testing.T) {
 
 func (p *productProcess) bridge(token, executable string) *mcp.ClientSession {
 	p.f.t.Helper()
-	cli := os.Getenv("LOADOUT_CLI_BINARY")
+	cli := os.Getenv("PLUGINPOCKET_CLI_BINARY")
 	if cli == "" {
 		p.f.t.Skip("bridge E2E requires built CLI")
 	}
 	home := p.f.t.TempDir()
-	env := append(cleanProductEnv(), "HOME="+home, "USERPROFILE="+home, "LOADOUT_CONFIG="+filepath.Join(home, "config.json"), "NO_PROXY=*")
+	env := append(cleanProductEnv(), "HOME="+home, "USERPROFILE="+home, "PLUGINPOCKET_CONFIG="+filepath.Join(home, "config.json"), "NO_PROXY=*")
 	login := exec.CommandContext(p.f.ctx, cli, "login", "--server", p.origin, "--token", token)
 	login.Env = env
 	if output, err := login.CombinedOutput(); err != nil {

@@ -60,7 +60,7 @@ func validToolDefinitions(definitions []*mcp.Tool) (valid bool) {
 	if definitions == nil {
 		return false
 	}
-	server := mcp.NewServer(&mcp.Implementation{Name: "loadout-metadata", Version: "0.2.0"}, nil)
+	server := mcp.NewServer(&mcp.Implementation{Name: "pluginpocket-metadata", Version: "0.2.0"}, nil)
 	names := make(map[string]bool, len(definitions))
 	for _, tool := range definitions {
 		if tool == nil || tool.Name == "" || names[tool.Name] {

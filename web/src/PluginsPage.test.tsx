@@ -287,7 +287,7 @@ it('keeps the public catalog open when an earlier private session has expired', 
 it('browses and filters the public marketplace with an optional session check', async () => {
   const fetcher = vi.fn((_url: string) =>
     Promise.resolve(
-      Response.json({ items, origin: 'https://loadout.example' }),
+      Response.json({ items, origin: 'https://pluginpocket.example' }),
     ),
   );
   vi.stubGlobal('fetch', fetcher);
@@ -324,7 +324,10 @@ it('opens anonymous plugin details and exposes installation commands', async () 
     'fetch',
     vi.fn(() =>
       Promise.resolve(
-        Response.json({ item: items[0], origin: 'https://loadout.example' }),
+        Response.json({
+          item: items[0],
+          origin: 'https://pluginpocket.example',
+        }),
       ),
     ),
   );
@@ -333,7 +336,7 @@ it('opens anonymous plugin details and exposes installation commands', async () 
     await screen.findByRole('heading', { name: 'DeepWiki', level: 1 }),
   ).toBeVisible();
   expect(
-    screen.getByText('codex plugin add deepwiki --marketplace loadout', {
+    screen.getByText('codex plugin add deepwiki --marketplace pluginpocket', {
       exact: false,
     }),
   ).toBeVisible();

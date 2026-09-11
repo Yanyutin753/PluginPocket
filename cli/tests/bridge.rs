@@ -47,13 +47,13 @@ impl ServerHandler for Gateway {
     ) -> Result<CallToolResponse, ErrorData> {
         if request.name == "prefixed_quota" {
             return Ok(CallToolResult::error(vec![ContentBlock::text(
-                "[loadout] insufficient_balance",
+                "[pluginpocket] insufficient_balance",
             )])
             .into());
         }
         if request.name == "prefixed_protocol_error" {
             return Err(ErrorData::invalid_params(
-                "[loadout] invalid_arguments",
+                "[pluginpocket] invalid_arguments",
                 None,
             ));
         }
@@ -90,10 +90,10 @@ async fn auth(State(trace): State<Trace>, request: Request, next: Next) -> Respo
         .unwrap_or("")
         .to_owned();
     trace.tokens.lock().unwrap().push(token.clone());
-    if token == "Bearer ldt_revoked" {
+    if token == "Bearer ppt_revoked" {
         return Response::builder()
             .status(StatusCode::UNAUTHORIZED)
-            .body(Body::from("ldt_do_not_expose"))
+            .body(Body::from("ppt_do_not_expose"))
             .unwrap();
     }
     if request.method() == "POST" {
@@ -110,7 +110,7 @@ async fn auth(State(trace): State<Trace>, request: Request, next: Next) -> Respo
                 } else {
                     500
                 })
-                .body(Body::from("ldt_do_not_expose"))
+                .body(Body::from("ppt_do_not_expose"))
                 .unwrap();
         }
         return next
@@ -143,12 +143,12 @@ async fn stdio_bridge_forwards_real_sdk_list_call_errors_and_refreshes_credentia
         let dir = tempfile::tempdir().unwrap();
         let local = common::local(&dir);
         let (server, trace, task) = gateway().await;
-        common::credentials(&local, &server, "ldt_initial");
-        let mut child = Command::new(env!("CARGO_BIN_EXE_loadout"))
+        common::credentials(&local, &server, "ppt_initial");
+        let mut child = Command::new(env!("CARGO_BIN_EXE_pluginpocket"))
             .arg("bridge")
             .env("HOME", dir.path())
             .env("USERPROFILE", dir.path())
-            .env("LOADOUT_CONFIG", &local.config_path)
+            .env("PLUGINPOCKET_CONFIG", &local.config_path)
             .env("NO_PROXY", "*")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -204,7 +204,7 @@ async fn stdio_bridge_forwards_real_sdk_list_call_errors_and_refreshes_credentia
             .unwrap();
         assert_eq!(
             prefixed.content[0].as_text().unwrap().text,
-            "[loadout] insufficient_balance"
+            "[pluginpocket] insufficient_balance"
         );
         let prefixed = service
             .call_tool(CallToolRequestParams::new("prefixed_protocol_error"))
@@ -212,20 +212,20 @@ async fn stdio_bridge_forwards_real_sdk_list_call_errors_and_refreshes_credentia
             .unwrap_err();
         match prefixed {
             rmcp::ServiceError::McpError(error) => {
-                assert_eq!(error.message, "[loadout] invalid_arguments")
+                assert_eq!(error.message, "[pluginpocket] invalid_arguments")
             }
             error => panic!("unexpected error: {error}"),
         }
-        common::credentials(&local, &server, "ldt_rotated");
+        common::credentials(&local, &server, "ppt_rotated");
         service
             .call_tool(CallToolRequestParams::new("echo"))
             .await
             .unwrap();
         assert_eq!(
             trace.tokens.lock().unwrap().last().unwrap(),
-            "Bearer ldt_rotated"
+            "Bearer ppt_rotated"
         );
-        common::credentials(&local, &server, "ldt_revoked");
+        common::credentials(&local, &server, "ppt_revoked");
         let revoked = service
             .call_tool(CallToolRequestParams::new("echo"))
             .await
@@ -234,9 +234,9 @@ async fn stdio_bridge_forwards_real_sdk_list_call_errors_and_refreshes_credentia
         assert!(
             !serde_json::to_string(&revoked)
                 .unwrap()
-                .contains("ldt_do_not_expose")
+                .contains("ppt_do_not_expose")
         );
-        common::credentials(&local, &server, "ldt_rotated");
+        common::credentials(&local, &server, "ppt_rotated");
         for name in ["lost_response", "expired"] {
             let result = service
                 .call_tool(CallToolRequestParams::new(name))
@@ -246,7 +246,7 @@ async fn stdio_bridge_forwards_real_sdk_list_call_errors_and_refreshes_credentia
             assert!(
                 !serde_json::to_string(&result)
                     .unwrap()
-                    .contains("ldt_do_not_expose")
+                    .contains("ppt_do_not_expose")
             );
         }
         assert_eq!(
@@ -268,7 +268,7 @@ async fn stdio_bridge_forwards_real_sdk_list_call_errors_and_refreshes_credentia
             .read_to_string(&mut stderr)
             .await
             .unwrap();
-        assert!(!stderr.contains("ldt_"));
+        assert!(!stderr.contains("ppt_"));
         task.abort();
     })
     .await

@@ -14,16 +14,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Yanyutin753/loadout/server/internal/store"
+	"github.com/Yanyutin753/PluginPocket/server/internal/store"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func poolForTest(t *testing.T) *pgxpool.Pool {
 	t.Helper()
-	raw := os.Getenv("LOADOUT_TEST_DATABASE_URL")
+	raw := os.Getenv("PLUGINPOCKET_TEST_DATABASE_URL")
 	if raw == "" {
-		t.Skip("LOADOUT_TEST_DATABASE_URL required")
+		t.Skip("PLUGINPOCKET_TEST_DATABASE_URL required")
 	}
 	ctx := context.Background()
 	conn, err := pgx.Connect(ctx, raw)

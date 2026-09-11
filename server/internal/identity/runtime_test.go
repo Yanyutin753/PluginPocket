@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Yanyutin753/loadout/server/internal/auth"
-	"github.com/Yanyutin753/loadout/server/internal/settings"
+	"github.com/Yanyutin753/PluginPocket/server/internal/auth"
+	"github.com/Yanyutin753/PluginPocket/server/internal/settings"
 	"golang.org/x/oauth2"
 )
 
@@ -38,7 +38,7 @@ func TestRuntimeIdentityUpdatesMetaOAuthAndSignupCredits(t *testing.T) {
 	if _, err := s.Pool.Exec(t.Context(), "INSERT INTO users(username,password_hash) VALUES('settings-admin','unused')"); err != nil {
 		t.Fatal(err)
 	}
-	m := &settings.Manager{Pool: s.Pool, Key: bytes.Repeat([]byte{1}, 32), Origin: "https://loadout.test"}
+	m := &settings.Manager{Pool: s.Pool, Key: bytes.Repeat([]byte{1}, 32), Origin: "https://pluginpocket.test"}
 	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if r.URL.Path == "/token" {
@@ -146,12 +146,12 @@ func TestRuntimeIdentityEnablesLocalSMTPAndDisablesItWithoutRestart(t *testing.T
 			_, _ = conn.Write([]byte(response))
 		}
 	}()
-	m := &settings.Manager{Pool: s.Pool, Origin: "https://loadout.test"}
+	m := &settings.Manager{Pool: s.Pool, Origin: "https://pluginpocket.test"}
 	h := New(s, Options{Origin: m.Origin, Runtime: m, SMTPAllowLocalInsecure: true})
 	call := func(method, path, body string) *httptest.ResponseRecorder {
 		r := httptest.NewRequest(method, path, strings.NewReader(body))
 		r.Header.Set("Origin", m.Origin)
-		r.AddCookie(&http.Cookie{Name: "loadout_session", Value: "runtime-session"})
+		r.AddCookie(&http.Cookie{Name: "pluginpocket_session", Value: "runtime-session"})
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, r)
 		return w

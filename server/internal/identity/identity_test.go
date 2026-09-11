@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Yanyutin753/loadout/server/internal/auth"
-	"github.com/Yanyutin753/loadout/server/internal/store"
+	"github.com/Yanyutin753/PluginPocket/server/internal/auth"
+	"github.com/Yanyutin753/PluginPocket/server/internal/store"
 	"github.com/jackc/pgx/v5"
 	"golang.org/x/oauth2"
 )
@@ -81,7 +81,7 @@ func TestGitHubOAuthBindsStateAndCreatesOneAccount(t *testing.T) {
 	}
 	session := false
 	for _, cookie := range done.Result().Cookies() {
-		if cookie.Name == "loadout_session" && cookie.HttpOnly {
+		if cookie.Name == "pluginpocket_session" && cookie.HttpOnly {
 			session = true
 		}
 	}
@@ -104,7 +104,7 @@ func TestGitHubOAuthBindsStateAndCreatesOneAccount(t *testing.T) {
 
 func identityDB(t *testing.T) *store.Store {
 	t.Helper()
-	raw := os.Getenv("LOADOUT_TEST_DATABASE_URL")
+	raw := os.Getenv("PLUGINPOCKET_TEST_DATABASE_URL")
 	if raw == "" {
 		t.Skip("real PostgreSQL required")
 	}
@@ -161,7 +161,7 @@ func TestEmailVerificationIsAuthenticatedOneTimeAndExpires(t *testing.T) {
 		r.Header.Set("Origin", "http://local.test")
 		r.Header.Set("Content-Type", "application/json")
 		if cookie != "" {
-			r.AddCookie(&http.Cookie{Name: "loadout_session", Value: cookie})
+			r.AddCookie(&http.Cookie{Name: "pluginpocket_session", Value: cookie})
 		}
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, r)

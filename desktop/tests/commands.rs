@@ -1,4 +1,4 @@
-use loadout_desktop::{LocalCommand, execute};
+use pluginpocket_desktop::{LocalCommand, execute};
 use std::{
     fs,
     io::{Read, Write},
@@ -6,10 +6,10 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
-fn local(dir: &tempfile::TempDir) -> loadout::LocalClient {
-    loadout::LocalClient::new(
+fn local(dir: &tempfile::TempDir) -> pluginpocket::LocalClient {
+    pluginpocket::LocalClient::new(
         dir.path().into(),
-        dir.path().join(".loadout/config.json"),
+        dir.path().join(".pluginpocket/config.json"),
         std::env::current_exe().unwrap(),
     )
     .unwrap()
@@ -48,22 +48,22 @@ fn limited_command_uses_real_local_library_for_login_configuration_status_and_lo
         &local,
         LocalCommand::Login {
             server,
-            token: "ldt_desktop_secret".into(),
+            token: "ppt_desktop_secret".into(),
         },
     )
     .expect("desktop login persists real credentials");
     assert_eq!(response["username"], "alice");
-    assert!(!response.to_string().contains("ldt_"));
+    assert!(!response.to_string().contains("ppt_"));
     assert!(
         task.join()
             .unwrap()
             .to_lowercase()
-            .contains("authorization: bearer ldt_desktop_secret")
+            .contains("authorization: bearer ppt_desktop_secret")
     );
     let response = execute(
         &local,
         LocalCommand::Apply {
-            clients: vec![loadout::ClientKind::Claude],
+            clients: vec![pluginpocket::ClientKind::Claude],
         },
     )
     .unwrap();
@@ -71,14 +71,14 @@ fn limited_command_uses_real_local_library_for_login_configuration_status_and_lo
     let config: serde_json::Value =
         serde_json::from_slice(&fs::read(dir.path().join(".claude.json")).unwrap()).unwrap();
     assert_eq!(
-        config["mcpServers"]["loadout"]["command"],
+        config["mcpServers"]["pluginpocket"]["command"],
         local.executable.to_str().unwrap()
     );
     assert_eq!(
-        config["mcpServers"]["loadout"]["args"],
+        config["mcpServers"]["pluginpocket"]["args"],
         serde_json::json!(["bridge"])
     );
-    assert!(!config.to_string().contains("ldt_"));
+    assert!(!config.to_string().contains("ppt_"));
     let offline = execute(&local, LocalCommand::Clients {}).unwrap();
     assert_eq!(offline[1]["configured"], true);
     let (server, task) = fixture();
@@ -96,7 +96,7 @@ fn limited_command_uses_real_local_library_for_login_configuration_status_and_lo
     execute(
         &local,
         LocalCommand::Remove {
-            clients: vec![loadout::ClientKind::Claude],
+            clients: vec![pluginpocket::ClientKind::Claude],
         },
     )
     .unwrap();
@@ -107,7 +107,7 @@ fn limited_command_uses_real_local_library_for_login_configuration_status_and_lo
         .unwrap()["mcpServers"]
             .as_object()
             .unwrap()
-            .contains_key("loadout")
+            .contains_key("pluginpocket")
     );
     execute(&local, LocalCommand::Logout {}).unwrap();
     assert!(!local.config_path.exists());
@@ -117,7 +117,7 @@ fn limited_command_uses_real_local_library_for_login_configuration_status_and_lo
 fn invoke_rejects_arbitrary_paths_shell_unknown_clients_and_unknown_actions() {
     for input in [
         r#"{"action":"shell","command":"touch /tmp/no"}"#,
-        r#"{"action":"login","server":"https://example.com","token":"ldt_x","config_path":"/tmp/no"}"#,
+        r#"{"action":"login","server":"https://example.com","token":"ppt_x","config_path":"/tmp/no"}"#,
         r#"{"action":"apply","clients":["unknown"]}"#,
         r#"{"action":"apply","clients":["codex"],"executable":"/tmp/no"}"#,
         r#"{"action":"logout","home":"/tmp/no"}"#,

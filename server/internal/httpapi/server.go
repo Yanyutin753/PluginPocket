@@ -18,7 +18,7 @@ func New(webDir, version string) http.Handler {
 			return
 		}
 		if r.URL.Path == "/healthz" || r.URL.Path == "/api/v1/health" {
-			writeJSON(w, r, http.StatusOK, map[string]string{"status": "ok", "service": "loadout", "version": version})
+			writeJSON(w, r, http.StatusOK, map[string]string{"status": "ok", "service": "pluginpocket", "version": version})
 			return
 		}
 		if r.URL.Path == "/api" || strings.HasPrefix(r.URL.Path, "/api/") || r.URL.Path == "/mcp" || strings.HasPrefix(r.URL.Path, "/mcp/") {

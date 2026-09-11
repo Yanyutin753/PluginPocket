@@ -4,8 +4,8 @@ tmp_dir = "build/dev"
 env_files = []
 
 [build]
-cmd = "cd server && CGO_ENABLED=0 go build -trimpath -o ../build/dev/loadout-server ./cmd/loadout-server"
-entrypoint = ["./build/dev/loadout-server"]
+cmd = "cd server && CGO_ENABLED=0 go build -trimpath -o ../build/dev/pluginpocket-server ./cmd/pluginpocket-server"
+entrypoint = ["./build/dev/pluginpocket-server"]
 include_dir = ["server"]
 include_ext = ["go", "sql", "mod", "sum"]
 exclude_dir = ["build", "server/data"]

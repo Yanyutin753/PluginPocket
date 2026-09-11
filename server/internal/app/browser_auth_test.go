@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Yanyutin753/loadout/server/internal/settings"
-	"github.com/Yanyutin753/loadout/server/internal/store"
+	"github.com/Yanyutin753/PluginPocket/server/internal/settings"
+	"github.com/Yanyutin753/PluginPocket/server/internal/store"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -26,10 +26,10 @@ func TestBrowserRefreshAcrossReplicas(t *testing.T) {
 	w := request(a, "POST", "/api/v1/auth/register", `{"username":"browser","password":"correct horse battery"}`, nil)
 	var access, refresh *http.Cookie
 	for _, c := range w.Result().Cookies() {
-		if c.Name == "loadout_session" {
+		if c.Name == "pluginpocket_session" {
 			access = c
 		}
-		if c.Name == "loadout_refresh" {
+		if c.Name == "pluginpocket_refresh" {
 			refresh = c
 		}
 	}
@@ -46,7 +46,7 @@ func TestBrowserRefreshAcrossReplicas(t *testing.T) {
 		t.Fatalf("expired AT: %d", w.Code)
 	}
 	forged := *refresh
-	forged.Name = "loadout_session"
+	forged.Name = "pluginpocket_session"
 	if w := request(b, "GET", "/api/v1/account/me", "", &forged); w.Code != 401 {
 		t.Fatalf("RT cannot act as AT: %d", w.Code)
 	}
@@ -64,7 +64,7 @@ func TestBrowserRefreshAcrossReplicas(t *testing.T) {
 			t.Fatalf("refresh: %d %s", result.Code, result.Body)
 		}
 		for _, c := range result.Result().Cookies() {
-			if c.Name == "loadout_session" {
+			if c.Name == "pluginpocket_session" {
 				tokens = append(tokens, c)
 			}
 		}
@@ -136,10 +136,10 @@ func TestBrowserLifetimeHotReloadAcrossReplicas(t *testing.T) {
 	login := request(b, "POST", "/api/v1/auth/login", `{"username":"ordinary","password":"correct horse battery"}`, nil)
 	var refresh *http.Cookie
 	for _, c := range login.Result().Cookies() {
-		if c.Name == "loadout_session" && c.MaxAge != 120 {
+		if c.Name == "pluginpocket_session" && c.MaxAge != 120 {
 			t.Fatalf("AT TTL not hot: %d", c.MaxAge)
 		}
-		if c.Name == "loadout_refresh" {
+		if c.Name == "pluginpocket_refresh" {
 			refresh = c
 			if c.MaxAge != 3600 {
 				t.Fatalf("RT TTL not hot: %d", c.MaxAge)
@@ -156,7 +156,7 @@ func TestBrowserLifetimeHotReloadAcrossReplicas(t *testing.T) {
 		t.Fatal(renewed.Code)
 	}
 	for _, c := range renewed.Result().Cookies() {
-		if c.Name == "loadout_session" && c.MaxAge != 60 {
+		if c.Name == "pluginpocket_session" && c.MaxAge != 60 {
 			t.Fatalf("refreshed AT TTL not hot: %d", c.MaxAge)
 		}
 	}
@@ -184,7 +184,7 @@ func TestBrowserRefreshBoundaries(t *testing.T) {
 	login := request(h, "POST", "/api/v1/auth/login", `{"username":"boundaries","password":"correct horse battery"}`, nil)
 	var refresh *http.Cookie
 	for _, c := range login.Result().Cookies() {
-		if c.Name == "loadout_refresh" {
+		if c.Name == "pluginpocket_refresh" {
 			refresh = c
 		}
 	}

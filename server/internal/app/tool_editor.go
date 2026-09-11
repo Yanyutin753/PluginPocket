@@ -11,7 +11,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/Yanyutin753/loadout/server/internal/gateway"
+	"github.com/Yanyutin753/PluginPocket/server/internal/gateway"
 )
 
 func (a *application) previewSettlement(w http.ResponseWriter, r *http.Request) {

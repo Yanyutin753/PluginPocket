@@ -281,7 +281,7 @@ export default function ToolEditor({
             {kind === 'builtin' ? (
               <p className="field-help">
                 {t(
-                  '内置工具由 Loadout 执行，无需连接地址。新增仅支持 echo（回声）和 time_now（当前时间）；接入自己的工具请选择 HTTP 服务。',
+                  '内置工具由 PluginPocket 执行，无需连接地址。新增仅支持 echo（回声）和 time_now（当前时间）；接入自己的工具请选择 HTTP 服务。',
                 )}
               </p>
             ) : (
@@ -292,7 +292,7 @@ export default function ToolEditor({
                         '填写支持 MCP 的 HTTP 端点，不是普通 REST API。服务地址必须符合服务器允许的网络范围。',
                       )
                     : t(
-                        '进程在服务端运行。每个副本都必须安装相同程序，并配置 LOADOUT_STDIO_COMMANDS 允许名单；浏览器所在电脑不会启动进程。',
+                        '进程在服务端运行。每个副本都必须安装相同程序，并配置 PLUGINPOCKET_STDIO_COMMANDS 允许名单；浏览器所在电脑不会启动进程。',
                       )}
                 </p>
                 {item && (

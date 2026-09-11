@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Yanyutin753/loadout/server/internal/store"
+	"github.com/Yanyutin753/PluginPocket/server/internal/store"
 	"github.com/jackc/pgx/v5"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -34,7 +34,7 @@ func TestGatewayRequiresToken(t *testing.T) {
 
 func gatewayDB(t *testing.T) *store.Store {
 	t.Helper()
-	raw := os.Getenv("LOADOUT_TEST_DATABASE_URL")
+	raw := os.Getenv("PLUGINPOCKET_TEST_DATABASE_URL")
 	if raw == "" {
 		t.Skip("real PostgreSQL URL required")
 	}
@@ -78,9 +78,9 @@ func TestOfficialMCPClientAndLedger(t *testing.T) {
 	if err := s.Pool.QueryRow(ctx, "INSERT INTO wallets(user_id,balance) VALUES ($1,2) RETURNING id", user).Scan(&wallet); err != nil {
 		t.Fatal(err)
 	}
-	raw := "ldt_gateway_test_token"
+	raw := "ppt_gateway_test_token"
 	sum := sha256.Sum256([]byte(raw))
-	if err := s.Pool.QueryRow(ctx, "INSERT INTO tokens(user_id,wallet_id,name,prefix,token_hash) VALUES ($1,$2,'test','ldt_test',$3) RETURNING id", user, wallet, hex.EncodeToString(sum[:])).Scan(&token); err != nil {
+	if err := s.Pool.QueryRow(ctx, "INSERT INTO tokens(user_id,wallet_id,name,prefix,token_hash) VALUES ($1,$2,'test','ppt_test',$3) RETURNING id", user, wallet, hex.EncodeToString(sum[:])).Scan(&token); err != nil {
 		t.Fatal(err)
 	}
 	g := New(s, Options{})

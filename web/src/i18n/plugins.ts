@@ -20,7 +20,7 @@ export const plugins: Record<string, string> = {
   插件不存在: 'Plugin not found',
   '返回市场查看当前可用的插件。':
     'Return to the marketplace to browse available plugins.',
-  '浏览无需登录；使用网关托管工具前，请先登录 Loadout CLI。':
-    'Browse without an account. Log in to the Loadout CLI before using gateway-hosted tools.',
-  '使用 Loadout CLI 安装': 'Install with the Loadout CLI',
+  '浏览无需登录；使用网关托管工具前，请先登录 PluginPocket CLI。':
+    'Browse without an account. Log in to the PluginPocket CLI before using gateway-hosted tools.',
+  '使用 PluginPocket CLI 安装': 'Install with the PluginPocket CLI',
 };

@@ -361,7 +361,7 @@ impl LocalClient {
                 if item.transport != "gateway" {
                     self.write_plugin(slug, "", clients, true)?;
                 }
-                // 网关供给成员的 bridge 可能还有其他工具在用：卸载不动 bridge（loadout remove 单独管理）。
+                // 网关供给成员的 bridge 可能还有其他工具在用：卸载不动 bridge（pluginpocket remove 单独管理）。
             }
             "skill" => {
                 self.uninstall_skill(slug, clients)?;
@@ -529,7 +529,7 @@ impl LocalClient {
                 expected.sort();
                 if actual != expected {
                     return Err(
-                        "skill directory contains files Loadout did not install; remove them first",
+                        "skill directory contains files PluginPocket did not install; remove them first",
                     );
                 }
                 std::fs::remove_dir_all(&root).map_err(|_| "could not remove skill directory")?;
@@ -562,9 +562,9 @@ impl LocalClient {
         if selected.is_empty() {
             return Err("no supported clients detected; specify --clients codex,claude,cursor");
         }
-        let begin = format!("# --- loadout:{slug} begin ---");
-        let end = format!("# --- loadout:{slug} end ---");
-        let key = format!("loadout-{slug}");
+        let begin = format!("# --- pluginpocket:{slug} begin ---");
+        let end = format!("# --- pluginpocket:{slug} end ---");
+        let key = format!("pluginpocket-{slug}");
         let previous_manifest = self.manifest()?;
         let mut manifest = previous_manifest.clone();
         let mut updates = Vec::new();
@@ -573,7 +573,7 @@ impl LocalClient {
             let manifest_key = format!("{}:{}", client.name(), slug);
             let path = self.client_path(client);
             let old = config::read(&path)?;
-            let backup = PathBuf::from(format!("{}.loadout.bak", path.display()));
+            let backup = PathBuf::from(format!("{}.pluginpocket.bak", path.display()));
             config::safe_path(&backup)?;
             let new = if client == ClientKind::Codex {
                 let entry = json!({"url": endpoint});
@@ -588,7 +588,7 @@ impl LocalClient {
                 {
                     let _ = old;
                     return Err(
-                        "existing loadout configuration is unmanaged or modified; resolve it manually",
+                        "existing pluginpocket configuration is unmanaged or modified; resolve it manually",
                     );
                 }
                 let mut output = remaining;
@@ -625,7 +625,7 @@ impl LocalClient {
                     && !owns(&manifest, &manifest_key, existing)
                 {
                     return Err(
-                        "existing loadout configuration is unmanaged or modified; resolve it manually",
+                        "existing pluginpocket configuration is unmanaged or modified; resolve it manually",
                     );
                 }
                 if remove {

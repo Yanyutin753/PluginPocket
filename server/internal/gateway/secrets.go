@@ -26,7 +26,7 @@ func SealConfig(key, raw []byte) ([]byte, error) {
 	if !json.Valid(raw) {
 		return nil, errors.New("invalid upstream config")
 	}
-	sealed := aead.Seal(nil, nil, raw, []byte("loadout-upstream-v1"))
+	sealed := aead.Seal(nil, nil, raw, []byte("pluginpocket-upstream-v1"))
 	return json.Marshal(map[string]string{"ciphertext": base64.StdEncoding.EncodeToString(sealed)})
 }
 func OpenConfig(key, sealed []byte) ([]byte, error) {
@@ -44,7 +44,7 @@ func OpenConfig(key, sealed []byte) ([]byte, error) {
 	if err != nil {
 		return nil, errors.New("invalid encrypted config")
 	}
-	plain, err := aead.Open(nil, nil, raw, []byte("loadout-upstream-v1"))
+	plain, err := aead.Open(nil, nil, raw, []byte("pluginpocket-upstream-v1"))
 	if err != nil {
 		return nil, errors.New("upstream config could not be decrypted")
 	}

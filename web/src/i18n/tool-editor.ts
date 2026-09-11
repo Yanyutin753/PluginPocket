@@ -20,12 +20,12 @@ export const toolEditor: Record<string, string> = {
   '说明工具能做什么、适合何时使用，以及必要的输入。':
     'Describe what the tool does, when to use it, and what input it needs.',
   连接上游: 'Upstream connection',
-  '内置工具由 Loadout 执行，无需连接地址。新增仅支持 echo（回声）和 time_now（当前时间）；接入自己的工具请选择 HTTP 服务。':
-    'Built-in tools run in Loadout and need no endpoint. Only echo and time_now can be added as built-in tools. Choose HTTP service to connect your own tool.',
+  '内置工具由 PluginPocket 执行，无需连接地址。新增仅支持 echo（回声）和 time_now（当前时间）；接入自己的工具请选择 HTTP 服务。':
+    'Built-in tools run in PluginPocket and need no endpoint. Only echo and time_now can be added as built-in tools. Choose HTTP service to connect your own tool.',
   '填写支持 MCP 的 HTTP 端点，不是普通 REST API。服务地址必须符合服务器允许的网络范围。':
     'Enter an HTTP endpoint that supports MCP, rather than a general REST API. Its address must be within the network ranges allowed by the server.',
-  '进程在服务端运行。每个副本都必须安装相同程序，并配置 LOADOUT_STDIO_COMMANDS 允许名单；浏览器所在电脑不会启动进程。':
-    'The process runs on the server. Every replica must have the same program installed and configure the LOADOUT_STDIO_COMMANDS allowlist. No process is started on the computer running your browser.',
+  '进程在服务端运行。每个副本都必须安装相同程序，并配置 PLUGINPOCKET_STDIO_COMMANDS 允许名单；浏览器所在电脑不会启动进程。':
+    'The process runs on the server. Every replica must have the same program installed and configure the PLUGINPOCKET_STDIO_COMMANDS allowlist. No process is started on the computer running your browser.',
   更新连接配置: 'Update connection settings',
   '已保存的连接与凭证继续使用，不会回显。需要修改时勾选更新，并完整填写新配置。':
     'The saved connection and credentials remain in use and are not displayed. To change them, select the update option and provide the complete replacement configuration.',

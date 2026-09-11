@@ -112,12 +112,12 @@ pub(crate) fn skill_files(
     Ok(payload.files)
 }
 pub(crate) fn validate_token(token: &str) -> Result<()> {
-    if !token.starts_with("ldt_")
+    if !token.starts_with("ppt_")
         || token.len() <= 4
         || token.len() > 4096
         || token.chars().any(|c| c.is_control() || c.is_whitespace())
     {
-        return Err("invalid token; paste a Loadout token");
+        return Err("invalid token; paste a PluginPocket token");
     }
     Ok(())
 }
@@ -180,11 +180,11 @@ pub(crate) fn health(server: &str) -> Result<String> {
         }
     })?;
     if health.status != "ok"
-        || health.service != "loadout"
+        || health.service != "pluginpocket"
         || health.version.trim().is_empty()
         || health.version.chars().any(char::is_control)
     {
-        return Err("response is not a healthy Loadout service");
+        return Err("response is not a healthy PluginPocket service");
     }
     Ok(health.version)
 }
@@ -227,7 +227,7 @@ pub(crate) fn read(path: &Path) -> Result<Option<Vec<u8>>> {
 }
 pub(crate) fn load(path: &Path) -> Result<Credentials> {
     let credentials: Credentials =
-        serde_json::from_slice(&read(path)?.ok_or("not logged in; run loadout login")?)
+        serde_json::from_slice(&read(path)?.ok_or("not logged in; run pluginpocket login")?)
             .map_err(|_| "invalid local credentials; log in again")?;
     root_url(&credentials.server)?;
     validate_token(&credentials.token)?;

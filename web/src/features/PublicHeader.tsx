@@ -11,10 +11,14 @@ export function PublicHeader() {
   const location = useLocation();
   return (
     <header className="landing-nav">
-      <Link className="landing-brand" to="/" aria-label={t('Loadout 首页')}>
+      <Link
+        className="landing-brand"
+        to="/"
+        aria-label={t('PluginPocket 首页')}
+      >
         <img src="/images/workshop-mark.webp" alt="" width="48" height="48" />
         <span>
-          <span className="brand-wordmark">Loadout</span>
+          <span className="brand-wordmark">PluginPocket</span>
           <small>{t('AI 装备工坊')}</small>
         </span>
       </Link>

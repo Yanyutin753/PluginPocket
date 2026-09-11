@@ -31,7 +31,7 @@ it('keeps skill and bundle rows focused on editing without install tutorials', a
       .getByRole('heading', { name: `Review ${kind}` })
       .closest('li');
     if (!row) throw new Error(`Missing marketplace row for ${kind}`);
-    expect(row).not.toHaveTextContent(/loadout install|组合安装/);
+    expect(row).not.toHaveTextContent(/pluginpocket install|组合安装/);
     expect(row).toHaveTextContent(`review-${kind}`);
     const edit = within(row).getByRole('button', {
       name: `编辑 Review ${kind}`,

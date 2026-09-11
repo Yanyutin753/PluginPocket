@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Yanyutin753/loadout/server/internal/auth"
+	"github.com/Yanyutin753/PluginPocket/server/internal/auth"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -143,7 +143,7 @@ func (a *application) deviceToken(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, "authorization_pending")
 		return
 	}
-	secret, e := auth.Secret("ldt_")
+	secret, e := auth.Secret("ppt_")
 	if e != nil {
 		fail(w, 500, "internal_error")
 		return

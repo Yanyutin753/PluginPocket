@@ -58,8 +58,8 @@ func TestSMTPRequiresTLSUnlessExplicitLocalTest(t *testing.T) {
 				}
 				messages <- body.String()
 			}()
-			send := SMTPMailer(SMTPConfig{Address: listener.Addr().String(), From: "loadout@example.com", AllowLocalInsecure: allow})
-			e = send(context.Background(), "owner@example.com", "https://loadout.example/verify-email?token=one-time")
+			send := SMTPMailer(SMTPConfig{Address: listener.Addr().String(), From: "pluginpocket@example.com", AllowLocalInsecure: allow})
+			e = send(context.Background(), "owner@example.com", "https://pluginpocket.example/verify-email?token=one-time")
 			if allow && e != nil {
 				t.Fatal(e)
 			}

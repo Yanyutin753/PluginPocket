@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Yanyutin753/loadout/server/internal/auth"
-	"github.com/Yanyutin753/loadout/server/internal/store"
+	"github.com/Yanyutin753/PluginPocket/server/internal/auth"
+	"github.com/Yanyutin753/PluginPocket/server/internal/store"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
@@ -399,7 +399,7 @@ func (a *application) createToken(w http.ResponseWriter, r *http.Request) {
 		fail(w, 500, "internal_error")
 		return
 	}
-	secret, e := auth.Secret("ldt_")
+	secret, e := auth.Secret("ppt_")
 	if e != nil {
 		fail(w, 500, "internal_error")
 		return

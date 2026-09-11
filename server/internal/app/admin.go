@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Yanyutin753/loadout/server/internal/gateway"
-	"github.com/Yanyutin753/loadout/server/internal/store"
+	"github.com/Yanyutin753/PluginPocket/server/internal/gateway"
+	"github.com/Yanyutin753/PluginPocket/server/internal/store"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
@@ -388,7 +388,7 @@ func (a *application) usagePage(w http.ResponseWriter, r *http.Request, userID, 
 	}
 	if strings.HasSuffix(r.URL.Path, "/export") {
 		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-		w.Header().Set("Content-Disposition", `attachment; filename="loadout-usage.csv"`)
+		w.Header().Set("Content-Disposition", `attachment; filename="pluginpocket-usage.csv"`)
 		w.Header().Set("X-Next-Cursor", next)
 		writer := csv.NewWriter(w)
 		_ = writer.Write([]string{"id", "user_id", "tool", "cost", "status", "duration_ms", "created_at"})

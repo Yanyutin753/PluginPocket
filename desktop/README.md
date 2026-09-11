@@ -1,4 +1,4 @@
-# Loadout 桌面端
+# PluginPocket 桌面端
 
 独立 Tauri 本地应用。界面用中文显示账号、余额、连接状态和本机客户端；登录、配置、移除和注销调用 `../cli` 的共享 Rust 库。关闭窗口隐藏到托盘，托盘菜单可显示或退出。
 
@@ -16,7 +16,7 @@ pnpm --dir desktop/ui dev
 pnpm --dir desktop/ui tauri dev
 ```
 
-桌面应用使用真实用户凭证与配置。开发/测试需隔离时，在启动命令上指定临时 `HOME` / `USERPROFILE` 与 `LOADOUT_CONFIG`；不要对日常客户端目录运行测试。
+桌面应用使用真实用户凭证与配置。开发/测试需隔离时，在启动命令上指定临时 `HOME` / `USERPROFILE` 与 `PLUGINPOCKET_CONFIG`；不要对日常客户端目录运行测试。
 
 ## 测试与构建
 
@@ -46,16 +46,16 @@ pnpm --dir desktop/ui tauri build --bundles deb
 
 手机端不在本次范围。Windows ARM 目前只有 x64 兼容运行路径，未提供原生 ARM 包；不把它算作已验证架构。Linux 包在 Ubuntu 24.04 构建，目标系统仍需相容的 glibc/GTK/WebKit，AppImage 不代表所有 Linux 发行版均兼容。
 
-发行使用独立 Loadout Minisign 密钥，公钥在 `tauri.release.conf.json`。所有安装包有同密钥生成的 `.sig` 和 SHA256SUMS；CI 将全部平台产物下载至独立任务，校验哈希并用 Minisign 验签，失败不发布。Tauri 的公私钥不匹配警告不能代替这个门禁。签名文件是 Tauri 使用的 Base64 编码 Minisign 格式，验签前先解码；公钥亦先从 JSON 的 `plugins.updater.pubkey` 解码。
+发行使用独立 PluginPocket Minisign 密钥，公钥在 `tauri.release.conf.json`。所有安装包有同密钥生成的 `.sig` 和 SHA256SUMS；CI 将全部平台产物下载至独立任务，校验哈希并用 Minisign 验签，失败不发布。Tauri 的公私钥不匹配警告不能代替这个门禁。签名文件是 Tauri 使用的 Base64 编码 Minisign 格式，验签前先解码；公钥亦先从 JSON 的 `plugins.updater.pubkey` 解码。
 
 发布配置启用签名归档，但应用未增加自动更新功能。macOS 使用 ad-hoc 应用封印并执行 `codesign --verify --deep --strict`，没有 Apple Developer ID 公证；Windows 未配置 Authenticode。发布签名保证文件来源和完整性，不消除 Gatekeeper/SmartScreen 提示。需要免提示发行时，必须使用相应受信任平台证书。
 
-GitHub Actions Secret `TAURI_SIGNING_PRIVATE_KEY` 已配置独立私钥，`TAURI_SIGNING_PRIVATE_KEY_PASSWORD` 对当前无密码密钥可不设置。当前机器私钥备份位于 `~/.config/loadout-signing/release.key`，目录 0700、文件 0600，禁止提交或随包上传；应由所有者安全备份，GitHub Secret 无法读回。更换密钥必须同步公钥，不要每次构建重新生成。
+GitHub Actions Secret `TAURI_SIGNING_PRIVATE_KEY` 已配置独立私钥，`TAURI_SIGNING_PRIVATE_KEY_PASSWORD` 对当前无密码密钥可不设置。私钥备份由所有者保管，目录应为 0700、文件为 0600，禁止提交或随包上传；仓库更名不移动本机私钥。下面的文件路径须替换为实际备份位置，GitHub Secret 无法读回。更换密钥必须同步公钥，不要每次构建重新生成。
 
 本地签名构建（仓库根）：
 
 ```sh
-TAURI_SIGNING_PRIVATE_KEY="$HOME/.config/loadout-signing/release.key" \
+TAURI_SIGNING_PRIVATE_KEY="/absolute/path/to/release.key" \
 APPIMAGE_EXTRACT_AND_RUN=1 \
 pnpm --dir desktop/ui tauri build --ci --bundles deb,rpm,appimage \
   --config tauri.release.conf.json -- --locked
@@ -67,13 +67,13 @@ Tauri 自动签名 AppImage 更新包；CI 额外签名 deb、rpm、DMG 等首�
 
 客户端配置中的可执行文件是当前桌面程序的绝对路径，参数固定为 `bridge`。这种模式在 GUI 初始化之前启动共享 MCP bridge，桌面窗口不需要保持打开。删除/移动应用后应重新配置客户端；退出登录会移除本地凭证，客户端配置保留以便下一次登录继续使用。
 
-`icon.svg` 为仓库内几何盾牌/L 标记，沿用 Loadout 颜色；PNG 使用官方 Tauri icon 命令从该 SVG 生成，未使用生成式位图素材。
+原生应用与托盘图标直接复用 Web 的 `web/public/icon-512.png` 薄荷绿工具箱角色，PNG、ICO、ICNS 使用官方 Tauri icon 命令派生，不维护另一套字标。生成命令为 `pnpm --dir desktop/ui tauri icon ../web/public/icon-512.png --output /tmp/pluginpocket-icons`；只更新配置引用的32/128/256px PNG、ICO和ICNS（256px来自128x128@2x.png），不引入未使用的平台资源。
 
 ## 工坊界面（2026-09-11）
 
 桌面操作页与 Web 使用一致的 iOS 风格中性浅深色、黄色主操作和清晰输入边界，优先使用系统字体，Manrope 为本地后备。卡片圆角 16px、按钮圆角 12px，以轻柔阴影区分层次。顶部提供原生“外观”选择，默认跟随系统，可通过键盘选择浅色/深色；手动选择只保留在当前窗口生命周期内，不写入本地配置。大屏内容最大宽度 96rem，宽窗口双栏，700px 以下按账号、客户端顺序单栏排列。
 
-品牌标记和工具插画从 `web/public/images/workshop-mark.webp`、`workshop-tools.webp` 导入，字体从 `web/public/fonts/` 引用，由 Vite 打包为本地资源；不复制素材，不更改原生应用/托盘图标。插画仅装饰，不承载操作文字。
+品牌标记和工具插画从 `web/public/images/workshop-mark.webp`、`workshop-tools.webp` 导入，字体从 `web/public/fonts/` 引用，由 Vite 打包为本地资源；不复制界面插画；原生应用/托盘图标复用 Web 工具箱图标。插画仅装饰，不承载操作文字。
 
 本轮顺序证据：
 

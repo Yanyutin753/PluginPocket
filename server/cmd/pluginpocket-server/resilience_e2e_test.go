@@ -196,7 +196,7 @@ func TestProductJourneyAdminUpstreamPricingAndRefund(t *testing.T) {
 	tool := map[string]any{"key": "billing", "name": "Billing fixture", "description": "test", "kind": "http", "enabled": true, "units_per_call": 7, "input_schema": map[string]any{"type": "object"}, "config": map[string]any{"url": upstream.URL}}
 	saved := p.api(admin, "POST", "/admin/tools", tool, 201)
 	toolID := int64(saved["item"].(map[string]any)["id"].(float64))
-	session := p.bridge(p.token(client), os.Getenv("LOADOUT_CLI_BINARY"))
+	session := p.bridge(p.token(client), os.Getenv("PLUGINPOCKET_CLI_BINARY"))
 	failed, err := session.CallTool(f.ctx, &mcp.CallToolParams{Name: "billing__work", Arguments: map[string]any{}})
 	if err != nil || !failed.IsError {
 		t.Fatal("upstream failure did not reach bridge as a tool error")
@@ -227,7 +227,7 @@ func TestProductJourneyAdminUpstreamPricingAndRefund(t *testing.T) {
 }
 
 func TestProductJourneyDesktopBridgeUsesRealServer(t *testing.T) {
-	executable := os.Getenv("LOADOUT_DESKTOP_BINARY")
+	executable := os.Getenv("PLUGINPOCKET_DESKTOP_BINARY")
 	if executable == "" {
 		t.Skip("desktop E2E requires built native desktop")
 	}

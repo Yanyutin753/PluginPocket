@@ -154,7 +154,7 @@ func handlerSources(t *testing.T) []string {
 		filepath.Join(root, "internal", "identity"),
 		filepath.Join(root, "internal", "httpapi"),
 		filepath.Join(root, "internal", "gateway"),
-		filepath.Join(root, "cmd", "loadout-server"),
+		filepath.Join(root, "cmd", "pluginpocket-server"),
 	}
 	var files []string
 	for _, dir := range targets {

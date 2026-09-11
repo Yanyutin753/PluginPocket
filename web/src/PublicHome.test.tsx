@@ -24,7 +24,7 @@ it('opens the public landing page with an optional session check and exposes wor
   expect(
     await screen.findByRole('heading', {
       level: 1,
-      name: '给你的 AI，装上超能力',
+      name: '把 AI 的超能力，装进口袋',
     }),
   ).toBeVisible();
   expect(

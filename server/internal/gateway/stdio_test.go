@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Yanyutin753/loadout/server/internal/store"
+	"github.com/Yanyutin753/PluginPocket/server/internal/store"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 func TestStdioUpstreamHelper(t *testing.T) {
-	if os.Getenv("LOADOUT_STDIO_TEST_HELPER") != "1" {
+	if os.Getenv("PLUGINPOCKET_STDIO_TEST_HELPER") != "1" {
 		return
 	}
 	server := mcp.NewServer(&mcp.Implementation{Name: "stdio-fixture", Version: "1"}, nil)
@@ -33,7 +33,7 @@ func TestAllowlistedStdioUpstreamUsesOfficialProtocol(t *testing.T) {
 		t.Fatal(err)
 	}
 	key := bytes.Repeat([]byte{3}, 32)
-	raw, err := json.Marshal(UpstreamConfig{Command: "fixture", Args: []string{"-test.run=^TestStdioUpstreamHelper$"}, Env: map[string]string{"LOADOUT_STDIO_TEST_HELPER": "1"}})
+	raw, err := json.Marshal(UpstreamConfig{Command: "fixture", Args: []string{"-test.run=^TestStdioUpstreamHelper$"}, Env: map[string]string{"PLUGINPOCKET_STDIO_TEST_HELPER": "1"}})
 	if err != nil {
 		t.Fatal(err)
 	}

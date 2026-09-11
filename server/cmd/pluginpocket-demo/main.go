@@ -1,4 +1,4 @@
-// loadout-demo seeds an explicitly selected local server, or serves mock MCP tools.
+// pluginpocket-demo seeds an explicitly selected local server, or serves mock MCP tools.
 package main
 
 import (
@@ -13,7 +13,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Yanyutin753/loadout/server/internal/demo"
+	"github.com/Yanyutin753/PluginPocket/server/internal/demo"
 )
 
 func main() {
@@ -31,9 +31,9 @@ func main() {
 		seedCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 		defer cancel()
 		if *more {
-			err = demo.Expand(seedCtx, *origin, os.Getenv("LOADOUT_ADMIN_USERNAME"), os.Getenv("LOADOUT_ADMIN_PASSWORD"))
+			err = demo.Expand(seedCtx, *origin, os.Getenv("PLUGINPOCKET_ADMIN_USERNAME"), os.Getenv("PLUGINPOCKET_ADMIN_PASSWORD"))
 		} else {
-			err = demo.Seed(seedCtx, *origin, *upstream, os.Getenv("LOADOUT_ADMIN_USERNAME"), os.Getenv("LOADOUT_ADMIN_PASSWORD"))
+			err = demo.Seed(seedCtx, *origin, *upstream, os.Getenv("PLUGINPOCKET_ADMIN_USERNAME"), os.Getenv("PLUGINPOCKET_ADMIN_PASSWORD"))
 		}
 		if err == nil {
 			fmt.Println("Demo data ready. Accounts: demo_owner, demo_member, demo_empty, demo_disabled (disabled).")

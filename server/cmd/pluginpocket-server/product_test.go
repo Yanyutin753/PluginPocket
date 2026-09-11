@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Yanyutin753/loadout/server/internal/config"
+	"github.com/Yanyutin753/PluginPocket/server/internal/config"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -36,7 +36,7 @@ func TestNoDatabaseCannotReportProductReady(t *testing.T) {
 }
 
 func TestConfiguredDatabaseServesProductRoutes(t *testing.T) {
-	raw := os.Getenv("LOADOUT_TEST_DATABASE_URL")
+	raw := os.Getenv("PLUGINPOCKET_TEST_DATABASE_URL")
 	if raw == "" {
 		t.Skip("real PostgreSQL required")
 	}

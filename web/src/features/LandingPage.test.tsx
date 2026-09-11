@@ -6,7 +6,7 @@ import { expect, it } from 'vitest';
 import { PreferencesProvider } from '../i18n';
 import LandingPage from './LandingPage';
 
-it('introduces Loadout publicly with honest setup steps and account navigation', () => {
+it('introduces PluginPocket publicly with honest setup steps and account navigation', () => {
   render(
     <QueryClientProvider
       client={
@@ -20,8 +20,9 @@ it('introduces Loadout publicly with honest setup steps and account navigation',
       </PreferencesProvider>
     </QueryClientProvider>,
   );
+  expect(screen.getByRole('link', { name: 'PluginPocket 首页' })).toBeVisible();
   expect(
-    screen.getByRole('heading', { level: 1, name: '给你的 AI，装上超能力' }),
+    screen.getByRole('heading', { level: 1, name: '把 AI 的超能力，装进口袋' }),
   ).toBeVisible();
   expect(
     screen
@@ -42,7 +43,7 @@ it('introduces Loadout publicly with honest setup steps and account navigation',
   );
   expect(
     screen.getByText(
-      `loadout login --server ${window.location.origin}\nloadout apply`,
+      `pluginpocket login --server ${window.location.origin}\npluginpocket apply`,
       { normalizer: (text) => text },
     ),
   ).toBeVisible();
@@ -72,7 +73,7 @@ it('switches public copy to English while preserving account destinations', asyn
   expect(
     screen.getByRole('heading', {
       level: 1,
-      name: 'Give your AI superpowers.',
+      name: 'Your AI superpowers, in your pocket.',
     }),
   ).toBeVisible();
   expect(

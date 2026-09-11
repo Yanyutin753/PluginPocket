@@ -11,19 +11,19 @@ import { setTimeout as delay } from 'node:timers/promises';
 test('dev-server reloads Go changes, recovers from build errors, and releases its port', {
   timeout: 60_000,
 }, async (t) => {
-  const dir = await mkdtemp(join(tmpdir(), 'loadout-reload-'));
+  const dir = await mkdtemp(join(tmpdir(), 'pluginpocket-reload-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
   await copyFile('Makefile', join(dir, 'Makefile'));
   // Before hot reload exists, the same Make target still starts the fixture.
   await copyFile('.air.toml', join(dir, '.air.toml')).catch((error) => {
     if (error.code !== 'ENOENT') throw error;
   });
-  await mkdir(join(dir, 'server/cmd/loadout-server'), { recursive: true });
+  await mkdir(join(dir, 'server/cmd/pluginpocket-server'), { recursive: true });
   await writeFile(
     join(dir, 'server/go.mod'),
     'module reloadfixture\n\ngo 1.26\n',
   );
-  const source = join(dir, 'server/cmd/loadout-server/main.go');
+  const source = join(dir, 'server/cmd/pluginpocket-server/main.go');
   const update = (value) =>
     writeFile(
       source,
@@ -31,7 +31,7 @@ test('dev-server reloads Go changes, recovers from build errors, and releases it
 import ("net/http"; "os")
 func main() {
   http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("${value}")) })
-  if err := http.ListenAndServe(os.Getenv("LOADOUT_ADDR"), nil); err != nil { panic(err) }
+  if err := http.ListenAndServe(os.Getenv("PLUGINPOCKET_ADDR"), nil); err != nil { panic(err) }
 }
 `,
     );
@@ -45,7 +45,7 @@ func main() {
     ['dev-server', `AIR=${resolve('build/tools/air-1.67.4/air')}`],
     {
       cwd: dir,
-      env: { ...process.env, LOADOUT_ADDR: addr },
+      env: { ...process.env, PLUGINPOCKET_ADDR: addr },
       detached: true,
       stdio: ['ignore', 'pipe', 'pipe'],
     },

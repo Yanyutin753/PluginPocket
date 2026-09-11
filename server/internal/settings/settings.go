@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Yanyutin753/loadout/server/internal/gateway"
+	"github.com/Yanyutin753/PluginPocket/server/internal/gateway"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"

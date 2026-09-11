@@ -68,7 +68,7 @@ async function login(user: ReturnType<typeof userEvent.setup>) {
     await screen.findByLabelText('服务地址'),
     'http://127.0.0.1:8787',
   );
-  await user.type(screen.getByLabelText('Loadout 令牌'), 'ldt_private');
+  await user.type(screen.getByLabelText('PluginPocket 令牌'), 'ppt_private');
   await user.click(screen.getByRole('button', { name: '登录' }));
   await screen.findByText('alice');
 }
@@ -77,7 +77,7 @@ describe('local desktop companion', () => {
     const user = userEvent.setup();
     mount();
     await login(user);
-    expect(screen.queryByDisplayValue('ldt_private')).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue('ppt_private')).not.toBeInTheDocument();
     expect(screen.getByText('42 credits')).toBeInTheDocument();
     await user.click(screen.getByRole('checkbox', { name: /Codex/ }));
     await user.click(screen.getByRole('button', { name: '配置所选客户端' }));
@@ -86,7 +86,7 @@ describe('local desktop companion', () => {
       command: { action: 'apply', clients: ['codex'] },
     });
     await user.click(screen.getByRole('button', { name: '移除所选配置' }));
-    await screen.findByText('已移除所选客户端的 Loadout 配置');
+    await screen.findByText('已移除所选客户端的 PluginPocket 配置');
     await user.click(screen.getByRole('button', { name: '检查连接' }));
     await screen.findByText('服务可达 · 凭证有效');
     await user.click(screen.getByRole('button', { name: '退出登录' }));
@@ -100,16 +100,16 @@ describe('local desktop companion', () => {
       await screen.findByLabelText('服务地址'),
       'https://example.com',
     );
-    await user.type(screen.getByLabelText('Loadout 令牌'), 'ldt_private');
+    await user.type(screen.getByLabelText('PluginPocket 令牌'), 'ppt_private');
     vi.mocked(invoke).mockRejectedValueOnce(
-      new Error('secret ldt_private https://user:password@server'),
+      new Error('secret ppt_private https://user:password@server'),
     );
     await user.click(screen.getByRole('button', { name: '登录' }));
     await screen.findByText('登录失败，请检查服务地址和令牌后重试');
-    expect(screen.getByLabelText('Loadout 令牌')).toHaveValue('');
+    expect(screen.getByLabelText('PluginPocket 令牌')).toHaveValue('');
     expect(screen.queryByText(/password@server/)).not.toBeInTheDocument();
-    await user.click(screen.getByLabelText('Loadout 令牌'));
-    await user.keyboard('ldt_new{Enter}');
+    await user.click(screen.getByLabelText('PluginPocket 令牌'));
+    await user.keyboard('ppt_new{Enter}');
     await screen.findByText('alice');
   });
   it('disables duplicate submissions while a native command is pending', async () => {
@@ -119,7 +119,7 @@ describe('local desktop companion', () => {
       await screen.findByLabelText('服务地址'),
       'https://example.com',
     );
-    await user.type(screen.getByLabelText('Loadout 令牌'), 'ldt_private');
+    await user.type(screen.getByLabelText('PluginPocket 令牌'), 'ppt_private');
     let resolve: (value: unknown) => void = () => {};
     vi.mocked(invoke).mockImplementationOnce(
       () =>
@@ -221,7 +221,7 @@ it('announces initial loading placeholders independently and replaces them with 
     'aria-busy',
     'true',
   );
-  expect(screen.queryByLabelText('Loadout 令牌')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('PluginPocket 令牌')).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: '配置所选客户端' })).toBeDisabled();
   resolveStatus({ account, clients: initialClients });
   await screen.findByText('alice');

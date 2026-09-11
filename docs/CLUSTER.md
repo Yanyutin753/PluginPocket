@@ -1,6 +1,6 @@
 # 集群部署规范
 
-本规范面向Loadout生产应用层，沿用无粘性Go副本、PostgreSQL权威状态和Redis工具目录缓存。提供 [Kubernetes应用模板](../deploy/kubernetes/loadout.yaml) 与 [完整运行时环境示例](../deploy/kubernetes/runtime.env.example)；本地开发仍按 [DEPLOYMENT](DEPLOYMENT.md)。全部变量、缺省值与固定预算见 [ENVIRONMENT](ENVIRONMENT.md)。
+本规范面向PluginPocket生产应用层，沿用无粘性Go副本、PostgreSQL权威状态和Redis工具目录缓存。提供 [Kubernetes应用模板](../deploy/kubernetes/pluginpocket.yaml) 与 [完整运行时环境示例](../deploy/kubernetes/runtime.env.example)；本地开发仍按 [DEPLOYMENT](DEPLOYMENT.md)。全部变量、缺省值与固定预算见 [ENVIRONMENT](ENVIRONMENT.md)。
 
 模板使用Kubernetes 1.37 API作为验证基线，采用稳定的apps/v1、v1、policy/v1 API及kubelet原生preStop sleep。生产选用平台仍支持并打过安全补丁的版本，先在目标API server做dry-run；不安装控制平面或捆绑第三方Operator。
 
@@ -33,7 +33,7 @@ Git 市场源的 refs、提交历史与对象保存在 PG `marketplace_git_state
 
 所有业务API共享PG权限/会话/账本/幂等状态，不能依靠入口粘性保证正确性。技能同slug发布使用数据库事务锁串行化版本计算与写入，回复在同一事务读取；并发自动发版不会重复使用同一patch版本。跨副本API矩阵与确定性发布并发测试记录见本轮 plugins-route-polish 执行记录。
 
-公开入口统一为一个HTTPS Origin，例如`https://loadout.example.com`；Web、`/api/v1`、`/mcp`及外部身份回调保持此Origin，不增加路径前缀。入口保留Host、Origin、Cookie和Authorization，支持流式响应；`/mcp`禁用响应缓冲，禁止自动重试POST或任何工具执行请求。入口HTTP超时至少覆盖应用40秒写预算，可从60秒起按实测调整。
+公开入口统一为一个HTTPS Origin，例如`https://pluginpocket.example.com`；Web、`/api/v1`、`/mcp`及外部身份回调保持此Origin，不增加路径前缀。入口保留Host、Origin、Cookie和Authorization，支持流式响应；`/mcp`禁用响应缓冲，禁止自动重试POST或任何工具执行请求。入口HTTP超时至少覆盖应用40秒写预算，可从60秒起按实测调整。
 
 `/metrics`只对监控网络开放，不通过公网路径透传；`/healthz`和`/readyz`供平台探针。API鉴权结果不被CDN缓存。入口不能将数据库失败的503替换成SPA HTML，也不能把Redis degraded当成整站故障。
 
@@ -57,14 +57,14 @@ Git 市场源的 refs、提交历史与对象保存在 PG `marketplace_git_state
 先在本地检查目标上下文，以下命令供部署者执行；准备文件时不访问或修改集群：
 
 ```sh
-mkdir -p .loadout/cluster
-chmod 700 .loadout/cluster
-cp deploy/kubernetes/runtime.env.example .loadout/cluster/runtime.env
-chmod 600 .loadout/cluster/runtime.env
-cp deploy/kubernetes/loadout.yaml .loadout/cluster/loadout.yaml
+mkdir -p .pluginpocket/cluster
+chmod 700 .pluginpocket/cluster
+cp deploy/kubernetes/runtime.env.example .pluginpocket/cluster/runtime.env
+chmod 600 .pluginpocket/cluster/runtime.env
+cp deploy/kubernetes/pluginpocket.yaml .pluginpocket/cluster/pluginpocket.yaml
 ```
 
-编辑runtime.env中的Origin、DB/Redis主入口、namespace和32字节Base64密钥。需要自动创建首个管理员时同时填用户名及至少12字符密码；不填则不会创建管理员。不要用Shell引号包裹值，特别是JSON白名单；kubectl env-file解析规则见环境参考。编辑loadout.yaml镜像为自己构建并推送的不可变摘要`registry.example.com/team/loadout@sha256:实际摘要`，私有仓库另配imagePullSecrets；样例占位符不能用于上线。
+编辑runtime.env中的Origin、DB/Redis主入口、namespace和32字节Base64密钥。需要自动创建首个管理员时同时填用户名及至少12字符密码；不填则不会创建管理员。不要用Shell引号包裹值，特别是JSON白名单；kubectl env-file解析规则见环境参考。编辑pluginpocket.yaml镜像为自己构建并推送的不可变摘要`registry.example.com/team/pluginpocket@sha256:实际摘要`，私有仓库另配imagePullSecrets；样例占位符不能用于上线。
 
 数据库账号需能在指定schema内执行嵌入式迁移，不能仅授予DML却期待自动迁移成功；不要求数据库超级用户。PG TLS必须验证服务名及可信CA；Redis配置rediss与ACL凭据。自签CA作为只读文件挂载，避免关闭证书验证。初始赠额在生产示例中设0，按实际业务策略调整。
 
@@ -72,22 +72,22 @@ cp deploy/kubernetes/loadout.yaml .loadout/cluster/loadout.yaml
 
 ```sh
 kubectl config current-context
-kubectl create namespace loadout --dry-run=client -o yaml | kubectl apply -f -
+kubectl create namespace pluginpocket --dry-run=client -o yaml | kubectl apply -f -
 # 只把应用20个运行时变量送入Secret；不包含测试URL或本机CLI凭证。
-kubectl -n loadout create secret generic loadout-runtime \
-  --from-env-file=.loadout/cluster/runtime.env --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n pluginpocket create secret generic pluginpocket-runtime \
+  --from-env-file=.pluginpocket/cluster/runtime.env --dry-run=client -o yaml | kubectl apply -f -
 # Dry-run验证当前集群API、准入策略与资源配额；不会创建工作负载。
-kubectl apply --dry-run=server -f .loadout/cluster/loadout.yaml
-kubectl apply -f .loadout/cluster/loadout.yaml
-kubectl -n loadout rollout status deployment/loadout --timeout=10m
-kubectl -n loadout get pods -l app.kubernetes.io/name=loadout -o wide
-kubectl -n loadout get endpointslices -l kubernetes.io/service-name=loadout
-kubectl -n loadout get pdb loadout
+kubectl apply --dry-run=server -f .pluginpocket/cluster/pluginpocket.yaml
+kubectl apply -f .pluginpocket/cluster/pluginpocket.yaml
+kubectl -n pluginpocket rollout status deployment/pluginpocket --timeout=10m
+kubectl -n pluginpocket get pods -l app.kubernetes.io/name=pluginpocket -o wide
+kubectl -n pluginpocket get endpointslices -l kubernetes.io/service-name=pluginpocket
+kubectl -n pluginpocket get pdb pluginpocket
 ```
 
 这些命令不输出Secret值，但部署流水线仍应禁用会展开凭据的调试日志；启用平台Secret静态加密和最小RBAC。首次迁移在PG advisory lock与事务内执行，各副本可并发启动；Open/迁移总预算15秒，长DDL需预先在恢复出的同规模测试库评估锁等待和耗时。增加startupProbe次数不会扩大应用内部迁移预算，迁移失败不能用探针掩盖。
 
-为现有入口配置到Service `loadout.loadout.svc:8787`的路由、TLS和前节规则，再验证公开Origin登录、设备授权、目录、无副作用工具调用、用量与账本。初始化完成后可移除两个ADMIN引导变量，按第6节更新Secret；该操作不删除管理员，也不重设其密码。
+为现有入口配置到Service `pluginpocket.pluginpocket.svc:8787`的路由、TLS和前节规则，再验证公开Origin登录、设备授权、目录、无副作用工具调用、用量与账本。初始化完成后可移除两个ADMIN引导变量，按第6节更新Secret；该操作不删除管理员，也不重设其密码。
 
 ## 4. 容量、探针与副本数
 
@@ -102,7 +102,7 @@ kubectl -n loadout get pdb loadout
 | startup/liveness | `/healthz`；不因PG/Redis短暂故障反复重启全部副本 |
 | readiness | `/readyz`：PG失败503，Redis不可用仍200并标记degraded；模板超时2秒大于内部1秒探测预算 |
 
-手动扩容例如`kubectl -n loadout scale deployment/loadout --replicas=5`，验证负载分布与数据库连接后再决定保留。缩容底线3，模板PDB minAvailable=2；若主动改变底线，必须同步审核PDB。希望长期保留的副本数还需写回部署源，避免下次apply恢复3。
+手动扩容例如`kubectl -n pluginpocket scale deployment/pluginpocket --replicas=5`，验证负载分布与数据库连接后再决定保留。缩容底线3，模板PDB minAvailable=2；若主动改变底线，必须同步审核PDB。希望长期保留的副本数还需写回部署源，避免下次apply恢复3。
 
 可在取得真实负载数据、部署Metrics Server后增加autoscaling/v2 HPA，minReplicas至少3；maxReplicas必须受PG连接预算和外部工具并发限制。不要同时用手动replicas和HPA争抢控制权。当前不附带未经压测的HPA阈值或宣称自动扩容已经启用。
 
@@ -121,11 +121,11 @@ preStop期间进程仍在运行，它不是应用级拒绝新请求的drain API�
 
 Deployment滚动策略不由PDB直接限流；PDB主要约束Eviction API的自愿驱逐，不能防止节点硬故障或直接删除Pod。运维节点维护使用drain并观察PDB，不能批量强制删除。见 [Deployment策略](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) 与 [中断预算边界](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/)。
 
-出现异常先暂停继续发布并摘除异常副本，必要时回滚到兼容旧二进制。`kubectl -n loadout rollout undo deployment/loadout`只回滚Pod模板；**不回滚PG schema、Redis或Secret内容**。本仓库迁移只有向前执行，没有自动down脚本；不兼容迁移需要前向修复或从备份恢复到新库后验证切换，不能直接把旧镜像指向已不兼容的schema。
+出现异常先暂停继续发布并摘除异常副本，必要时回滚到兼容旧二进制。`kubectl -n pluginpocket rollout undo deployment/pluginpocket`只回滚Pod模板；**不回滚PG schema、Redis或Secret内容**。本仓库迁移只有向前执行，没有自动down脚本；不兼容迁移需要前向修复或从备份恢复到新库后验证切换，不能直接把旧镜像指向已不兼容的schema。
 
 ## 6. 变更配置与密钥
 
-重新从受控runtime.env生成同名Secret后，执行`kubectl -n loadout rollout restart deployment/loadout`并等待完成。Secret变动不会刷新已经运行的进程环境，配置生效也不是一次全局原子切换。
+重新从受控runtime.env生成同名Secret后，执行`kubectl -n pluginpocket rollout restart deployment/pluginpocket`并等待完成。Secret变动不会刷新已经运行的进程环境，配置生效也不是一次全局原子切换。
 
 | 变更 | 要求 |
 | --- | --- |

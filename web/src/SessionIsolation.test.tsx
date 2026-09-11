@@ -10,7 +10,7 @@ it('clears another account data and one-time secrets when shared cookie identity
   const token = {
     id: 1,
     name: 'Alice private token',
-    prefix: 'ldt_alice',
+    prefix: 'ppt_alice',
     wallet_id: 1,
     created_at: '2026-09-10T10:00:00Z',
     revoked_at: null,
@@ -34,7 +34,7 @@ it('clears another account data and one-time secrets when shared cookie identity
         );
       if (url === '/api/v1/account/tokens' && init.method === 'POST')
         return Promise.resolve(
-          Response.json({ token: 'ldt_alice_secret', item: token }),
+          Response.json({ token: 'ppt_alice_secret', item: token }),
         );
       if (url.startsWith('/api/v1/account/tokens'))
         return Promise.resolve(
@@ -61,7 +61,7 @@ it('clears another account data and one-time secrets when shared cookie identity
   await user.click(await screen.findByRole('button', { name: '创建令牌' }));
   await user.type(await screen.findByLabelText('令牌名称'), 'Alice device');
   await user.click(screen.getByRole('button', { name: '创建令牌' }));
-  await screen.findByText('ldt_alice_secret');
+  await screen.findByText('ppt_alice_secret');
   current = 'bob';
   await act(async () => {
     await client.invalidateQueries({ queryKey: ['account'] });
@@ -69,7 +69,7 @@ it('clears another account data and one-time secrets when shared cookie identity
   await within(screen.getByRole('button', { name: '账号菜单' })).findByText(
     'bob',
   );
-  expect(screen.queryByText('ldt_alice_secret')).not.toBeInTheDocument();
+  expect(screen.queryByText('ppt_alice_secret')).not.toBeInTheDocument();
   expect(screen.queryByText('Alice private token')).not.toBeInTheDocument();
   client.clear();
 });

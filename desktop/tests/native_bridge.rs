@@ -6,13 +6,13 @@ use tokio::process::Command;
 async fn installed_desktop_binary_runs_bridge_without_gui_and_exits_on_stdin_close() {
     tokio::time::timeout(Duration::from_secs(8), async {
         let dir = tempfile::tempdir().unwrap();
-        let executable = std::env::var_os("LOADOUT_DESKTOP_TEST_BIN")
-            .unwrap_or_else(|| env!("CARGO_BIN_EXE_loadout-desktop").into());
+        let executable = std::env::var_os("PLUGINPOCKET_DESKTOP_TEST_BIN")
+            .unwrap_or_else(|| env!("CARGO_BIN_EXE_pluginpocket-desktop").into());
         let mut child = Command::new(executable)
             .arg("bridge")
             .env("HOME", dir.path())
             .env("USERPROFILE", dir.path())
-            .env_remove("LOADOUT_CONFIG")
+            .env_remove("PLUGINPOCKET_CONFIG")
             .env_remove("DISPLAY")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())

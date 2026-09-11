@@ -8,8 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/Yanyutin753/loadout/server/internal/auth"
-	"github.com/Yanyutin753/loadout/server/internal/store"
+	"github.com/Yanyutin753/PluginPocket/server/internal/auth"
+	"github.com/Yanyutin753/PluginPocket/server/internal/store"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -23,7 +23,7 @@ func boundaryPrincipal(t *testing.T, s *store.Store) store.Principal {
 	if e := s.Pool.QueryRow(ctx, "INSERT INTO wallets(user_id,balance) VALUES($1,10) RETURNING id", p.UserID).Scan(&p.WalletID); e != nil {
 		t.Fatal(e)
 	}
-	if e := s.Pool.QueryRow(ctx, "INSERT INTO tokens(user_id,wallet_id,name,prefix,token_hash) VALUES($1,$2,'boundary','ldt_',$3) RETURNING id", p.UserID, p.WalletID, auth.Digest("ldt_boundary_review")).Scan(&p.TokenID); e != nil {
+	if e := s.Pool.QueryRow(ctx, "INSERT INTO tokens(user_id,wallet_id,name,prefix,token_hash) VALUES($1,$2,'boundary','ppt_',$3) RETURNING id", p.UserID, p.WalletID, auth.Digest("ppt_boundary_review")).Scan(&p.TokenID); e != nil {
 		t.Fatal(e)
 	}
 	return p
@@ -67,7 +67,7 @@ func TestBoundaryNamespaceCollisionRoutesToWrongProvider(t *testing.T) {
 	}
 	gatewayServer := httptest.NewServer(g)
 	defer gatewayServer.Close()
-	hc, e := upstreamClient(gatewayServer.URL, map[string]string{"Authorization": "Bearer ldt_boundary_review"}, true)
+	hc, e := upstreamClient(gatewayServer.URL, map[string]string{"Authorization": "Bearer ppt_boundary_review"}, true)
 	if e != nil {
 		t.Fatal(e)
 	}

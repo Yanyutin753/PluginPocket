@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 const healthSchema = z.object({
   status: z.literal('ok'),
-  service: z.literal('loadout'),
+  service: z.literal('pluginpocket'),
   version: z
     .string()
     .regex(/^[^\p{Cc}]*$/u)

@@ -1,4 +1,4 @@
-// Package marketplace 的导出器：把 Loadout 市场条目渲染为 Codex 官方插件市场目录树。
+// Package marketplace 的导出器：把 PluginPocket 市场条目渲染为 Codex 官方插件市场目录树。
 // 产物可直接推到 git 仓库，由 `codex plugin marketplace add owner/repo` 接入。
 package marketplace
 
@@ -128,7 +128,7 @@ func ExportCodexMarketplace(name, displayName string, entries []ExportInput) (ma
 				}
 				files[fmt.Sprintf("plugins/%s/mcp.json", entry.Slug)] = mcpJSON
 			}
-			category = "Loadouts"
+			category = "Bundles"
 		default:
 			skipped = append(skipped, entry.Slug+":unknown-kind")
 			continue
@@ -142,8 +142,8 @@ func ExportCodexMarketplace(name, displayName string, entries []ExportInput) (ma
 			"name":        entry.Slug,
 			"version":     version,
 			"description": entry.Description,
-			"author":      "Loadout marketplace",
-			"keywords":    []string{"loadout", entry.Kind},
+			"author":      "PluginPocket marketplace",
+			"keywords":    []string{"pluginpocket", entry.Kind},
 		}, "", "  ")
 		if err != nil {
 			return nil, nil, err
@@ -182,7 +182,7 @@ func ExportCodexMarketplace(name, displayName string, entries []ExportInput) (ma
 	return tree, skipped, nil
 }
 
-// slugPattern 与 Loadout 市场 slug 规则一致；Codex 插件名要求 kebab-case，这里同源约束。
+// slugPattern 与 PluginPocket 市场 slug 规则一致；Codex 插件名要求 kebab-case，这里同源约束。
 var slugPattern = regexp.MustCompile(`^[a-zA-Z0-9_-]{3,64}$`)
 
 // contentVersion 对插件文件树取确定性指纹（不含 plugin.json 自身），
@@ -204,16 +204,16 @@ func contentVersion(files map[string][]byte) string {
 }
 
 // mcpServerEntry：公共 HTTP 端点 → 直连 streamable-http；网关供给 → 本地
-// loadout bridge（stdio，读登录凭证注入 Bearer，调用经计量）。两者都不满足则不可渲染。
+// pluginpocket bridge（stdio，读登录凭证注入 Bearer，调用经计量）。两者都不满足则不可渲染。
 func mcpServerEntry(transport, endpoint string) map[string]any {
 	if transport == "http" && endpoint != "" {
 		return map[string]any{"type": "streamable-http", "url": endpoint}
 	}
 	if transport == "gateway" {
-		// bridge 默认即读 ~/.loadout/config.json（由 HOME 解析）；
+		// bridge 默认即读 ~/.pluginpocket/config.json（由 HOME 解析）；
 		// 不传 env——环境变量不做 ~ 展开，写死路径反而会破坏凭证查找。
 		return map[string]any{
-			"command": "loadout",
+			"command": "pluginpocket",
 			"args":    []string{"bridge"},
 		}
 	}

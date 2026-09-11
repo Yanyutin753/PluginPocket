@@ -17,7 +17,7 @@ const account = {
 const token = {
   id: 7,
   name: '工作电脑',
-  prefix: 'ldt_demo',
+  prefix: 'ppt_demo',
   wallet_id: 1,
   created_at: '2026-09-10T10:00:00Z',
   revoked_at: null,
@@ -151,7 +151,7 @@ describe('account console', () => {
     });
     const { client } = mount();
     const user = userEvent.setup();
-    await screen.findByRole('heading', { name: '登录 Loadout' });
+    await screen.findByRole('heading', { name: '登录 PluginPocket' });
     await user.click(screen.getByLabelText('用户名'));
     await user.type(screen.getByLabelText('用户名'), 'alice');
     await user.tab();
@@ -168,7 +168,7 @@ describe('account console', () => {
     expect(screen.getByText('4,200')).toBeVisible();
     await user.click(screen.getByRole('button', { name: '账号菜单' }));
     await user.click(screen.getByRole('menuitem', { name: '退出登录' }));
-    await screen.findByRole('heading', { name: '登录 Loadout' });
+    await screen.findByRole('heading', { name: '登录 PluginPocket' });
     expect(screen.queryByText('4,200')).not.toBeInTheDocument();
     expect(client.getQueryData(['account'])).toBeUndefined();
   });
@@ -248,7 +248,7 @@ describe('account console', () => {
       if (url.startsWith('/api/v1/account/tokens')) {
         if (init.method === 'POST') {
           created = true;
-          return Response.json({ token: 'ldt_only_once_secret', item: token });
+          return Response.json({ token: 'ppt_only_once_secret', item: token });
         }
         if (init.method === 'DELETE') {
           revoked = true;
@@ -273,7 +273,7 @@ describe('account console', () => {
     await user.click(await screen.findByRole('button', { name: '创建令牌' }));
     await user.type(screen.getByLabelText('令牌名称'), '工作电脑');
     await user.click(screen.getByRole('button', { name: '创建令牌' }));
-    expect(await screen.findByText('ldt_only_once_secret')).toBeVisible();
+    expect(await screen.findByText('ppt_only_once_secret')).toBeVisible();
     expect(
       JSON.stringify(
         client
@@ -281,11 +281,11 @@ describe('account console', () => {
           .getAll()
           .map((q) => q.state.data),
       ),
-    ).not.toContain('ldt_only_once_secret');
+    ).not.toContain('ppt_only_once_secret');
     await user.click(
       screen.getByRole('button', { name: '我已保存，隐藏令牌' }),
     );
-    expect(screen.queryByText('ldt_only_once_secret')).not.toBeInTheDocument();
+    expect(screen.queryByText('ppt_only_once_secret')).not.toBeInTheDocument();
     await user.keyboard('{Escape}');
     await user.click(screen.getByRole('button', { name: '撤销 工作电脑' }));
     expect(screen.getByRole('button', { name: '确认撤销' })).toBeVisible();
@@ -348,7 +348,7 @@ describe('account console', () => {
     );
     mount('/tokens');
     expect(
-      await screen.findByRole('heading', { name: '登录 Loadout' }),
+      await screen.findByRole('heading', { name: '登录 PluginPocket' }),
     ).toBeVisible();
     expect(
       screen.queryByRole('button', { name: '创建令牌' }),
@@ -430,7 +430,7 @@ describe('recovery and navigation', () => {
       url.startsWith('/api/v1/account/tokens')
         ? Response.json(
             init.method === 'POST'
-              ? { token: 'ldt_only_once_secret', item: token }
+              ? { token: 'ppt_only_once_secret', item: token }
               : { items: [token], next_cursor: '' },
           )
         : undefined,
@@ -441,7 +441,7 @@ describe('recovery and navigation', () => {
     await user.type(await screen.findByLabelText('令牌名称'), '工作电脑');
     await user.click(screen.getByRole('button', { name: '创建令牌' }));
     await user.click(await screen.findByRole('button', { name: '复制令牌' }));
-    expect(await navigator.clipboard.readText()).toBe('ldt_only_once_secret');
+    expect(await navigator.clipboard.readText()).toBe('ppt_only_once_secret');
     await user.click(
       screen.getByRole('button', { name: '我已保存，隐藏令牌' }),
     );
@@ -452,7 +452,7 @@ describe('recovery and navigation', () => {
       screen.getByRole('link', { name: '网关令牌', hidden: true }),
     );
     await screen.findByRole('heading', { name: '网关令牌' });
-    expect(screen.queryByText('ldt_only_once_secret')).not.toBeInTheDocument();
+    expect(screen.queryByText('ppt_only_once_secret')).not.toBeInTheDocument();
   });
   it('opens and closes compact navigation with keyboard actions', async () => {
     network((url) =>
@@ -495,7 +495,7 @@ describe('recovery and navigation', () => {
     await user.click(screen.getByRole('button', { name: '账号菜单' }));
     await user.click(screen.getByRole('menuitem', { name: '退出登录' }));
     expect(
-      await screen.findByRole('heading', { name: '登录 Loadout' }),
+      await screen.findByRole('heading', { name: '登录 PluginPocket' }),
     ).toBeVisible();
   });
   it('cancels an in-flight account request when the app unmounts', () => {

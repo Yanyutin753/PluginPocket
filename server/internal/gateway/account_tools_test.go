@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Yanyutin753/loadout/server/internal/store"
+	"github.com/Yanyutin753/PluginPocket/server/internal/store"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -30,9 +30,9 @@ func accountToolsSession(t *testing.T, balance int64) (*storeHandle, *mcp.Client
 	if err := s.Pool.QueryRow(ctx, "INSERT INTO wallets(user_id,balance) VALUES ($1,$2) RETURNING id", user, balance).Scan(&wallet); err != nil {
 		t.Fatal(err)
 	}
-	raw := "ldt_account_tools_token"
+	raw := "ppt_account_tools_token"
 	sum := sha256.Sum256([]byte(raw))
-	if _, err := s.Pool.Exec(ctx, "INSERT INTO tokens(user_id,wallet_id,name,prefix,token_hash) VALUES ($1,$2,'test','ldt_test',$3)", user, wallet, hex.EncodeToString(sum[:])); err != nil {
+	if _, err := s.Pool.Exec(ctx, "INSERT INTO tokens(user_id,wallet_id,name,prefix,token_hash) VALUES ($1,$2,'test','ppt_test',$3)", user, wallet, hex.EncodeToString(sum[:])); err != nil {
 		t.Fatal(err)
 	}
 	g := New(s, Options{})

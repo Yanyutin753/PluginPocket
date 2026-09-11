@@ -9,8 +9,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-const AccessCookie = "loadout_session"
-const RefreshCookie = "loadout_refresh"
+const AccessCookie = "pluginpocket_session"
+const RefreshCookie = "pluginpocket_refresh"
 
 // Legacy sessions remain valid until their original expiry. Refresh tokens are
 // rejected by AccessDigest before this predicate is used.

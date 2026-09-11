@@ -39,27 +39,28 @@ jobs:
         if: github.event_name == 'push'
         with:
           tag_name: ${{ github.ref_name }}
-          name: 'Loadout ${{ github.ref_name }}'
+          name: 'PluginPocket ${{ github.ref_name }}'
           body: |
-            ## Loadout ${{ github.ref_name }}
+            ## PluginPocket ${{ github.ref_name }}
 
-            **Your AI, fully loaded.** 登录即武装的 MCP 生态。
+            **Your AI superpowers, in your pocket.** 登录即武装的 MCP 生态。
 
             ### 快速开始
             ```bash
             # Linux
-            curl -L https://github.com/Yanyutin753/loadout/releases/download/${{ github.ref_name }}/loadout-linux-amd64.tar.gz | tar xz
+            curl -L https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/pluginpocket-linux-amd64.tar.gz | tar xz
             # macOS ARM
-            curl -L https://github.com/Yanyutin753/loadout/releases/download/${{ github.ref_name }}/loadout-darwin-arm64.tar.gz | tar xz
+            curl -L https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/pluginpocket-darwin-arm64.tar.gz | tar xz
 
-            loadout login --server https://loadout.lambchat.com
-            loadout apply --clients codex
-            loadout install starter-pack
+            # Replace the example URL with your own server
+            pluginpocket login --server https://pluginpocket.example.com
+            pluginpocket apply --clients codex
+            pluginpocket install starter-pack
             ```
 
             ### Codex 插件市场
             ```bash
-            codex plugin marketplace add https://loadout.lambchat.com/marketplace.git
+            codex plugin marketplace add https://pluginpocket.example.com/marketplace.git
             ```
           draft: true
         env:
@@ -75,32 +76,32 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-musl
-            name: loadout-linux-amd64
+            name: pluginpocket-linux-amd64
             ext: ""
             use-cross: true
           - os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
-            name: loadout-linux-arm64
+            name: pluginpocket-linux-arm64
             ext: ""
             use-cross: false
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            name: loadout-windows-amd64
+            name: pluginpocket-windows-amd64
             ext: ".exe"
             use-cross: false
           - os: macos-latest
             target: aarch64-apple-darwin
-            name: loadout-darwin-arm64
+            name: pluginpocket-darwin-arm64
             ext: ""
             use-cross: false
           - os: macos-latest
             target: x86_64-apple-darwin
-            name: loadout-darwin-amd64
+            name: pluginpocket-darwin-amd64
             ext: ""
             use-cross: false
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -134,10 +135,10 @@ jobs:
         run: |
           cd cli/target/${{ matrix.target }}/release
           if [ "${{ runner.os }}" = "Windows" ]; then
-            7z a ../../../${{ matrix.name }}.zip loadout${{ matrix.ext }}
+            7z a ../../../${{ matrix.name }}.zip pluginpocket${{ matrix.ext }}
             gh release upload ${{ github.ref_name }} ../../../${{ matrix.name }}.zip --clobber
           else
-            tar czf ../../../${{ matrix.name }}.tar.gz loadout${{ matrix.ext }}
+            tar czf ../../../${{ matrix.name }}.tar.gz pluginpocket${{ matrix.ext }}
             gh release upload ${{ github.ref_name }} ../../../${{ matrix.name }}.tar.gz --clobber
           fi
 
@@ -147,7 +148,7 @@ jobs:
     needs: preflight
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -230,28 +231,28 @@ jobs:
         run: |
           set -euo pipefail
           root="desktop/target/${{ matrix.target }}/release/bundle"
-          dpkg-deb --extract "$root"/deb/*.deb "$RUNNER_TEMP/loadout-installed"
-          LOADOUT_DESKTOP_TEST_BIN="$RUNNER_TEMP/loadout-installed/usr/bin/loadout-desktop" cargo test --manifest-path desktop/Cargo.toml --locked --target ${{ matrix.target }} --test native_bridge
+          dpkg-deb --extract "$root"/deb/*.deb "$RUNNER_TEMP/pluginpocket-installed"
+          PLUGINPOCKET_DESKTOP_TEST_BIN="$RUNNER_TEMP/pluginpocket-installed/usr/bin/pluginpocket-desktop" cargo test --manifest-path desktop/Cargo.toml --locked --target ${{ matrix.target }} --test native_bridge
       - name: Verify macOS bundle seal and packaged bridge
         if: runner.os == 'macOS'
         shell: bash
         run: |
           set -euo pipefail
-          app="$PWD/desktop/target/${{ matrix.target }}/release/bundle/macos/Loadout.app"
+          app="$PWD/desktop/target/${{ matrix.target }}/release/bundle/macos/PluginPocket.app"
           test -f "$app/Contents/_CodeSignature/CodeResources"
           codesign --verify --deep --strict --verbose=2 "$app"
-          LOADOUT_DESKTOP_TEST_BIN="$app/Contents/MacOS/loadout-desktop" cargo test --manifest-path desktop/Cargo.toml --locked --target ${{ matrix.target }} --test native_bridge
+          PLUGINPOCKET_DESKTOP_TEST_BIN="$app/Contents/MacOS/pluginpocket-desktop" cargo test --manifest-path desktop/Cargo.toml --locked --target ${{ matrix.target }} --test native_bridge
       - name: Verify Windows MSI packaged bridge
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $msi = Get-ChildItem "desktop/target/${{ matrix.target }}/release/bundle/msi/*.msi" | Select-Object -First 1
-          $destination = Join-Path $env:RUNNER_TEMP 'loadout-installed'
+          $destination = Join-Path $env:RUNNER_TEMP 'pluginpocket-installed'
           $process = Start-Process msiexec.exe -ArgumentList "/a `"$($msi.FullName)`" /qn TARGETDIR=`"$destination`"" -WindowStyle Hidden -Wait -PassThru
           if ($process.ExitCode -notin @(0, 3010)) { throw "MSI extraction failed: $($process.ExitCode)" }
-          $binary = Get-ChildItem $destination -Recurse -Filter loadout-desktop.exe | Select-Object -First 1
+          $binary = Get-ChildItem $destination -Recurse -Filter pluginpocket-desktop.exe | Select-Object -First 1
           if (!$binary) { throw 'Installed bridge binary missing' }
-          $env:LOADOUT_DESKTOP_TEST_BIN = $binary.FullName
+          $env:PLUGINPOCKET_DESKTOP_TEST_BIN = $binary.FullName
           cargo test --manifest-path desktop/Cargo.toml --locked --target ${{ matrix.target }} --test native_bridge
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require all installers and signatures, collect checksums
@@ -314,7 +315,7 @@ jobs:
           merge-multiple: true
           path: release-assets
       - run: sudo apt-get update && sudo apt-get install -y minisign
-      - name: Verify every installer against the one Loadout public key
+      - name: Verify every installer against the one PluginPocket public key
         shell: bash
         run: |
           set -euo pipefail

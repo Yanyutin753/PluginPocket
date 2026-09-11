@@ -1,4 +1,4 @@
-// loadout-export 将 Loadout 市场导出为 Codex 官方插件市场目录树。
+// pluginpocket-export 将 PluginPocket 市场导出为 Codex 官方插件市场目录树。
 // 产物推送 git 仓库后，用户执行 `codex plugin marketplace add owner/repo` 即接入。
 package main
 
@@ -12,20 +12,20 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Yanyutin753/loadout/server/internal/config"
-	"github.com/Yanyutin753/loadout/server/internal/filestore"
-	"github.com/Yanyutin753/loadout/server/internal/marketplace"
+	"github.com/Yanyutin753/PluginPocket/server/internal/config"
+	"github.com/Yanyutin753/PluginPocket/server/internal/filestore"
+	"github.com/Yanyutin753/PluginPocket/server/internal/marketplace"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func main() {
-	database := flag.String("database", os.Getenv("LOADOUT_DATABASE_URL"), "PostgreSQL URL（只读）")
+	database := flag.String("database", os.Getenv("PLUGINPOCKET_DATABASE_URL"), "PostgreSQL URL（只读）")
 	out := flag.String("out", "", "输出目录（必需，建议指向干净的 git 工作区）")
-	name := flag.String("name", "loadout", "市场标识（kebab-case）")
-	display := flag.String("display", "Loadout 插件市场", "市场显示名")
+	name := flag.String("name", "pluginpocket", "市场标识（kebab-case）")
+	display := flag.String("display", "PluginPocket 插件市场", "市场显示名")
 	flag.Parse()
 	if *database == "" || *out == "" {
-		fmt.Fprintln(os.Stderr, "loadout-export: --database and --out are required")
+		fmt.Fprintln(os.Stderr, "pluginpocket-export: --database and --out are required")
 		os.Exit(2)
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -47,8 +47,8 @@ func main() {
 	}
 	entries, unresolved, err := marketplace.LoadExportInputs(deadline, pool, marketplace.Options{
 		Files:   files,
-		BaseURL: os.Getenv("LOADOUT_GITHUB_API"),
-		Token:   os.Getenv("LOADOUT_GITHUB_TOKEN"),
+		BaseURL: os.Getenv("PLUGINPOCKET_GITHUB_API"),
+		Token:   os.Getenv("PLUGINPOCKET_GITHUB_TOKEN"),
 	})
 	if err != nil {
 		fail(err)
@@ -86,6 +86,6 @@ func main() {
 }
 
 func fail(err error) {
-	fmt.Fprintln(os.Stderr, "loadout-export:", err)
+	fmt.Fprintln(os.Stderr, "pluginpocket-export:", err)
 	os.Exit(1)
 }

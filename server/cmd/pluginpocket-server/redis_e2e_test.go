@@ -16,7 +16,7 @@ import (
 )
 
 func TestProductJourneyRedisSharedCatalogAndOutage(t *testing.T) {
-	if os.Getenv("LOADOUT_TEST_REDIS_URL") == "" {
+	if os.Getenv("PLUGINPOCKET_TEST_REDIS_URL") == "" {
 		t.Skip("real Redis required")
 	}
 	f := newProductFixture(t)

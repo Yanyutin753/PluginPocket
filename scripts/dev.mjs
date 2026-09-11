@@ -6,12 +6,12 @@ import net from 'node:net';
 import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
-const runDir = resolve(process.env.LOADOUT_RUN_DIR || '.loadout');
+const runDir = resolve(process.env.PLUGINPOCKET_RUN_DIR || '.pluginpocket');
 const socketPath = resolve(runDir, 'dev.sock');
 const logPath = resolve(runDir, 'dev.log');
-const addr = process.env.LOADOUT_ADDR || '127.0.0.1:8787';
-const api = process.env.LOADOUT_API_ORIGIN || `http://${addr}`;
-const web = `http://127.0.0.1:${process.env.LOADOUT_DEV_PORT || 5173}`;
+const addr = process.env.PLUGINPOCKET_ADDR || '127.0.0.1:8787';
+const api = process.env.PLUGINPOCKET_API_ORIGIN || `http://${addr}`;
+const web = `http://127.0.0.1:${process.env.PLUGINPOCKET_DEV_PORT || 5173}`;
 
 function control(action) {
   return new Promise((resolve, reject) => {
@@ -108,7 +108,7 @@ async function supervise() {
     child = spawn('pnpm', ['dev'], {
       detached: true,
       stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...process.env, LOADOUT_API_ORIGIN: api },
+      env: { ...process.env, PLUGINPOCKET_API_ORIGIN: api },
     });
     child.stdout.pipe(process.stdout);
     child.stderr.pipe(process.stderr);
@@ -136,9 +136,9 @@ async function supervise() {
         const page = await fetch(web, { signal: AbortSignal.timeout(1_000) });
         if (
           local.ok &&
-          (await local.json()).service === 'loadout' &&
+          (await local.json()).service === 'pluginpocket' &&
           health.ok &&
-          (await health.json()).service === 'loadout' &&
+          (await health.json()).service === 'pluginpocket' &&
           page.ok &&
           !failure
         ) {

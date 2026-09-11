@@ -29,7 +29,7 @@ export default function VerifyEmailPage() {
         <PreferencesControls />
       </div>
       <Heading title={t('验证邮箱')} artwork="verify-email">
-        {t('确认将此邮箱用于你的 Loadout 账号。')}
+        {t('确认将此邮箱用于你的 PluginPocket 账号。')}
       </Heading>
       {verify.isSuccess ? (
         <p role="status">{t('邮箱验证成功。')}</p>

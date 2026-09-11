@@ -12,9 +12,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Yanyutin753/loadout/server/internal/cache"
-	"github.com/Yanyutin753/loadout/server/internal/httpapi"
-	"github.com/Yanyutin753/loadout/server/internal/store"
+	"github.com/Yanyutin753/PluginPocket/server/internal/cache"
+	"github.com/Yanyutin753/PluginPocket/server/internal/httpapi"
+	"github.com/Yanyutin753/PluginPocket/server/internal/store"
 	"github.com/dop251/goja"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"golang.org/x/sync/errgroup"
@@ -120,7 +120,7 @@ func (g *Gateway) invalidateLocal() {
 func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	raw, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
-	if !ok || !strings.HasPrefix(raw, "ldt_") || g.store == nil {
+	if !ok || !strings.HasPrefix(raw, "ppt_") || g.store == nil {
 		httpapi.Fail(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
@@ -145,7 +145,7 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		httpapi.Fail(w, http.StatusServiceUnavailable, "gateway_unavailable")
 		return
 	}
-	server := mcp.NewServer(&mcp.Implementation{Name: "loadout", Version: "0.2.0"}, nil)
+	server := mcp.NewServer(&mcp.Implementation{Name: "pluginpocket", Version: "0.2.0"}, nil)
 	for _, binding := range bindings {
 		server.AddTool(binding.definition, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			return g.call(ctx, principal, binding, req.Params.Arguments), nil
@@ -155,7 +155,7 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.NewCrossOriginProtection().Handler(handler).ServeHTTP(w, r)
 }
 func toolError(message string) *mcp.CallToolResult {
-	return &mcp.CallToolResult{IsError: true, Content: []mcp.Content{&mcp.TextContent{Text: "[loadout] " + message}}}
+	return &mcp.CallToolResult{IsError: true, Content: []mcp.Content{&mcp.TextContent{Text: "[pluginpocket] " + message}}}
 }
 func toolText(message string) *mcp.CallToolResult {
 	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: message}}}
@@ -290,8 +290,8 @@ func markUnsettled(result *mcp.CallToolResult) {
 	}
 	result.IsError = true
 	for _, block := range result.Content {
-		if text, ok := block.(*mcp.TextContent); ok && !strings.HasPrefix(text.Text, "[loadout]") {
-			text.Text = "[loadout] 结算检查未通过，本次不扣费：" + text.Text
+		if text, ok := block.(*mcp.TextContent); ok && !strings.HasPrefix(text.Text, "[pluginpocket]") {
+			text.Text = "[pluginpocket] 结算检查未通过，本次不扣费：" + text.Text
 		}
 	}
 }

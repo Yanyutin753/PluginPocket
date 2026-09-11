@@ -20,7 +20,7 @@ func TestHealth(t *testing.T) {
 			if err := json.Unmarshal(res.Body.Bytes(), &body); err != nil {
 				t.Fatal(err)
 			}
-			if res.Code != 200 || body["status"] != "ok" || body["service"] != "loadout" || body["version"] != "test-version" {
+			if res.Code != 200 || body["status"] != "ok" || body["service"] != "pluginpocket" || body["version"] != "test-version" {
 				t.Fatalf("unexpected health: %d %v", res.Code, body)
 			}
 			if res.Header().Get("Cache-Control") != "no-store" {
@@ -35,13 +35,13 @@ func TestHealth(t *testing.T) {
 
 func TestRoutingBoundaries(t *testing.T) {
 	web := t.TempDir()
-	if err := os.WriteFile(filepath.Join(web, "index.html"), []byte("<!doctype html><title>Loadout</title>"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(web, "index.html"), []byte("<!doctype html><title>PluginPocket</title>"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Mkdir(filepath.Join(web, "assets"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(web, "assets", "app.js"), []byte("console.log('loadout')"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(web, "assets", "app.js"), []byte("console.log('pluginpocket')"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	handler := New(web, "test")
@@ -50,8 +50,8 @@ func TestRoutingBoundaries(t *testing.T) {
 		status       int
 		contains     string
 	}{
-		{"GET", "/", 200, "<title>Loadout</title>"},
-		{"GET", "/dashboard", 200, "<title>Loadout</title>"},
+		{"GET", "/", 200, "<title>PluginPocket</title>"},
+		{"GET", "/dashboard", 200, "<title>PluginPocket</title>"},
 		{"GET", "/assets/app.js", 200, "console.log"},
 		{"GET", "/assets/missing.js", 404, "not_found"},
 		{"GET", "/assets/", 404, "not_found"},

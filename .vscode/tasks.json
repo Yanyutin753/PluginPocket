@@ -2,7 +2,7 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Loadout: dev",
+      "label": "PluginPocket: dev",
       "type": "shell",
       "command": "pnpm run dev",
       "options": { "cwd": "${workspaceFolder}" },

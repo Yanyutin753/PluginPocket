@@ -66,9 +66,9 @@ impl LocalClient {
         let home = std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" })
             .map(PathBuf::from)
             .ok_or("home directory is unavailable")?;
-        let config_path = std::env::var_os("LOADOUT_CONFIG")
+        let config_path = std::env::var_os("PLUGINPOCKET_CONFIG")
             .map(PathBuf::from)
-            .unwrap_or_else(|| home.join(".loadout/config.json"));
+            .unwrap_or_else(|| home.join(".pluginpocket/config.json"));
         Self::new(
             home,
             config_path,

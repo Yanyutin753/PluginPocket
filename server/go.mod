@@ -1,4 +1,4 @@
-module github.com/Yanyutin753/loadout/server
+module github.com/Yanyutin753/PluginPocket/server
 
 go 1.27.1
 

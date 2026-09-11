@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Yanyutin753/loadout/server/internal/store"
+	"github.com/Yanyutin753/PluginPocket/server/internal/store"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -27,9 +27,9 @@ func settlementFixture(t *testing.T, settlement string) (*Gateway, store.Princip
 	if err := s.Pool.QueryRow(ctx, "INSERT INTO wallets(user_id,balance) VALUES ($1,5) RETURNING id", user).Scan(&wallet); err != nil {
 		t.Fatal(err)
 	}
-	raw := "ldt_settlement_token"
+	raw := "ppt_settlement_token"
 	sum := sha256.Sum256([]byte(raw))
-	if err := s.Pool.QueryRow(ctx, "INSERT INTO tokens(user_id,wallet_id,name,prefix,token_hash) VALUES ($1,$2,'t','ldt_t',$3) RETURNING id", user, wallet, hex.EncodeToString(sum[:])).Scan(&token); err != nil {
+	if err := s.Pool.QueryRow(ctx, "INSERT INTO tokens(user_id,wallet_id,name,prefix,token_hash) VALUES ($1,$2,'t','ppt_t',$3) RETURNING id", user, wallet, hex.EncodeToString(sum[:])).Scan(&token); err != nil {
 		t.Fatal(err)
 	}
 	remote := mcp.NewServer(&mcp.Implementation{Name: "settle", Version: "1"}, nil)

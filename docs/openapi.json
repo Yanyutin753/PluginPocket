@@ -1,9 +1,9 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Loadout HTTP API",
+    "title": "PluginPocket HTTP API",
     "version": "0.2.0",
-    "description": "实际Go app/identity/运维路由。网页会话与ldt_网关令牌分离；业务写请求校验Origin；外部支付目前不可用。Body总大小app默认16KiB、技能发布50MiB（另验32文件/单文件8MiB/共32MiB）、identity4KiB；字符串长度限制以Go UTF-8字节校验为准，JSON Schema maxLength仅作客户端提示。"
+    "description": "实际Go app/identity/运维路由。网页会话与ppt_网关令牌分离；业务写请求校验Origin；外部支付目前不可用。Body总大小app默认16KiB、技能发布50MiB（另验32文件/单文件8MiB/共32MiB）、identity4KiB；字符串长度限制以Go UTF-8字节校验为准，JSON Schema maxLength仅作客户端提示。"
   },
   "servers": [
     {
@@ -235,7 +235,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "loadout_session AT 与 loadout_refresh RT；均 HttpOnly、SameSite=Lax、Path=/，生产Secure；默认900/604800秒，系统配置可热更新。"
+                "description": "pluginpocket_session AT 与 pluginpocket_refresh RT；均 HttpOnly、SameSite=Lax、Path=/，生产Secure；默认900/604800秒，系统配置可热更新。"
               }
             }
           },
@@ -308,7 +308,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "loadout_session AT 与 loadout_refresh RT；均 HttpOnly、SameSite=Lax、Path=/，生产Secure；默认900/604800秒，系统配置可热更新。"
+                "description": "pluginpocket_session AT 与 pluginpocket_refresh RT；均 HttpOnly、SameSite=Lax、Path=/，生产Secure；默认900/604800秒，系统配置可热更新。"
               }
             }
           },
@@ -438,7 +438,7 @@
         "operationId": "get_api_v1_account_verify",
         "summary": "验证网关令牌",
         "tags": ["账号"],
-        "description": "仅ldt_ Bearer，返回该令牌钱包余额与启用预设池key。远程工具的具体命名空间工具用MCP tools/list查询。",
+        "description": "仅ppt_ Bearer，返回该令牌钱包余额与启用预设池key。远程工具的具体命名空间工具用MCP tools/list查询。",
         "responses": {
           "200": {
             "description": "成功",
@@ -767,7 +767,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "example": "attachment; filename=\"loadout-usage.csv\""
+                "example": "attachment; filename=\"pluginpocket-usage.csv\""
               }
             }
           },
@@ -965,7 +965,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "example": "attachment; filename=\"loadout-usage.csv\""
+                "example": "attachment; filename=\"pluginpocket-usage.csv\""
               }
             }
           },
@@ -2854,7 +2854,7 @@
                     "token": {
                       "type": "string",
                       "minLength": 1,
-                      "pattern": "^ldt_",
+                      "pattern": "^ppt_",
                       "description": "仅首次领取显示明文。"
                     }
                   },
@@ -3269,7 +3269,7 @@
         "operationId": "post_mcp",
         "summary": "MCP Streamable HTTP / JSON-RPC",
         "tags": ["MCP"],
-        "description": "官方MCP Go SDK stateless + JSONResponse。调用initialize、notifications/initialized、tools/list、tools/call等标准MCP方法；不由本OpenAPI重新定义全部MCP协议。仅POST，认证ldt_；请求体上限1MiB。",
+        "description": "官方MCP Go SDK stateless + JSONResponse。调用initialize、notifications/initialized、tools/list、tools/call等标准MCP方法；不由本OpenAPI重新定义全部MCP协议。仅POST，认证ppt_；请求体上限1MiB。",
         "responses": {
           "200": {
             "description": "SDK JSON-RPC响应；工具失败可为result.isError=true。",
@@ -4114,10 +4114,10 @@
         "operationId": "post_api_v1_auth_refresh",
         "summary": "刷新浏览器访问凭据",
         "tags": ["账号"],
-        "description": "使用 HttpOnly loadout_refresh Cookie 签发新 AT；RT 绝对期限不延长。共享 PostgreSQL，支持无粘性多副本。",
+        "description": "使用 HttpOnly pluginpocket_refresh Cookie 签发新 AT；RT 绝对期限不延长。共享 PostgreSQL，支持无粘性多副本。",
         "responses": {
           "204": {
-            "description": "成功，Set-Cookie 更新 loadout_session"
+            "description": "成功，Set-Cookie 更新 pluginpocket_session"
           },
           "401": {
             "$ref": "#/components/responses/Error"
@@ -4233,19 +4233,19 @@
       "CookieSession": {
         "type": "apiKey",
         "in": "cookie",
-        "name": "loadout_session",
+        "name": "pluginpocket_session",
         "description": "HttpOnly、SameSite=Lax，默认900秒opaque AT；生产Secure。旧7天session在原期限内兼容。"
       },
       "GatewayToken": {
         "type": "http",
         "scheme": "bearer",
-        "bearerFormat": "ldt_ token",
+        "bearerFormat": "ppt_ token",
         "description": "网页会话不能替代此令牌。"
       },
       "refreshCookie": {
         "type": "apiKey",
         "in": "cookie",
-        "name": "loadout_refresh"
+        "name": "pluginpocket_refresh"
       }
     },
     "schemas": {
@@ -4322,7 +4322,7 @@
             "const": "ok"
           },
           "service": {
-            "const": "loadout"
+            "const": "pluginpocket"
           },
           "version": {
             "type": "string",
@@ -4510,7 +4510,7 @@
           "token": {
             "type": "string",
             "minLength": 1,
-            "pattern": "^ldt_",
+            "pattern": "^ppt_",
             "description": "只在本次响应显示明文。"
           },
           "item": {

@@ -1,19 +1,31 @@
-use loadout::LocalClient;
+use pluginpocket::LocalClient;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
 #[serde(tag = "action", rename_all = "snake_case", deny_unknown_fields)]
 pub enum LocalCommand {
-    Login { server: String, token: String },
+    Login {
+        server: String,
+        token: String,
+    },
     Logout {},
     Status {},
     Clients {},
-    Doctor { server: Option<String> },
-    Apply { clients: Vec<loadout::ClientKind> },
-    Remove { clients: Vec<loadout::ClientKind> },
+    Doctor {
+        server: Option<String>,
+    },
+    Apply {
+        clients: Vec<pluginpocket::ClientKind>,
+    },
+    Remove {
+        clients: Vec<pluginpocket::ClientKind>,
+    },
 }
 
-pub fn execute(local: &LocalClient, command: LocalCommand) -> loadout::Result<serde_json::Value> {
+pub fn execute(
+    local: &LocalClient,
+    command: LocalCommand,
+) -> pluginpocket::Result<serde_json::Value> {
     let value = match command {
         LocalCommand::Login { server, token } => {
             serde_json::to_value(local.login(&server, &token)?)

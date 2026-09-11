@@ -12,13 +12,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Yanyutin753/loadout/server/internal/store"
+	"github.com/Yanyutin753/PluginPocket/server/internal/store"
 	"github.com/jackc/pgx/v5"
 )
 
 func settingsDB(t *testing.T) *store.Store {
 	t.Helper()
-	raw := os.Getenv("LOADOUT_TEST_DATABASE_URL")
+	raw := os.Getenv("PLUGINPOCKET_TEST_DATABASE_URL")
 	if raw == "" {
 		t.Skip("real PostgreSQL required")
 	}
@@ -68,12 +68,12 @@ func writeSettings(t *testing.T, m *Manager, v Values, revision int64) error {
 
 func TestSettingsPersistAcrossManagersEncryptSecretsAndRejectStaleWrites(t *testing.T) {
 	s := settingsDB(t)
-	m := &Manager{Pool: s.Pool, Defaults: Values{InitialCredits: 42}, Key: bytes.Repeat([]byte{1}, 32), Origin: "https://loadout.test"}
+	m := &Manager{Pool: s.Pool, Defaults: Values{InitialCredits: 42}, Key: bytes.Repeat([]byte{1}, 32), Origin: "https://pluginpocket.test"}
 	initial, err := m.Read(t.Context(), nil)
 	if err != nil || initial.Revision != 0 || initial.InitialCredits != 42 {
 		t.Fatalf("defaults: revision=%d credits=%d error=%v", initial.Revision, initial.InitialCredits, err)
 	}
-	v := Values{InitialCredits: 73, GitHubEnabled: true, GitHubClientID: "client", GitHubClientSecret: "private-github-secret", SMTPEnabled: true, SMTPAddress: "smtp.example.com:587", SMTPFrom: "loadout@example.com", SMTPUsername: "mailer", SMTPPassword: "private-mail-password"}
+	v := Values{InitialCredits: 73, GitHubEnabled: true, GitHubClientID: "client", GitHubClientSecret: "private-github-secret", SMTPEnabled: true, SMTPAddress: "smtp.example.com:587", SMTPFrom: "pluginpocket@example.com", SMTPUsername: "mailer", SMTPPassword: "private-mail-password"}
 	if err = writeSettings(t, m, v, 0); err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +118,7 @@ func TestSettingsPersistAcrossManagersEncryptSecretsAndRejectStaleWrites(t *test
 
 func TestSettingsWithoutEncryptionKeyOnlySaveValuesWithoutSecrets(t *testing.T) {
 	s := settingsDB(t)
-	m := &Manager{Pool: s.Pool, Origin: "https://loadout.test"}
+	m := &Manager{Pool: s.Pool, Origin: "https://pluginpocket.test"}
 	v := Values{InitialCredits: 19}
 	if err := writeSettings(t, m, v, 0); err != nil {
 		t.Fatal(err)
@@ -161,7 +161,7 @@ func TestSettingsValidation(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			v := Values{}
 			change(&v)
-			if err := v.Validate("https://loadout.test"); !errors.Is(err, ErrInvalid) {
+			if err := v.Validate("https://pluginpocket.test"); !errors.Is(err, ErrInvalid) {
 				t.Fatalf("invalid values accepted: %v", err)
 			}
 		})

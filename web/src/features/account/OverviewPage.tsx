@@ -35,7 +35,7 @@ export default function OverviewPage() {
             <br />
             {t('必先利其器。')}
           </div>
-          <h1>{t('给你的 AI，装上超能力。')}</h1>
+          <h1>{t('把 AI 的超能力，装进口袋。')}</h1>
           <p>{t('一次接入，让工具进入你的工作流。')}</p>
           <Button asChild className="workshop-action" size="lg">
             <Link to="/tokens">
@@ -116,7 +116,7 @@ export default function OverviewPage() {
               onClick={async () => {
                 try {
                   await navigator.clipboard.writeText(
-                    `loadout login --server ${window.location.origin}\nloadout apply`,
+                    `pluginpocket login --server ${window.location.origin}\npluginpocket apply`,
                   );
                   setCopyMessage('接入命令已复制');
                 } catch {
@@ -130,11 +130,11 @@ export default function OverviewPage() {
           </div>
           <div className="command-lines">
             <code>
-              <span aria-hidden="true">$ </span>loadout login --server{' '}
+              <span aria-hidden="true">$ </span>pluginpocket login --server{' '}
               {window.location.origin}
             </code>
             <code>
-              <span aria-hidden="true">$ </span>loadout apply
+              <span aria-hidden="true">$ </span>pluginpocket apply
             </code>
           </div>
           <p>{t('登录时粘贴令牌。不要把令牌写在命令行参数中。')}</p>

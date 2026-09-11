@@ -209,7 +209,7 @@ function Shell({ publicCatalog = false }: { publicCatalog?: boolean }) {
       </a>
       <aside className="app-sidebar">
         <div className="brand-row">
-          <Link to="/" className="brand" aria-label={t('Loadout 首页')}>
+          <Link to="/" className="brand" aria-label={t('PluginPocket 首页')}>
             <img
               className="workshop-mark"
               src="/images/workshop-mark.webp"
@@ -218,7 +218,7 @@ function Shell({ publicCatalog = false }: { publicCatalog?: boolean }) {
               height="48"
             />
             <span>
-              <span className="brand-wordmark">Loadout</span>
+              <span className="brand-wordmark">PluginPocket</span>
               <small>{t('AI 装备工坊')}</small>
             </span>
           </Link>
@@ -393,8 +393,10 @@ function Shell({ publicCatalog = false }: { publicCatalog?: boolean }) {
                 width="28"
                 height="28"
               />
-              <span className="brand-wordmark">Loadout</span>
-              <span className="footer-tagline">{t('你的 AI，准备就绪。')}</span>
+              <span className="brand-wordmark">PluginPocket</span>
+              <span className="footer-tagline">
+                {t('把 AI 的超能力，装进口袋。')}
+              </span>
             </div>
             <Link to="/health" className="footer-status">
               <Activity aria-hidden="true" />

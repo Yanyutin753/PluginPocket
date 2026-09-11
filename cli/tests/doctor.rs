@@ -7,7 +7,7 @@ use std::{
 
 fn cli(args: &[&str]) -> Output {
     let dir = tempfile::tempdir().unwrap();
-    let mut child = Command::new(env!("CARGO_BIN_EXE_loadout"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_pluginpocket"))
         .args(args)
         .env("HOME", dir.path())
         .env("USERPROFILE", dir.path())
@@ -71,7 +71,7 @@ fn serve_once(status: &str, body: &str) -> (String, thread::JoinHandle<String>) 
 fn doctor_checks_real_health_endpoint() {
     let (url, task) = serve_once(
         "200 OK",
-        r#"{"status":"ok","service":"loadout","version":"test"}"#,
+        r#"{"status":"ok","service":"pluginpocket","version":"test"}"#,
     );
     let output = cli(&["doctor", "--server", &url]);
     assert!(output.status.success(), "{:?}", output);
@@ -94,16 +94,16 @@ fn doctor_rejects_error_and_unrelated_servers_without_exposing_response() {
         ),
         (
             "200 OK",
-            r#"{"status":"down","service":"loadout","version":"test"}"#,
+            r#"{"status":"down","service":"pluginpocket","version":"test"}"#,
         ),
         (
             "200 OK",
-            r#"{"status":"ok","service":"loadout","version":""}"#,
+            r#"{"status":"ok","service":"pluginpocket","version":""}"#,
         ),
         ("302 Found", "secret-token-value"),
         (
             "200 OK",
-            r#"{"status":"ok","service":"loadout","version":"test\u001b[2J\nfake"}"#,
+            r#"{"status":"ok","service":"pluginpocket","version":"test\u001b[2J\nfake"}"#,
         ),
     ] {
         let (url, task) = serve_once(status, body);
@@ -190,6 +190,6 @@ fn cli_exposes_only_implemented_commands() {
         assert!(help.contains(command));
     }
     let output = cli(&["--version"]);
-    assert!(String::from_utf8_lossy(&output.stdout).contains("loadout 0.1.0"));
+    assert!(String::from_utf8_lossy(&output.stdout).contains("pluginpocket 0.1.0"));
     assert!(!cli(&["login"]).status.success());
 }

@@ -60,11 +60,11 @@ it('switches the entire login form to English without losing entered values and 
     'English',
   );
   expect(
-    await screen.findByRole('heading', { name: 'Log in to Loadout' }),
+    await screen.findByRole('heading', { name: 'Log in to PluginPocket' }),
   ).toBeVisible();
   expect(screen.getByLabelText('Username')).toHaveValue('alice');
   expect(document.documentElement.lang).toBe('en');
-  expect(localStorage.getItem('loadout.locale')).toBe('en');
+  expect(localStorage.getItem('pluginpocket.locale')).toBe('en');
   view.unmount();
   mount();
   expect(await screen.findByLabelText('Username')).toBeVisible();
@@ -75,7 +75,7 @@ it('persists explicit themes and responds to system changes only in system mode'
   const theme = await screen.findByRole('combobox', { name: '外观' });
   await chooseOption(user, theme, '深色');
   expect(document.documentElement.dataset.theme).toBe('dark');
-  expect(localStorage.getItem('loadout.theme')).toBe('dark');
+  expect(localStorage.getItem('pluginpocket.theme')).toBe('dark');
   await chooseOption(user, theme, '浅色');
   expect(document.documentElement.dataset.theme).toBe('light');
   await chooseOption(user, theme, '跟随系统');
@@ -91,8 +91,8 @@ it('persists explicit themes and responds to system changes only in system mode'
   );
 });
 it('ignores invalid stored values and remains usable when storage is blocked', async () => {
-  localStorage.setItem('loadout.locale', 'invalid');
-  localStorage.setItem('loadout.theme', 'invalid');
+  localStorage.setItem('pluginpocket.locale', 'invalid');
+  localStorage.setItem('pluginpocket.theme', 'invalid');
   vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
     throw new Error('blocked');
   });

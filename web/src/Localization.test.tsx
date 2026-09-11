@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import App from './App';
 import { chooseOption } from './test/select';
 
-beforeEach(() => localStorage.setItem('loadout.locale', 'en'));
+beforeEach(() => localStorage.setItem('pluginpocket.locale', 'en'));
 afterEach(() => localStorage.clear());
 
 function mount(
@@ -117,7 +117,7 @@ it('keeps user-provided names intact and updates token dates when switching lang
             {
               id: 1,
               name: '个人设置',
-              prefix: 'ldt_demo',
+              prefix: 'ppt_demo',
               wallet_id: 1,
               created_at: '2026-09-10T10:00:00Z',
               revoked_at: null,

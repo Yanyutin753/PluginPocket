@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/Yanyutin753/loadout/server/internal/settings"
+	"github.com/Yanyutin753/PluginPocket/server/internal/settings"
 )
 
 type runtimeSettingsView struct {

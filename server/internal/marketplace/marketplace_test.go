@@ -10,13 +10,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Yanyutin753/loadout/server/internal/store"
+	"github.com/Yanyutin753/PluginPocket/server/internal/store"
 	"github.com/jackc/pgx/v5"
 )
 
 func marketplaceDB(t *testing.T) *store.Store {
 	t.Helper()
-	raw := os.Getenv("LOADOUT_TEST_DATABASE_URL")
+	raw := os.Getenv("PLUGINPOCKET_TEST_DATABASE_URL")
 	if raw == "" {
 		t.Skip("real PostgreSQL URL required")
 	}
@@ -79,7 +79,7 @@ func githubFixture(t *testing.T, token string, bodies ...string) *httptest.Serve
 const firstPage = `{"total_count":3,"items":[
  {"full_name":"github/github-mcp-server","name":"github-mcp-server","description":"GitHub's official MCP Server","html_url":"https://github.com/github/github-mcp-server","homepage":"","stargazers_count":32852},
  {"full_name":"firecrawl/firecrawl-mcp-server","name":"firecrawl-mcp-server","description":"Firecrawl search","html_url":"https://github.com/firecrawl/firecrawl-mcp-server","homepage":"https://firecrawl.dev","stargazers_count":7431},
- {"full_name":"loadout/has we!rd chars/and-is-a-very-long-repository-name-indeed","name":"odd","description":"","html_url":"https://example/odd","homepage":"","stargazers_count":5}
+ {"full_name":"pluginpocket/has we!rd chars/and-is-a-very-long-repository-name-indeed","name":"odd","description":"","html_url":"https://example/odd","homepage":"","stargazers_count":5}
 ]}`
 
 func TestFetchMapsRepositories(t *testing.T) {

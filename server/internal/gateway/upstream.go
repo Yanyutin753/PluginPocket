@@ -115,7 +115,7 @@ func (g *Gateway) upstream(ctx context.Context, row toolRow) (*upstreamSession, 
 		if err = json.Unmarshal(raw, &cfg); err != nil {
 			return nil, err
 		}
-		client := mcp.NewClient(&mcp.Implementation{Name: "loadout-upstream", Version: "0.2.0"}, nil)
+		client := mcp.NewClient(&mcp.Implementation{Name: "pluginpocket-upstream", Version: "0.2.0"}, nil)
 		var transport mcp.Transport
 		switch row.Kind {
 		case "stdio":

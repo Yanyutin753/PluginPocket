@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Yanyutin753/loadout/server/internal/auth"
-	"github.com/Yanyutin753/loadout/server/internal/store"
+	"github.com/Yanyutin753/PluginPocket/server/internal/auth"
+	"github.com/Yanyutin753/PluginPocket/server/internal/store"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -24,7 +24,7 @@ func reviewPrincipal(t *testing.T, s *store.Store) store.Principal {
 	if e := s.Pool.QueryRow(ctx, "INSERT INTO wallets(user_id,balance) VALUES($1,10) RETURNING id", p.UserID).Scan(&p.WalletID); e != nil {
 		t.Fatal(e)
 	}
-	if e := s.Pool.QueryRow(ctx, "INSERT INTO tokens(user_id,wallet_id,name,prefix,token_hash) VALUES($1,$2,'review','ldt_',$3) RETURNING id", p.UserID, p.WalletID, auth.Digest("ldt_review")).Scan(&p.TokenID); e != nil {
+	if e := s.Pool.QueryRow(ctx, "INSERT INTO tokens(user_id,wallet_id,name,prefix,token_hash) VALUES($1,$2,'review','ppt_',$3) RETURNING id", p.UserID, p.WalletID, auth.Digest("ppt_review")).Scan(&p.TokenID); e != nil {
 		t.Fatal(e)
 	}
 	return p
@@ -99,7 +99,7 @@ func TestReviewMalformedBuiltinSchema(t *testing.T) {
 		}
 	}()
 	req := httptest.NewRequest("POST", "/mcp", strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"review","version":"1"}}}`))
-	req.Header.Set("Authorization", "Bearer ldt_review")
+	req.Header.Set("Authorization", "Bearer ppt_review")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json, text/event-stream")
 	w := httptest.NewRecorder()
@@ -125,7 +125,7 @@ func TestGatewayAuthenticationDatabaseFailureIsRetryable(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancel()
 	req := httptest.NewRequest(http.MethodPost, "/mcp", nil).WithContext(ctx)
-	req.Header.Set("Authorization", "Bearer ldt_review")
+	req.Header.Set("Authorization", "Bearer ppt_review")
 	w := httptest.NewRecorder()
 	g.ServeHTTP(w, req)
 	if w.Code != http.StatusServiceUnavailable {
@@ -138,7 +138,7 @@ func TestGatewayAuthenticationDatabaseFailureIsRetryable(t *testing.T) {
 		t.Fatal(err)
 	}
 	req = httptest.NewRequest(http.MethodGet, "/mcp", nil)
-	req.Header.Set("Authorization", "Bearer ldt_review")
+	req.Header.Set("Authorization", "Bearer ppt_review")
 	w = httptest.NewRecorder()
 	g.ServeHTTP(w, req)
 	if w.Code != http.StatusMethodNotAllowed {

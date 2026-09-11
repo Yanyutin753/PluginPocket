@@ -1,6 +1,6 @@
 ---
-name: Loadout · AI 装备工坊
-description: 给你的 AI，装上超能力。
+name: PluginPocket · AI 装备工坊
+description: 把 AI 的超能力，装进口袋。
 colors:
   background: "#f5f5f7"
   foreground: "#202124"
@@ -20,7 +20,7 @@ colors:
 typography:
   brand:
     fontFamily: Bricolage Grotesque, Manrope, system-ui, sans-serif
-    fontSize: 24px
+    fontSize: 20px
     fontWeight: 750
   code:
     fontFamily: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace
@@ -54,7 +54,7 @@ components:
     height: 58px
 ---
 
-# Design System: Loadout
+# Design System: PluginPocket
 
 所有侧面板统一使用标题栏全屏/还原按钮，不再限于技能。只读详情同样支持，按钮使用通用“全屏”文案；全屏还原不绕过提交锁定。
 
@@ -169,7 +169,7 @@ Hero 按 alpha > 8 的完整画迹边界重构画布，保留铅笔阴影，约 
 ## 2026-09-11 细节更新
 
 - 公共首页 `/` 为产品落地页；工作空间概览位于 `/overview`，登录默认进入概览。
-- 品牌字标自托管 Bricolage Grotesque，750 字重、opsz 48、wdth 100、字距 -0.045em；只作用于 Loadout，正文不变。完整 OFL 与来源见 docs/third-party/BricolageGrotesque.md。
+- 品牌字标自托管 Bricolage Grotesque，750 字重、opsz 48、wdth 100、字距 -0.045em；只作用于 PluginPocket，正文不变。完整 OFL 与来源见 docs/third-party/BricolageGrotesque.md。
 - 导航操作统一 14px/20px、44px 点击高度。关键操作和选择文字保持单行；小屏允许整组调整位置。
 - 选择框使用共享 Radix Select；前置图标在触发按钮内，图标/文字/箭头间距 8px，两侧内边距 12px（手机偏好控件 8px）。鼠标选中只显示勾选，键盘使用中性焦点线，浅色 #62646c、深色 #b2b4bd。
 - 桌面侧栏支持 228px 展开与 80px 图标模式（更大断点原展开宽度规则保留）；移动端用原导航按钮。右上角账号菜单支持 Escape 返回焦点，左下角另有账号设置入口。
@@ -193,3 +193,9 @@ Hero 按 alpha > 8 的完整画迹边界重构画布，保留铅笔阴影，约 
 工具列表以名称、短说明、调用成本与文字状态组织，参数进入右侧详情；工具/套餐编辑、插件市场与安装、用户调账、令牌/兑换码创建、团队操作、邮箱及系统配置复用 SidePanel（已安装的 Radix Dialog）。桌面宽 560px、窄屏全宽、标题与关闭固定、正文独立滚动；Escape 与关闭返回触发入口，提交中和一次性凭据未隐藏时阻止误关。系统配置主页面只呈现真实状态摘要。
 
 抽屉标题 20px/700；工具记录标题沿用 15px，短说明 13px，成本和状态元信息 12px。
+
+## PluginPocket 品牌更名
+
+中文名为插件口袋；新字标沿用完整 Bricolage 字体，Web 为20px以适应较长名称。展开的桌面侧栏宽264px，为48px角色图标、字标和折叠按钮留足空间；窄屏继续使用原有换行导航。插画与配色保持既有工坊体系。
+
+原生桌面与托盘图标复用Web的web/public/icon-512.png薄荷绿工具箱角色，由Tauri工具派生各平台图标，保持品牌一致。

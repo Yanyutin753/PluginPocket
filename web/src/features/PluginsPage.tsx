@@ -353,21 +353,23 @@ function Detail({ slug }: { slug: string }) {
           </div>
           {query.data.item.gateway && (
             <p className="hint-text">
-              {t('浏览无需登录；使用网关托管工具前，请先登录 Loadout CLI。')}
+              {t(
+                '浏览无需登录；使用网关托管工具前，请先登录 PluginPocket CLI。',
+              )}
             </p>
           )}
           <div className="section-stack">
             <h2>{t('接入整个市场')}</h2>
             <InstallCommand
               key={`codex-${slug}`}
-              command={`codex plugin marketplace add ${query.data.origin || window.location.origin}/marketplace.git\ncodex plugin add ${query.data.item.slug} --marketplace loadout`}
+              command={`codex plugin marketplace add ${query.data.origin || window.location.origin}/marketplace.git\ncodex plugin add ${query.data.item.slug} --marketplace pluginpocket`}
             />
           </div>
           <div className="section-stack">
-            <h2>{t('使用 Loadout CLI 安装')}</h2>
+            <h2>{t('使用 PluginPocket CLI 安装')}</h2>
             <InstallCommand
               key={`cli-${slug}`}
-              command={`loadout install ${query.data.item.slug}`}
+              command={`pluginpocket install ${query.data.item.slug}`}
             />
           </div>
         </>
@@ -399,8 +401,8 @@ export default function PluginsPage({
         {slug ? <Detail slug={slug} /> : <Catalog />}
       </main>
       <footer className="landing-footer">
-        <span className="brand-wordmark">Loadout</span>
-        <span>{t('你的 AI，准备就绪。')}</span>
+        <span className="brand-wordmark">PluginPocket</span>
+        <span>{t('把 AI 的超能力，装进口袋。')}</span>
         <Link className="inline-action" to="/health">
           {t('服务状态')}
         </Link>
