@@ -152,7 +152,7 @@ func TestGitHubStateCrossesReplicasAndSurvivesOriginatingReplicaLoss(t *testing.
 					return
 				}
 				var databaseExpiry time.Time
-				if err := s.Pool.QueryRow(t.Context(), "SELECT expires_at FROM sessions WHERE session_hash=$1", auth.Digest(session)).Scan(&databaseExpiry); err != nil || !cookieExpiry.Equal(databaseExpiry.Truncate(time.Second)) {
+				if err := s.Pool.QueryRow(t.Context(), "SELECT expires_at FROM session_access WHERE access_hash=$1", auth.Digest(session)).Scan(&databaseExpiry); err != nil || !cookieExpiry.Equal(databaseExpiry.Truncate(time.Second)) {
 					t.Errorf("session cookie expiry differs from stored expiry: err=%v", err)
 				}
 				// The created session is immediately accepted on either replica.
@@ -180,7 +180,7 @@ func TestGitHubStateCrossesReplicasAndSurvivesOriginatingReplicaLoss(t *testing.
 		t.Fatalf("OAuth durable state users=%d sessions=%d grants=%d err=%v", users, sessions, grants, err)
 	}
 	var databaseLifetime bool
-	if err := s.Pool.QueryRow(t.Context(), "SELECT bool_and(expires_at=created_at+interval '7 days') FROM sessions").Scan(&databaseLifetime); err != nil || !databaseLifetime {
+	if err := s.Pool.QueryRow(t.Context(), "SELECT bool_and(expires_at>=created_at+interval '7 days' AND expires_at<created_at+interval '7 days 1 second') FROM sessions").Scan(&databaseLifetime); err != nil || !databaseLifetime {
 		t.Fatalf("OAuth sessions must use the database clock for their seven-day lifetime: valid=%v err=%v", databaseLifetime, err)
 	}
 	replay := identityHTTP(t, "GET", c.URL+path, "", cookies...)

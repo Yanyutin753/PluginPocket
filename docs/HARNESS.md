@@ -4,6 +4,8 @@ Harness 是同一套可执行的本地/CI 验证入口。所有命令从仓库�
 
 ## 工作循环
 
+公共插件路由增加 `PluginsPage.test.tsx` 匿名浏览/筛选/重试与 `PluginProxy.test.ts` 真实 Vite 代理；分布式进程旅程覆盖全部 React 页面直达、资源、公开目录与真实 Git clone/pull，再停掉一个副本复验。Git registry 跨副本历史、原子发布及 SQLite 失效触发器各有回归测试。
+
 1. 读 PLAN / API 与任务设计，写最小行为验收。
 2. 添加测试。实现不存在时先用可编译空壳建立测试入口，再运行到具体断言失败；编译/依赖错误仅为准备阶段，不算有效 RED。
 3. 记录 RED 命令、断言和失败原因，确认失败对应缺失行为。
@@ -21,11 +23,13 @@ pnpm --dir web test
 
 ## 入口
 
+桌面发行预检 `node --test tests/release-preflight.test.mjs` 已进入 `make check`，覆盖非法 tag、版本漂移和缺失签名配置。发行 workflow 使用原生多平台 runner，运行 desktop/UI 测试、解包 bridge 验证及独立 Minisign 验签；远程 CI 未运行时不得宣称跨平台已验收。详见 [桌面说明](../desktop/README.md#桌面发行)。
+
 | 命令 | 检查 |
 |---|---|
 | `make help` / `make` | 列出可用命令 |
 | `make setup` | 按锁文件安装 JS、Rust、Go 依赖 |
-| `make dev` | Go + Vite；退出时停止组合进程 |
+| `make dev` | Air 自动编译重启 Go + Vite；退出时停止组合进程 |
 | `make up` / `make down` | 后台启动并等待就绪 / 关闭当前实例 |
 | `make restart` / `make status` / `make logs` | 顺序重启 / 状态与地址 / 跟随日志 |
 | `make ready` | 完整 `check` 成功后再 `up` |
@@ -34,7 +38,7 @@ pnpm --dir web test
 | `make format` | 显式自动格式化 |
 | `make build` | React 生产资源、Go 二进制、Rust release 二进制 |
 | `make test-process` | 真正的进程退出码、SIGTERM、开发服务清理 |
-| `make test-dev` | 真实后台 Make 命令：就绪、重复启动、重启、停止、端口冲突、启动器异常退出与控制 socket 边界 |
+| `make test-dev` | 真实后台 Make 命令：就绪、重复启动、重启、停止、端口冲突、启动器异常退出与控制 socket 边界；隔离 Go fixture 验证源码重载、编译失败恢复与端口释放 |
 | `make integration` | 构建后用 Node 内置 test runner 验证真实 Go HTTP、生产静态资源与 Rust CLI |
 | `make test-e2e` / `pnpm test:e2e` | 构建四端后执行真实数据库、Web 生产/开发旅程、Rust/Tauri bridge、重启/并发/崩溃恢复 |
 | `make check` / `make test-all` | 数据库检查 → 四端 lint/test/build → 真实产品链路 → process/dev/HTTP integration，全流程失败即停止 |
@@ -77,3 +81,5 @@ Redis测试连接通过 `LOADOUT_TEST_REDIS_URL` 指定。每例隔离namespace�
 集群模板在 `deploy/kubernetes/`，变量全集与加载优先级见 [ENVIRONMENT](ENVIRONMENT.md)。变更配置时验证Compose实际渲染值、生产示例经Go Config.Load解析、Kubernetes官方版本schema，再由部署者在目标集群执行server dry-run。不要把静态schema验证写成真实HA切换演练。集群完整操作步骤见 [CLUSTER](CLUSTER.md)。
 
 Go lint 固定 golangci-lint 2.13.2；`make setup` 或首次 `make lint` 使用该版本官方安装脚本及校验后的发布二进制，安装到忽略目录 `build/tools/`。配置 `.golangci.yml` 同时用于本地与 CI，不忽略测试中的标准诊断。`make format` 使用同一版本 gofmt/goimports；`go mod tidy` 仅在依赖变更或整理时显式运行，lint 只检查差异。
+
+浏览器鉴权回归：BrowserAuth/BrowserRefresh 测试覆盖已有登录态、共享刷新与错误恢复；app/browser_auth_test.go 覆盖 AT/RT 期限、跨副本并发、撤销、单连接池、运行时热更新，SQLite 验证关联凭据级联撤销。证据见 2026-09-11-browser-auth 执行记录。

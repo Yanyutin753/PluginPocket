@@ -23,17 +23,8 @@ it('clears private data when a 401 arrived before the session listener mounted',
     'fetch',
     vi.fn((url: string) =>
       Promise.resolve(
-        url.endsWith('/account/me')
-          ? Response.json({
-              user: {
-                id: 1,
-                username: 'alice',
-                role: 'user',
-                balance: 99,
-                enabled: true,
-              },
-              summary: { today_calls: 0, month_cost: 0, token_count: 0 },
-            })
+        url.endsWith('/account/me') || url.endsWith('/auth/refresh')
+          ? Response.json({ error: 'unauthorized' }, { status: 401 })
           : Response.json({ items: [], next_cursor: '' }),
       ),
     ),

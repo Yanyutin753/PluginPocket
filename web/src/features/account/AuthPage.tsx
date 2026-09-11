@@ -1,14 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router';
 import { PreferencesControls } from '@/components/Preferences';
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { useI18n } from '@/i18n';
-import { metaQuery, request, resultSchema } from './api';
-import { ErrorNotice } from './shared';
+import { metaQuery, publicSessionQuery, request, resultSchema } from './api';
+import { ErrorNotice, Loading } from './shared';
 
 export default function AuthPage({ register = false }: { register?: boolean }) {
   const { t } = useI18n();
@@ -16,7 +16,17 @@ export default function AuthPage({ register = false }: { register?: boolean }) {
   const client = useQueryClient();
   const location = useLocation();
   const meta = useQuery(metaQuery);
+  const session = useQuery(publicSessionQuery);
   const navigate = useNavigate();
+  const from = location.state?.from;
+  const destination =
+    typeof from === 'string' &&
+    from.startsWith('/') &&
+    !from.startsWith('//') &&
+    !from.includes('\\') &&
+    !/^\/(login|register)([?#]|$)/.test(from)
+      ? from
+      : '/overview';
   const auth = useMutation({
     mutationFn: (data: { username: string; password: string }) =>
       request(`/auth/${register ? 'register' : 'login'}`, resultSchema, {
@@ -25,18 +35,25 @@ export default function AuthPage({ register = false }: { register?: boolean }) {
       }),
     onSuccess: () => {
       client.clear();
-      const from = location.state?.from;
-      navigate(
-        typeof from === 'string' &&
-          from.startsWith('/') &&
-          !from.startsWith('//') &&
-          !['/login', '/register'].includes(from)
-          ? from
-          : '/overview',
-        { replace: true },
-      );
+      navigate(destination, { replace: true });
     },
   });
+  if (session.isPending)
+    return (
+      <main className="standalone">
+        <Loading variant="page" />
+      </main>
+    );
+  if (session.error)
+    return (
+      <main className="standalone">
+        <ErrorNotice
+          error={session.error}
+          retry={() => void session.refetch()}
+        />
+      </main>
+    );
+  if (session.data) return <Navigate to={destination} replace />;
   return (
     <main className="auth-page">
       <header className="auth-topbar">

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { z } from 'zod';
 import { Pagination } from '@/components/Pagination';
+import { SidePanel } from '@/components/SidePanel';
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -53,39 +54,45 @@ export default function BillingPage() {
             : '—',
         })}
       </Heading>
-      <form
-        className="inline-form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          redeem.mutate();
-        }}
+      <SidePanel
+        title={t('兑换额度')}
+        trigger={t('兑换额度')}
+        locked={redeem.isPending}
       >
-        <FieldGroup className="min-w-0 flex-1">
-          <Field>
-            <FieldLabel htmlFor="redeem-code">{t('兑换码')}</FieldLabel>
-            <Input
-              id="redeem-code"
-              value={code}
-              onChange={(event) => setCode(event.target.value)}
-              required
-              autoComplete="off"
-              disabled={redeem.isPending}
-            />
-          </Field>
-        </FieldGroup>
-        <Button type="submit" disabled={redeem.isPending}>
-          {redeem.isPending ? t('正在兑换…') : t('兑换额度')}
-        </Button>
-      </form>
-      <ErrorNotice error={redeem.error} />
-      {redeem.data && (
-        <p role="status">
-          {t('已兑换 {credits} 额度，当前余额 {balance}。', {
-            credits: number(redeem.data.credits, locale),
-            balance: number(redeem.data.balance, locale),
-          })}
-        </p>
-      )}
+        <form
+          className="inline-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            redeem.mutate();
+          }}
+        >
+          <FieldGroup className="min-w-0 flex-1">
+            <Field>
+              <FieldLabel htmlFor="redeem-code">{t('兑换码')}</FieldLabel>
+              <Input
+                id="redeem-code"
+                value={code}
+                onChange={(event) => setCode(event.target.value)}
+                required
+                autoComplete="off"
+                disabled={redeem.isPending}
+              />
+            </Field>
+          </FieldGroup>
+          <Button type="submit" disabled={redeem.isPending}>
+            {redeem.isPending ? t('正在兑换…') : t('兑换额度')}
+          </Button>
+        </form>
+        <ErrorNotice error={redeem.error} />
+        {redeem.data && (
+          <p role="status">
+            {t('已兑换 {credits} 额度，当前余额 {balance}。', {
+              credits: number(redeem.data.credits, locale),
+              balance: number(redeem.data.balance, locale),
+            })}
+          </p>
+        )}
+      </SidePanel>
       <div className="billing-sections">
         <section className="section-stack">
           <h2>{t('可用套餐')}</h2>

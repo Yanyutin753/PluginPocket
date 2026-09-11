@@ -9,9 +9,11 @@ beforeEach(() => {
   window.history.replaceState({}, '', '/login');
   vi.stubGlobal(
     'fetch',
-    vi.fn(() =>
+    vi.fn((url: string) =>
       Promise.resolve(
-        Response.json({ github: false, email: false, payments: false }),
+        url.endsWith('/account/me') || url.endsWith('/auth/refresh')
+          ? Response.json({ error: 'unauthorized' }, { status: 401 })
+          : Response.json({ github: false, email: false, payments: false }),
       ),
     ),
   );
@@ -46,6 +48,8 @@ it('lets keyboard users reveal and conceal the password without submitting or lo
   await user.keyboard(' ');
   expect(password).toHaveAttribute('type', 'password');
   expect(
-    vi.mocked(fetch).mock.calls.every(([, init]) => init?.method !== 'POST'),
+    vi
+      .mocked(fetch)
+      .mock.calls.every(([url]) => !String(url).endsWith('/auth/login')),
   ).toBe(true);
 });

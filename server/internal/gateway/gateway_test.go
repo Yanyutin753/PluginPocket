@@ -24,6 +24,12 @@ func TestGatewayRequiresToken(t *testing.T) {
 	if response.Code != 401 {
 		t.Fatalf("unauthenticated gateway returned %d", response.Code)
 	}
+	if body := response.Body.String(); body != "{\"error\":\"unauthorized\"}\n" {
+		t.Fatalf("unauthenticated gateway body %q is not the JSON error envelope", body)
+	}
+	if ct := response.Header().Get("Content-Type"); ct != "application/json" {
+		t.Fatalf("unauthenticated gateway Content-Type %q is not JSON", ct)
+	}
 }
 
 func gatewayDB(t *testing.T) *store.Store {

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/Yanyutin753/loadout/server/internal/cache"
+	"github.com/Yanyutin753/loadout/server/internal/httpapi"
 	"github.com/Yanyutin753/loadout/server/internal/store"
 	"github.com/dop251/goja"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -120,28 +121,28 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	raw, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 	if !ok || !strings.HasPrefix(raw, "ldt_") || g.store == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		httpapi.Fail(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	principal, err := g.store.AuthToken(r.Context(), raw)
 	if err != nil {
 		if errors.Is(err, store.ErrUnauthorized) {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			httpapi.Fail(w, http.StatusUnauthorized, "unauthorized")
 		} else {
-			http.Error(w, "gateway_unavailable", http.StatusServiceUnavailable)
+			httpapi.Fail(w, http.StatusServiceUnavailable, "gateway_unavailable")
 		}
 		return
 	}
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", "POST")
-		http.Error(w, "method_not_allowed", http.StatusMethodNotAllowed)
+		httpapi.Fail(w, http.StatusMethodNotAllowed, "method_not_allowed")
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	bindings, err := g.tools(ctx)
 	cancel()
 	if err != nil {
-		http.Error(w, "gateway_unavailable", http.StatusServiceUnavailable)
+		httpapi.Fail(w, http.StatusServiceUnavailable, "gateway_unavailable")
 		return
 	}
 	server := mcp.NewServer(&mcp.Implementation{Name: "loadout", Version: "0.2.0"}, nil)
@@ -165,6 +166,11 @@ func toolJSON(value any) *mcp.CallToolResult {
 		return toolError("响应编码失败")
 	}
 	return toolText(string(encoded))
+}
+
+// PreviewSettlement evaluates one sample through the billing decision without I/O.
+func (g *Gateway) PreviewSettlement(settlement json.RawMessage, text string, isError bool) bool {
+	return g.settleResult(settlement, &mcp.CallToolResult{IsError: isError, Content: []mcp.Content{&mcp.TextContent{Text: text}}})
 }
 
 // settleResult 是扣费结算中间件：true 才扣费，false 触发 finish 的退款路径。
@@ -341,16 +347,20 @@ func (g *Gateway) call(parent context.Context, p store.Principal, binding toolBi
 	defer cancel()
 	key := rand.Text()
 	if !g.admit(ctx, p) {
-		g.recordDenied(ctx, p, binding.definition.Name, key)
-		return toolError("调用频率或每日额度已达上限")
+		result := toolError("调用频率或每日额度已达上限")
+		g.recordDenied(ctx, p, binding.definition.Name, key, callData(args, result))
+		return result
 	}
 	call, err := g.store.ReserveTool(ctx, p.UserID, p.TokenID, p.WalletID, binding.row.ID, binding.definition.Name, key)
 	if errors.Is(err, store.ErrNotFound) {
-		g.recordDenied(ctx, p, binding.definition.Name, key)
-		return toolError("工具当前不可用")
+		result := toolError("工具当前不可用")
+		g.recordDenied(ctx, p, binding.definition.Name, key, callData(args, result))
+		return result
 	}
 	if errors.Is(err, store.ErrInsufficientBalance) {
-		return toolError("额度不足，请充值后重试")
+		result := toolError("额度不足，请充值后重试")
+		_ = g.store.FinishWithData(ctx, call.ID, false, 0, callData(args, result))
+		return result
 	}
 	if err != nil {
 		return toolError("暂时无法开始调用")
@@ -364,14 +374,14 @@ func (g *Gateway) call(parent context.Context, p store.Principal, binding toolBi
 	}
 	finishCtx, finishCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer finishCancel()
-	if err = g.store.Finish(finishCtx, call.ID, settled, time.Since(started)); err != nil {
+	if err = g.store.FinishWithData(finishCtx, call.ID, settled, time.Since(started), callData(args, result)); err != nil {
 		return toolError("调用结算待恢复，请查看用量记录，勿重复执行有副作用的操作")
 	}
 	return result
 }
 
-func (g *Gateway) recordDenied(ctx context.Context, p store.Principal, name, key string) {
-	_, _ = g.store.Pool.Exec(ctx, "INSERT INTO usage_logs(user_id,token_id,wallet_id,tool,cost,status,request_key,finished_at) VALUES ($1,$2,$3,$4,0,'denied',$5,now())", p.UserID, p.TokenID, p.WalletID, name, key)
+func (g *Gateway) recordDenied(ctx context.Context, p store.Principal, name, key string, data *store.CallData) {
+	_, _ = g.store.Pool.Exec(ctx, "INSERT INTO usage_logs(user_id,token_id,wallet_id,tool,cost,status,request_key,finished_at,input_data,output_data,input_truncated,output_truncated) VALUES ($1,$2,$3,$4,0,'denied',$5,now(),$6,$7,$8,$9)", p.UserID, p.TokenID, p.WalletID, name, key, data.InputData, data.OutputData, data.InputTruncated, data.OutputTruncated)
 }
 func (g *Gateway) execute(ctx context.Context, p store.Principal, b toolBinding, args json.RawMessage) *mcp.CallToolResult {
 	if b.row.Kind == "builtin" {

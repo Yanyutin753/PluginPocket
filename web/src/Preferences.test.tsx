@@ -26,9 +26,11 @@ beforeEach(() => {
   );
   vi.stubGlobal(
     'fetch',
-    vi.fn(() =>
+    vi.fn((url: string) =>
       Promise.resolve(
-        Response.json({ github: false, email: false, payments: false }),
+        url.endsWith('/account/me') || url.endsWith('/auth/refresh')
+          ? Response.json({ error: 'unauthorized' }, { status: 401 })
+          : Response.json({ github: false, email: false, payments: false }),
       ),
     ),
   );

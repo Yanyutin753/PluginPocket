@@ -58,6 +58,7 @@ it('clears another account data and one-time secrets when shared cookie identity
     </QueryClientProvider>,
   );
   const user = userEvent.setup();
+  await user.click(await screen.findByRole('button', { name: '创建令牌' }));
   await user.type(await screen.findByLabelText('令牌名称'), 'Alice device');
   await user.click(screen.getByRole('button', { name: '创建令牌' }));
   await screen.findByText('ldt_alice_secret');
@@ -126,6 +127,7 @@ it('clears team invitation when route changes directly between team identities',
     </QueryClientProvider>,
   );
   const user = userEvent.setup();
+  await user.click(await screen.findByRole('button', { name: '邀请成员' }));
   await user.click(await screen.findByRole('button', { name: '生成邀请' }));
   await screen.findByText('invite_for_team_one');
   await act(async () => {
@@ -185,6 +187,7 @@ it('a previous account mutation cannot repopulate the new account cache', async 
     </QueryClientProvider>,
   );
   const user = userEvent.setup();
+  await user.click(await screen.findByRole('button', { name: '转入团队额度' }));
   await user.type(await screen.findByLabelText('转入额度'), '5');
   await user.click(screen.getByRole('button', { name: '确认转入' }));
   current = 'bob';

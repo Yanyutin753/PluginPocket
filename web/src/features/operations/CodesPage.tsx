@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { z } from 'zod';
 import { Pagination } from '@/components/Pagination';
+import { SidePanel } from '@/components/SidePanel';
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -34,43 +35,53 @@ export default function CodesPage() {
       <Heading artwork="admin-codes" title={t('兑换码管理')}>
         {t('生成单次兑换凭据，查看发放和兑换状态。')}
       </Heading>
-      <form
-        className="editor-panel compact-editor"
-        onSubmit={(event) => {
-          event.preventDefault();
-          const data = new FormData(event.currentTarget);
-          create.mutate({
-            credits: Number(data.get('credits')),
-            note: String(data.get('note')),
-          });
-        }}
+      <SidePanel
+        title={t('生成兑换码')}
+        trigger={t('生成兑换码')}
+        locked={create.isPending || Boolean(code)}
       >
-        <FieldGroup>
-          <Field>
-            <FieldLabel htmlFor="code-credits">{t('兑换额度')}</FieldLabel>
-            <Input
-              id="code-credits"
-              name="credits"
-              type="number"
-              min="1"
-              max="1000000000000"
-              step="1"
-              required
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="code-note">{t('备注')}</FieldLabel>
-            <Input id="code-note" name="note" maxLength={500} required />
-          </Field>
-          <ErrorNotice error={create.error} />
-          <Button type="submit" disabled={create.isPending || Boolean(code)}>
-            {create.isPending ? t('正在生成…') : t('生成兑换码')}
-          </Button>
-        </FieldGroup>
-      </form>
-      {code && (
-        <OneTimeCode title={t('兑换码')} code={code} hide={() => setCode('')} />
-      )}
+        <form
+          className="editor-panel compact-editor"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const data = new FormData(event.currentTarget);
+            create.mutate({
+              credits: Number(data.get('credits')),
+              note: String(data.get('note')),
+            });
+          }}
+        >
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="code-credits">{t('兑换额度')}</FieldLabel>
+              <Input
+                id="code-credits"
+                name="credits"
+                type="number"
+                min="1"
+                max="1000000000000"
+                step="1"
+                required
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="code-note">{t('备注')}</FieldLabel>
+              <Input id="code-note" name="note" maxLength={500} required />
+            </Field>
+            <ErrorNotice error={create.error} />
+            <Button type="submit" disabled={create.isPending || Boolean(code)}>
+              {create.isPending ? t('正在生成…') : t('生成兑换码')}
+            </Button>
+          </FieldGroup>
+        </form>
+        {code && (
+          <OneTimeCode
+            title={t('兑换码')}
+            code={code}
+            hide={() => setCode('')}
+          />
+        )}
+      </SidePanel>
       <ErrorNotice error={list.error} retry={() => void list.retry()} />
       {list.isPending && <Loading />}
       {list.isSuccess && !list.items.length && (

@@ -90,6 +90,7 @@ test('registers with a real cookie, creates and revokes a token, logs out and re
   expect(document.cookie).toBe('');
   expect(sessionCookie()).not.toBe('');
   await nav(user, '网关令牌');
+  await click(user, '创建令牌');
   await fill(user, '令牌名称', 'E2E laptop');
   await user.tab();
   expect(screen.getByRole('combobox', { name: '扣费钱包' })).toHaveFocus();
@@ -104,6 +105,7 @@ test('registers with a real cookie, creates and revokes a token, logs out and re
   expect(verified.status).toBe(200);
   expect(await verified.json()).toMatchObject({ username });
   await click(user, '我已保存，隐藏令牌');
+  await user.keyboard('{Escape}');
   expect(screen.queryByText(token)).not.toBeInTheDocument();
   expect(JSON.stringify(await api('/account/tokens'))).not.toContain(token);
   await click(user, '撤销 E2E laptop');
@@ -217,12 +219,14 @@ test('admin adjusts real credits, manages tools and plans, then a user redeems t
   await click(user, '启用 E2E 额度包');
   await screen.findByRole('button', { name: '停用 E2E 额度包' });
   await nav(user, '兑换码管理');
+  await click(user, '生成兑换码');
   await fill(user, '兑换额度', '211');
   await fill(user, '备注', 'Web E2E redemption');
   await click(user, '生成兑换码');
   await screen.findByRole('region', { name: '兑换码' });
   const code = secret('兑换码');
   await click(user, '我已保存，隐藏兑换码');
+  await user.keyboard('{Escape}');
   expect(screen.queryByText(code)).not.toBeInTheDocument();
   await logout(user);
   await auth(user, username);
@@ -234,6 +238,7 @@ test('admin adjusts real credits, manages tools and plans, then a user redeems t
   expect(
     screen.getByRole('button', { name: '购买 E2E 额度包' }),
   ).toBeDisabled();
+  await click(user, '兑换额度');
   await fill(user, '兑换码', 'invalid-redemption');
   await click(user, '兑换额度');
   await screen.findByRole('alert');
@@ -260,8 +265,10 @@ test('admin adjusts real credits, manages tools and plans, then a user redeems t
   expect(
     ledger.items.filter((item: { delta: number }) => item.delta === 211),
   ).toHaveLength(1);
+  await user.keyboard('{Escape}');
   await nav(user, '个人设置');
   await screen.findByText('邮件服务尚未配置');
+  await click(user, '邮箱验证');
   expect(screen.getByRole('button', { name: '发送验证邮件' })).toBeDisabled();
 });
 
@@ -273,9 +280,15 @@ test('shares a funded team through an invitation and explicitly authorizes a dev
   await auth(user, owner, true);
   const before = await api('/account/me');
   await nav(user, '我的团队');
+  await click(user, '新建团队');
   await fill(user, '团队名称', 'E2E 开发团队');
   await click(user, '创建团队');
+  await waitFor(() =>
+    expect(screen.getByLabelText('团队名称')).toHaveValue(''),
+  );
+  await user.keyboard('{Escape}');
   await nav(user, '管理 E2E 开发团队');
+  await click(user, '转入团队额度');
   await fill(user, '转入额度', '23');
   await click(user, '确认转入');
   try {
@@ -302,29 +315,38 @@ test('shares a funded team through an invitation and explicitly authorizes a dev
     before.user.balance - 23,
   );
   await screen.findByText(/共享额度 23/);
+  await user.keyboard('{Escape}');
   await click(user, '退出团队');
   await click(user, '确认退出');
   expect(await screen.findByRole('alert')).toHaveTextContent(
     '最后一位团队所有者不能退出',
   );
   await click(user, '取消');
+  await click(user, '邀请成员');
   await click(user, '生成邀请');
   await screen.findByRole('region', { name: '邀请码' });
   const invite = secret('邀请码');
   const team = (await api('/account/teams')).items[0];
   await click(user, '我已保存，隐藏邀请码');
+  await user.keyboard('{Escape}');
   await logout(user);
   await nav(user, '创建账号');
   await auth(user, member, true);
   await nav(user, '我的团队');
+  await click(user, '接受邀请');
   await fill(user, '团队邀请码', invite);
   await click(user, '加入团队');
+  await waitFor(() =>
+    expect(screen.getByLabelText('团队邀请码')).toHaveValue(''),
+  );
+  await user.keyboard('{Escape}');
   await nav(user, '管理 E2E 开发团队');
   await screen.findByRole('heading', { name: `${member}（你）` });
   expect(
     screen.queryByRole('button', { name: '生成邀请' }),
   ).not.toBeInTheDocument();
   await nav(user, '创建团队令牌');
+  await click(user, '创建令牌');
   await fill(user, '令牌名称', 'E2E team token');
   await click(user, '创建令牌');
   await screen.findByRole('region', { name: '新令牌' });
@@ -333,8 +355,12 @@ test('shares a funded team through an invitation and explicitly authorizes a dev
   expect(shared.status).toBe(200);
   expect(await shared.json()).toMatchObject({ username: member, balance: 23 });
   expect((await api(`/account/teams/${team.id}`)).item.balance).toBe(23);
+  await click(user, '我已保存，隐藏令牌');
+  await user.keyboard('{Escape}');
   await nav(user, '我的团队');
+  await user.keyboard('{Escape}');
   await nav(user, '管理 E2E 开发团队');
+  await user.keyboard('{Escape}');
   await click(user, '退出团队');
   await click(user, '确认退出');
   await screen.findByText('还没有加入团队');

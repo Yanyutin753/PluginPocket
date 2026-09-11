@@ -8,12 +8,24 @@ import {
 } from 'react';
 import { en } from './i18n/catalog';
 import { landing } from './i18n/landing';
+import { marketplace } from './i18n/marketplace';
+import { plugins } from './i18n/plugins';
 import { shell } from './i18n/shell';
+import { toolEditor } from './i18n/tool-editor';
+import { toolIcons } from './i18n/tool-icons';
 
 type Locale = 'zh-CN' | 'en';
 type Theme = 'light' | 'dark' | 'system';
 type Values = Record<string, string | number>;
-const english = { ...landing, ...en, ...shell };
+const english = {
+  ...toolIcons,
+  ...toolEditor,
+  ...landing,
+  ...en,
+  ...shell,
+  ...plugins,
+  ...marketplace,
+};
 function translate(locale: Locale, key: string, values?: Values) {
   const message = locale === 'en' ? (english[key] ?? key) : key;
   return message

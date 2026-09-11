@@ -343,23 +343,23 @@ func TestPublishPoolToolAsPluginComponent(t *testing.T) {
 	}
 }
 
-func TestPublicPluginDirectorySEO(t *testing.T) {
+func TestPublicPluginDirectoryJSON(t *testing.T) {
 	f := marketplaceApp(t, nil)
-	w := request(f.handler, "GET", "/plugins", "", nil)
-	if w.Code != 200 || !strings.Contains(w.Body.String(), "<meta name=\"description\"") || !strings.Contains(w.Body.String(), "DeepWiki") {
+	w := request(f.handler, "GET", "/api/v1/plugins", "", nil)
+	if w.Code != 200 || !strings.Contains(w.Body.String(), "\"description\"") || !strings.Contains(w.Body.String(), "DeepWiki") {
 		t.Fatalf("directory page %d missing SEO meta or content", w.Code)
 	}
-	if !strings.Contains(w.Body.String(), "codex plugin marketplace add") {
+	if !strings.Contains(w.Body.String(), "\"origin\"") {
 		t.Fatalf("directory must show install command")
 	}
-	w = request(f.handler, "GET", "/plugins/deepwiki", "", nil)
+	w = request(f.handler, "GET", "/api/v1/plugins/deepwiki", "", nil)
 	if w.Code != 200 {
 		t.Fatalf("plugin detail %d body=%s", w.Code, w.Body.String()[:min(200, w.Body.Len())])
 	}
-	if !strings.Contains(w.Body.String(), "DeepWiki") || !strings.Contains(w.Body.String(), "<title>") {
+	if !strings.Contains(w.Body.String(), "DeepWiki") || !strings.Contains(w.Body.String(), "\"name\"") {
 		t.Fatalf("plugin detail content wrong: %s", w.Body.String()[:min(300, w.Body.Len())])
 	}
-	if w = request(f.handler, "GET", "/plugins/nope", "", nil); w.Code != 404 {
+	if w = request(f.handler, "GET", "/api/v1/plugins/nope", "", nil); w.Code != 404 {
 		t.Fatalf("unknown plugin %d", w.Code)
 	}
 }
@@ -409,7 +409,7 @@ func TestMarketplaceFormalVersioning(t *testing.T) {
 		t.Fatalf("invalid version must 400, got %d", code)
 	}
 	// 公开列表与 SEO 详情展示正式版本。
-	w := request(f.handler, "GET", "/plugins/demo", "", nil)
+	w := request(f.handler, "GET", "/api/v1/plugins/demo", "", nil)
 	if w.Code != 200 || !strings.Contains(w.Body.String(), "2.0.0") {
 		t.Fatalf("plugin page must show formal version %d", w.Code)
 	}

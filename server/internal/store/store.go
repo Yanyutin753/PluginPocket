@@ -35,6 +35,13 @@ type Call struct {
 	CreatedAt  time.Time `json:"created_at"`
 }
 
+type CallData struct {
+	InputData       *string `json:"input_data"`
+	OutputData      *string `json:"output_data"`
+	InputTruncated  bool    `json:"input_truncated"`
+	OutputTruncated bool    `json:"output_truncated"`
+}
+
 //go:embed migrations/*.sql
 var migrations embed.FS
 
@@ -197,14 +204,17 @@ func (s *Store) reserve(ctx context.Context, userID, tokenID, walletID, toolID i
 	return c, nil
 }
 func (s *Store) Finish(ctx context.Context, callID int64, success bool, duration time.Duration) error {
+	return s.FinishWithData(ctx, callID, success, duration, nil)
+}
+func (s *Store) FinishWithData(ctx context.Context, callID int64, success bool, duration time.Duration, data *CallData) error {
 	status := "error"
 	if success {
 		status = "ok"
 	}
-	_, err := s.finish(ctx, callID, status, duration)
+	_, err := s.finish(ctx, callID, status, duration, data)
 	return err
 }
-func (s *Store) finish(ctx context.Context, callID int64, status string, duration time.Duration) (bool, error) {
+func (s *Store) finish(ctx context.Context, callID int64, status string, duration time.Duration, data *CallData) (bool, error) {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return false, err
@@ -218,6 +228,14 @@ func (s *Store) finish(ctx context.Context, callID int64, status string, duratio
 	}
 	if err != nil {
 		return false, err
+	}
+	if data != nil && (current == "pending" || current == "denied") {
+		if _, err = tx.Exec(ctx, "UPDATE usage_logs SET input_data=$2,output_data=$3,input_truncated=$4,output_truncated=$5 WHERE id=$1", callID, data.InputData, data.OutputData, data.InputTruncated, data.OutputTruncated); err != nil {
+			return false, err
+		}
+	}
+	if current == "denied" && data != nil {
+		return false, tx.Commit(ctx)
 	}
 	if current != "pending" {
 		return false, nil
@@ -268,7 +286,7 @@ func (s *Store) RecoverPending(ctx context.Context, before time.Time) (int64, er
 			return total, nil
 		}
 		for _, id := range ids {
-			changed, e := s.finish(ctx, id, "recovered", 0)
+			changed, e := s.finish(ctx, id, "recovered", 0, nil)
 			if e != nil {
 				return total, e
 			}

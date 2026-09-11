@@ -79,7 +79,7 @@ func TestSettingsPersistAcrossManagersEncryptSecretsAndRejectStaleWrites(t *test
 	}
 	peer := &Manager{Pool: s.Pool, Defaults: Values{InitialCredits: 999}, Key: m.Key, Origin: m.Origin}
 	saved, err := peer.Read(t.Context(), nil)
-	if err != nil || saved.Revision != 1 || saved.Values != v {
+	if err != nil || saved.Revision != 1 || saved.Values != v.WithBrowserDefaults() {
 		t.Fatalf("saved settings not visible on peer: revision=%d credits=%d error=%v", saved.Revision, saved.InitialCredits, err)
 	}
 	encoded, err := json.Marshal(saved)

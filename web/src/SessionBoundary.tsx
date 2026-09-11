@@ -11,7 +11,7 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react';
-import { accountQuery } from './features/account/api';
+import { accountQuery, publicSessionQuery } from './features/account/api';
 
 export function SessionBoundary({ children }: { children: ReactNode }) {
   const initialClient = useQueryClient();
@@ -24,10 +24,16 @@ export function SessionBoundary({ children }: { children: ReactNode }) {
     (notify: () => void) => session.client.getQueryCache().subscribe(notify),
     [session.client],
   );
-  const snapshot = useCallback(
-    () => session.client.getQueryData(accountQuery.queryKey),
-    [session.client],
-  );
+  const snapshot = useCallback(() => {
+    const account = session.client.getQueryState(accountQuery.queryKey);
+    const publicSession = session.client.getQueryState(
+      publicSessionQuery.queryKey,
+    );
+    return publicSession?.status === 'success' &&
+      publicSession.dataUpdatedAt >= (account?.dataUpdatedAt ?? 0)
+      ? publicSession.data
+      : account?.data;
+  }, [session.client]);
   const account = useSyncExternalStore(subscribe, snapshot);
   const previousClient = useRef(session.client);
   useEffect(() => {
@@ -36,6 +42,17 @@ export function SessionBoundary({ children }: { children: ReactNode }) {
       previousClient.current = session.client;
     }
   }, [session.client]);
+  if (account === null && session.identity !== undefined) {
+    const client = new QueryClient({
+      defaultOptions: session.client.getDefaultOptions(),
+    });
+    client.setQueryData(publicSessionQuery.queryKey, null);
+    setSession({
+      client,
+      identity: undefined,
+      generation: session.generation + 1,
+    });
+  }
   if (account && account.user.id !== session.identity) {
     if (session.identity === undefined) {
       setSession({ ...session, identity: account.user.id });

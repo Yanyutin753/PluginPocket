@@ -201,6 +201,28 @@ func resolveContents(ctx context.Context, o Options, repo, dir, root string, fil
 		}
 		switch entry.Type {
 		case "file":
+			// GitHub directory listings contain metadata, not file bodies.
+			if entry.Encoding == "" {
+				fileReq, requestErr := http.NewRequestWithContext(ctx, http.MethodGet, base+"/repos/"+repo+"/contents/"+entry.Path+"?ref=HEAD", nil)
+				if requestErr != nil {
+					return requestErr
+				}
+				fileReq.Header = req.Header.Clone()
+				fileResponse, requestErr := client.Do(fileReq)
+				if requestErr != nil {
+					return requestErr
+				}
+				decodeErr := func() error {
+					defer func() { _ = fileResponse.Body.Close() }()
+					if fileResponse.StatusCode != http.StatusOK {
+						return fmt.Errorf("github contents returned %d", fileResponse.StatusCode)
+					}
+					return json.NewDecoder(http.MaxBytesReader(nil, fileResponse.Body, 512*1024)).Decode(&entry)
+				}()
+				if decodeErr != nil {
+					return decodeErr
+				}
+			}
 			if entry.Encoding != "base64" || len(files) >= 32 {
 				return errors.New("unsupported or oversized skill file")
 			}

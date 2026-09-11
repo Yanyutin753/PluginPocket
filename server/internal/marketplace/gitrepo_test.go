@@ -140,7 +140,6 @@ func TestGitRegistryServesAndInvalidates(t *testing.T) {
 	 VALUES ('fresh-probe','Fresh','curated','gateway','mcp')`); err != nil {
 		t.Fatal(err)
 	}
-	registry.Invalidate()
 	mu.Lock()
 	current = serveRegistry()
 	mu.Unlock()

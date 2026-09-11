@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 import App from './App';
+import { chooseOption } from './test/select';
 
 beforeEach(() => localStorage.clear());
 
@@ -67,8 +68,11 @@ async function fillBasics(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText('显示名称'), 'BizJS');
   await user.click(screen.getByLabelText('连接方式'));
   await user.click(await screen.findByRole('option', { name: 'HTTP 服务' }));
+  await chooseOption(user, screen.getByLabelText('填写方式'), '高级 JSON');
   const config = screen.getByLabelText('连接配置（JSON）');
-  await user.type(config, '{{"url":"https://mcp.example.com/mcp"}');
+  await user.click(config);
+  await user.paste('{"url":"https://mcp.example.com/mcp"}');
+  await chooseOption(user, screen.getByLabelText('扣费条件'), '高级 JSON');
 }
 
 it('blocks submit on settlement script syntax errors without calling the server', async () => {
@@ -76,7 +80,9 @@ it('blocks submit on settlement script syntax errors without calling the server'
   await openEditor(user);
   await fillBasics(user);
   const settlement = screen.getByLabelText('结算策略（JSON，可选）');
-  await user.type(settlement, '{{"script":"return ???"}');
+  await user.clear(settlement);
+  await user.click(settlement);
+  await user.paste('{"script":"return ???"}');
   await user.click(screen.getByRole('button', { name: '保存工具' }));
   expect(await screen.findByText(/结算脚本语法有误/)).toBeInTheDocument();
   expect(
@@ -92,12 +98,20 @@ it('submits a valid settlement script', async () => {
   await openEditor(user);
   await fillBasics(user);
   const settlement = screen.getByLabelText('结算策略（JSON，可选）');
-  await user.type(
-    settlement,
-    '{{"script":"const body = JSON.parse(result.text); return body.code === 0;"}',
+  await user.clear(settlement);
+  await user.click(settlement);
+  await user.paste(
+    '{"script":"const body = JSON.parse(result.text); return body.code === 0;"}',
   );
   await user.click(screen.getByRole('button', { name: '保存工具' }));
-  await new Promise((resolve) => setTimeout(resolve, 50));
+  await waitFor(() =>
+    expect(
+      calls.some(
+        (call) =>
+          call.url === '/api/v1/admin/tools' && call.init.method === 'POST',
+      ),
+    ).toBe(true),
+  );
   const saved = calls.find(
     (call) => call.url === '/api/v1/admin/tools' && call.init.method === 'POST',
   );

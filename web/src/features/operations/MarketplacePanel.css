@@ -1,0 +1,49 @@
+.market-actions,
+.market-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-block: 16px;
+}
+.market-panel > input {
+  max-width: 640px;
+}
+.market-panel .record-main {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.market-components {
+  display: grid;
+  gap: 8px;
+  max-height: 360px;
+  overflow: auto;
+  margin-block: 12px;
+}
+.market-component {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.market-component input {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.market-component small {
+  display: block;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .market-records > li {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .market-actions > button {
+    flex: 1 1 auto;
+  }
+}

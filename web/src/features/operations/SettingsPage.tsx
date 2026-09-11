@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
+import { SidePanel } from '@/components/SidePanel';
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -47,41 +48,49 @@ export default function SettingsPage() {
               : t('还没有绑定邮箱。')}
           </p>
           {!email.data.configured && <p>{t('邮件服务尚未配置')}</p>}
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              send.mutate(
-                String(new FormData(event.currentTarget).get('email')),
-              );
-            }}
+          <SidePanel
+            title={t('邮箱验证')}
+            trigger={t('邮箱验证')}
+            locked={send.isPending}
           >
-            <FieldGroup>
-              <Field>
-                <FieldLabel htmlFor="email-address">{t('邮箱地址')}</FieldLabel>
-                <Input
-                  id="email-address"
-                  type="email"
-                  name="email"
-                  required
-                  defaultValue={email.data.email ?? ''}
-                  autoComplete="email"
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                send.mutate(
+                  String(new FormData(event.currentTarget).get('email')),
+                );
+              }}
+            >
+              <FieldGroup>
+                <Field>
+                  <FieldLabel htmlFor="email-address">
+                    {t('邮箱地址')}
+                  </FieldLabel>
+                  <Input
+                    id="email-address"
+                    type="email"
+                    name="email"
+                    required
+                    defaultValue={email.data.email ?? ''}
+                    autoComplete="email"
+                    disabled={!email.data.configured || send.isPending}
+                  />
+                </Field>
+                <ErrorNotice error={send.error} />
+                {send.isSuccess && (
+                  <p role="status">
+                    {t('验证邮件已发送，请检查收件箱并点击验证链接。')}
+                  </p>
+                )}
+                <Button
                   disabled={!email.data.configured || send.isPending}
-                />
-              </Field>
-              <ErrorNotice error={send.error} />
-              {send.isSuccess && (
-                <p role="status">
-                  {t('验证邮件已发送，请检查收件箱并点击验证链接。')}
-                </p>
-              )}
-              <Button
-                disabled={!email.data.configured || send.isPending}
-                type="submit"
-              >
-                {send.isPending ? t('正在发送…') : t('发送验证邮件')}
-              </Button>
-            </FieldGroup>
-          </form>
+                  type="submit"
+                >
+                  {send.isPending ? t('正在发送…') : t('发送验证邮件')}
+                </Button>
+              </FieldGroup>
+            </form>
+          </SidePanel>
         </section>
       )}
     </>

@@ -23,7 +23,11 @@ func sqliteMigrate(t *testing.T) *sql.DB {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(entries) != 19 {
+	pgEntries, err := migrations.ReadDir("migrations")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != len(pgEntries) {
 		t.Fatalf("sqlite migration track must mirror pg track, got %d files", len(entries))
 	}
 	for _, entry := range entries {
@@ -36,6 +40,33 @@ func sqliteMigrate(t *testing.T) *sql.DB {
 		}
 	}
 	return database
+}
+
+func TestSQLiteMarketChangeInvalidatesSharedGit(t *testing.T) {
+	database := sqliteMigrate(t)
+	for _, change := range []string{
+		"INSERT INTO marketplace_items(slug,name,source,transport) VALUES ('revision-test','Test','curated','http')",
+		"UPDATE marketplace_items SET description='changed' WHERE slug='revision-test'",
+		"DELETE FROM marketplace_items WHERE slug='revision-test'",
+	} {
+		if _, err := database.Exec("UPDATE marketplace_git_state SET built_at=CURRENT_TIMESTAMP WHERE singleton"); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := database.Exec(change); err != nil {
+			t.Fatal(err)
+		}
+		var invalid bool
+		if err := database.QueryRow("SELECT built_at IS NULL FROM marketplace_git_state WHERE singleton").Scan(&invalid); err != nil || !invalid {
+			t.Fatalf("missing atomic invalidation: %v", err)
+		}
+	}
+	if _, err := database.Exec("INSERT INTO marketplace_git_files(path,content) VALUES ('objects/ab/cd',?)", []byte{1, 2, 3}); err != nil {
+		t.Fatal(err)
+	}
+	var content []byte
+	if err := database.QueryRow("SELECT content FROM marketplace_git_files WHERE path='objects/ab/cd'").Scan(&content); err != nil || len(content) != 3 {
+		t.Fatalf("git object persistence: %v", err)
+	}
 }
 
 func TestSQLiteMigrationTrackBuildsEquivalentSchema(t *testing.T) {

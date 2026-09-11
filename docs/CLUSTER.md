@@ -27,6 +27,12 @@ flowchart TB
 
 ## 2. 流量、静态资源与网络
 
+路由分流：`/`、`/plugins`、`/plugins/:slug` 和所有控制台路径由同一 React 构建处理，直达/刷新回退 index.html；`/api/v1/*`（含免鉴权的 plugins 目录接口）、`/mcp`、`/marketplace.git/*` 必须转发 Go，错误不能回退 HTML。市场页无需登录，使用网关托管工具仍需账户授权。开发 Vite 同样代理 API 与市场 Git。
+
+Git 市场源的 refs、提交历史与对象保存在 PG `marketplace_git_state` / `marketplace_git_files`，副本通过数据库行锁原子发布；市场条目变更在原事务中失效共享构建，下一请求读取新版本，不需要会话粘性或本机仓库目录。历史对象保留供已有克隆更新和进行中的跨副本下载，同内容刷新不产生空提交。备份与恢复必须包含这两张表；删除市场条目不会擦除 Git 历史，技能文件应视作已公开发布内容。
+
+所有业务API共享PG权限/会话/账本/幂等状态，不能依靠入口粘性保证正确性。技能同slug发布使用数据库事务锁串行化版本计算与写入，回复在同一事务读取；并发自动发版不会重复使用同一patch版本。跨副本API矩阵与确定性发布并发测试记录见本轮 plugins-route-polish 执行记录。
+
 公开入口统一为一个HTTPS Origin，例如`https://loadout.example.com`；Web、`/api/v1`、`/mcp`及外部身份回调保持此Origin，不增加路径前缀。入口保留Host、Origin、Cookie和Authorization，支持流式响应；`/mcp`禁用响应缓冲，禁止自动重试POST或任何工具执行请求。入口HTTP超时至少覆盖应用40秒写预算，可从60秒起按实测调整。
 
 `/metrics`只对监控网络开放，不通过公网路径透传；`/healthz`和`/readyz`供平台探针。API鉴权结果不被CDN缓存。入口不能将数据库失败的503替换成SPA HTML，也不能把Redis degraded当成整站故障。
@@ -127,7 +133,7 @@ Deployment滚动策略不由PDB直接限流；PDB主要约束Eviction API的自�
 | 上游加密密钥 | 当前只支持单密钥，直接滚动改值会使旧密文不可解。保留原值；需轮换时先实现并测试迁移/重加密方案，必要时维护窗口执行，不能伪装成普通Secret更新 |
 | PUBLIC_URL | 回调URI、Cookie安全属性、入口域名及客户端server地址一起评估；不要让两个不同Origin配置的副本混跑 |
 | Redis namespace | 同一部署统一切换；混跑期间会拆成独立缓存/广播域，PG权威仍在，但不能承诺共享缓存命中 |
-| 权限相关配置、赠额策略 | 新旧配置重叠期间按请求落点生效；需严格同一时刻切换的策略使用维护窗口，不能仅靠滚动重启 |
+| 赠额、GitHub/SMTP、AT/RT期限 | 系统配置写共享PG并按revision控制并发，保存后各副本新请求热读取；已有凭据期限不改写 |
 
 ## 7. 故障与恢复验收
 
@@ -143,3 +149,12 @@ Deployment滚动策略不由PDB直接限流；PDB主要约束Eviction API的自�
 监控至少覆盖：就绪副本数、HTTP 5xx/延迟、PG连接与锁/复制延迟、Redis容量/连接/PubSub、Pod重启/OOM、上游失败率和pending积压。现有`/metrics`提供HTTP/Go/PG连接池指标；业务pending/退款及Redis健康需结合PG只读查询、Redis监控和readyz JSON，不伪造不存在的应用指标名。
 
 每次演练记录镜像摘要、配置版本（不含密钥）、时间、流量、DB/Redis拓扑、实际失败与恢复时长、账本核对结果。`make test-e2e`已覆盖应用多副本和Redis降级行为；本次提供的Kubernetes模板通过静态验证，未执行真实集群上线或PG/Redis HA切换。通过官方schema并不代表目标集群的准入、资源、网络和运行效果已经验收。
+
+
+## 浏览器 AT/RT 与有效期热更新
+
+`session_access` 与 `sessions` 同存权威 PG；AT 验证、RT 刷新和父会话撤销任意副本等价，SQL 使用数据库时钟。RT 固定有效期内可重复兑换，保留未到期 AT 支持多标签/多副本并发；不依赖进程内刷新锁或 sticky session。前端 single-flight 只减少同页请求，不承担后端一致性。入口必须保留多个 Set-Cookie，禁止缓存 `/api/v1/*` 与自动重试写请求。
+
+系统配置可修改 AT/RT 秒数（默认900/604800），保存到共享 `runtime_settings`，每次签发读取；已有RT绝对到期不变。赠额/GitHub/SMTP/浏览器期限使用数据库热更新，不需要滚动Pod；数据库地址、加密密钥、公开Origin等进程环境变量仍需更新Secret后滚动。
+
+027迁移为新增关联表，旧session在原期限内兼容；旧二进制不认识新AT。首次引入本版本不能让旧鉴权代码和新AT签发代码同时承接浏览器流量：使用维护窗口同步切换全部应用副本（或先部署独立兼容版本）；不得将此升级宣称为任意版本零中断滚动。之后同契约副本无粘性部署。

@@ -58,17 +58,19 @@ func (a *application) saveSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var in struct {
-		Revision           *int64  `json:"revision"`
-		InitialCredits     *int64  `json:"initial_credits"`
-		GitHubEnabled      *bool   `json:"github_enabled"`
-		GitHubClientID     *string `json:"github_client_id"`
-		GitHubOrg          *string `json:"github_org"`
-		SMTPEnabled        *bool   `json:"smtp_enabled"`
-		SMTPAddress        *string `json:"smtp_address"`
-		SMTPFrom           *string `json:"smtp_from"`
-		SMTPUsername       *string `json:"smtp_username"`
-		GitHubClientSecret *string `json:"github_client_secret"`
-		SMTPPassword       *string `json:"smtp_password"`
+		AccessTokenSeconds  *int    `json:"access_token_seconds"`
+		RefreshTokenSeconds *int    `json:"refresh_token_seconds"`
+		Revision            *int64  `json:"revision"`
+		InitialCredits      *int64  `json:"initial_credits"`
+		GitHubEnabled       *bool   `json:"github_enabled"`
+		GitHubClientID      *string `json:"github_client_id"`
+		GitHubOrg           *string `json:"github_org"`
+		SMTPEnabled         *bool   `json:"smtp_enabled"`
+		SMTPAddress         *string `json:"smtp_address"`
+		SMTPFrom            *string `json:"smtp_from"`
+		SMTPUsername        *string `json:"smtp_username"`
+		GitHubClientSecret  *string `json:"github_client_secret"`
+		SMTPPassword        *string `json:"smtp_password"`
 	}
 	if !decode(w, r, &in) {
 		return
@@ -97,6 +99,22 @@ func (a *application) saveSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	values := settings.Values{InitialCredits: *in.InitialCredits, GitHubEnabled: *in.GitHubEnabled, GitHubClientID: *in.GitHubClientID, GitHubOrg: *in.GitHubOrg, SMTPEnabled: *in.SMTPEnabled, SMTPAddress: *in.SMTPAddress, SMTPFrom: *in.SMTPFrom, SMTPUsername: *in.SMTPUsername, GitHubClientSecret: current.GitHubClientSecret, SMTPPassword: current.SMTPPassword}
+	values.AccessTokenSeconds = current.AccessTokenSeconds
+	values.RefreshTokenSeconds = current.RefreshTokenSeconds
+	if in.AccessTokenSeconds != nil {
+		if *in.AccessTokenSeconds <= 0 {
+			fail(w, 400, "invalid_request")
+			return
+		}
+		values.AccessTokenSeconds = *in.AccessTokenSeconds
+	}
+	if in.RefreshTokenSeconds != nil {
+		if *in.RefreshTokenSeconds <= 0 {
+			fail(w, 400, "invalid_request")
+			return
+		}
+		values.RefreshTokenSeconds = *in.RefreshTokenSeconds
+	}
 	if in.GitHubClientSecret != nil {
 		values.GitHubClientSecret = *in.GitHubClientSecret
 	}

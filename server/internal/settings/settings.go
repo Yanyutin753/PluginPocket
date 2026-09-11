@@ -26,16 +26,18 @@ var (
 )
 
 type Values struct {
-	InitialCredits     int64  `json:"initial_credits"`
-	GitHubEnabled      bool   `json:"github_enabled"`
-	GitHubClientID     string `json:"github_client_id"`
-	GitHubClientSecret string `json:"-"`
-	GitHubOrg          string `json:"github_org"`
-	SMTPEnabled        bool   `json:"smtp_enabled"`
-	SMTPAddress        string `json:"smtp_address"`
-	SMTPFrom           string `json:"smtp_from"`
-	SMTPUsername       string `json:"smtp_username"`
-	SMTPPassword       string `json:"-"`
+	AccessTokenSeconds  int    `json:"access_token_seconds"`
+	RefreshTokenSeconds int    `json:"refresh_token_seconds"`
+	InitialCredits      int64  `json:"initial_credits"`
+	GitHubEnabled       bool   `json:"github_enabled"`
+	GitHubClientID      string `json:"github_client_id"`
+	GitHubClientSecret  string `json:"-"`
+	GitHubOrg           string `json:"github_org"`
+	SMTPEnabled         bool   `json:"smtp_enabled"`
+	SMTPAddress         string `json:"smtp_address"`
+	SMTPFrom            string `json:"smtp_from"`
+	SMTPUsername        string `json:"smtp_username"`
+	SMTPPassword        string `json:"-"`
 }
 
 type Snapshot struct {
@@ -57,6 +59,10 @@ type Manager struct {
 var organizationPattern = regexp.MustCompile(`^[A-Za-z0-9-]{1,39}$`)
 
 func (v Values) Validate(origin string) error {
+	v = v.WithBrowserDefaults()
+	if v.AccessTokenSeconds < 60 || v.AccessTokenSeconds > 86400 || v.RefreshTokenSeconds < v.AccessTokenSeconds || v.RefreshTokenSeconds > 31536000 {
+		return ErrInvalid
+	}
 	if v.InitialCredits < 0 || v.InitialCredits > 1_000_000_000_000 || len(v.GitHubClientID) > 256 || len(v.GitHubClientSecret) > 4096 || len(v.SMTPAddress) > 320 || len(v.SMTPFrom) > 320 || len(v.SMTPUsername) > 320 || len(v.SMTPPassword) > 4096 {
 		return ErrInvalid
 	}
@@ -88,6 +94,16 @@ func (v Values) Validate(origin string) error {
 	return nil
 }
 
+func (v Values) WithBrowserDefaults() Values {
+	if v.AccessTokenSeconds == 0 {
+		v.AccessTokenSeconds = 900
+	}
+	if v.RefreshTokenSeconds == 0 {
+		v.RefreshTokenSeconds = 604800
+	}
+	return v
+}
+
 type secrets struct {
 	GitHubClientSecret string `json:"github_client_secret"`
 	SMTPPassword       string `json:"smtp_password"`
@@ -101,7 +117,7 @@ func (m *Manager) Read(ctx context.Context, q Querier) (Snapshot, error) {
 	var public, encrypted []byte
 	err := q.QueryRow(ctx, "SELECT revision,public_values,encrypted_secrets FROM runtime_settings WHERE id=1").Scan(&snapshot.Revision, &public, &encrypted)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return Snapshot{Values: m.Defaults}, nil
+		return Snapshot{Values: m.Defaults.WithBrowserDefaults()}, nil
 	}
 	if err != nil {
 		return Snapshot{}, err
@@ -121,6 +137,7 @@ func (m *Manager) Read(ctx context.Context, q Querier) (Snapshot, error) {
 		snapshot.GitHubClientSecret = private.GitHubClientSecret
 		snapshot.SMTPPassword = private.SMTPPassword
 	}
+	snapshot.Values = snapshot.WithBrowserDefaults()
 	return snapshot, nil
 }
 

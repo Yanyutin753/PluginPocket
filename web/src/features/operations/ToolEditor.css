@@ -1,0 +1,262 @@
+@layer components {
+  .tool-help p {
+    margin-block: 8px 12px;
+    color: var(--muted-foreground);
+  }
+  .tool-detail-intro > p {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+  .record-list.tool-management-list > li {
+    display: grid;
+    align-items: center;
+    grid-template-columns: 52px minmax(0, 1fr) auto auto;
+    gap: 12px 24px;
+    padding: 20px 24px;
+  }
+  .tool-management-list .custom-tool-icon {
+    width: 52px;
+    height: 52px;
+  }
+  .tool-name-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    margin-bottom: 5px;
+  }
+  .tool-name-row .status-badge {
+    font-size: 11px;
+    padding: 3px 7px;
+  }
+  .tool-list-cost {
+    font-size: 12px;
+    color: var(--muted-foreground);
+    white-space: nowrap;
+  }
+  .tool-management-list .record-main {
+    display: block;
+    min-width: 0;
+  }
+  .tool-management-list .record-main h2 {
+    font-size: 16px;
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+  .tool-management-list .record-main > p {
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    display: -webkit-box;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .tool-identifiers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    margin-top: 8px;
+    color: var(--muted-foreground);
+    font-size: 12px;
+  }
+  .tool-identifiers code {
+    overflow-wrap: anywhere;
+  }
+  .tool-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .tool-actions button {
+    font-size: 13px;
+    min-height: 44px;
+    padding-inline: 12px;
+  }
+  .tool-detail-intro {
+    display: flex;
+    align-items: start;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+  .tool-editor {
+    min-width: 0;
+  }
+  .tool-editor-intro {
+    color: var(--muted-foreground);
+    font-size: 14px;
+    line-height: 1.65;
+    margin: 0 0 24px;
+  }
+  .tool-editor-fields {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+  }
+  .tool-editor-section {
+    display: grid;
+    gap: 18px;
+    padding: 24px 0;
+    border-top: 1px solid var(--border);
+  }
+  .tool-editor-section h3 {
+    font-size: 17px;
+    font-weight: 700;
+    margin: 0 0 2px;
+  }
+  .tool-editor-section h4 {
+    font-size: 14px;
+    font-weight: 700;
+    margin: 0;
+  }
+  .tool-editor-section .field-help {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--muted-foreground);
+    overflow-wrap: anywhere;
+  }
+  .tool-editor-section [data-slot="field"] {
+    gap: 8px;
+    min-width: 0;
+  }
+  .tool-editor-section textarea {
+    width: 100%;
+    min-width: 0;
+    resize: vertical;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 13px;
+    line-height: 1.65;
+  }
+  .tool-editor-section #tool-description {
+    font-family: inherit;
+    font-size: 14px;
+  }
+  .tool-field-pair {
+    display: grid;
+    gap: 18px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .tool-rule-fields {
+    display: grid;
+    gap: 18px;
+    min-width: 0;
+  }
+  .tool-help {
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  .tool-help summary {
+    cursor: pointer;
+    color: var(--link);
+    padding-block: 10px;
+    min-height: 44px;
+  }
+  .tool-help summary:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+  .tool-help dl {
+    margin: 8px 0;
+  }
+  .tool-help dt {
+    font-weight: 650;
+    margin-top: 14px;
+  }
+  .tool-help dd {
+    margin: 4px 0 0;
+    color: var(--muted-foreground);
+  }
+  .rule-preview {
+    display: grid;
+    gap: 14px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+  .tool-editor .checkbox-field {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    min-height: 44px;
+    font-size: 14px;
+  }
+  .tool-editor .checkbox-field input {
+    width: 18px;
+    height: 18px;
+    min-height: 0;
+    flex: 0 0 auto;
+    accent-color: var(--primary);
+  }
+  .tool-editor .field-error {
+    font-size: 13px;
+    color: var(--destructive);
+    margin: 0;
+  }
+  .rule-result {
+    padding: 12px 14px;
+    background: var(--muted);
+    border-radius: 8px;
+    font-size: 14px;
+    margin: 0;
+  }
+  .rule-result[data-tone="success"] {
+    color: var(--success);
+  }
+  .tool-editor-footer {
+    position: sticky;
+    bottom: -24px;
+    z-index: 1;
+    display: grid;
+    gap: 12px;
+    padding: 18px 0;
+    background: var(--card);
+    border-top: 1px solid var(--border);
+  }
+  .tool-editor-footer .action-row {
+    margin: 0;
+  }
+  @media (max-width: 480px) {
+    .tool-field-pair {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .tool-editor-section {
+      padding-block: 20px;
+    }
+    .tool-editor-footer {
+      bottom: -16px;
+    }
+  }
+  @media (max-width: 1100px) {
+    .record-list.tool-management-list > li {
+      grid-template-columns: 52px minmax(0, 1fr) auto;
+    }
+    .tool-management-list .custom-tool-icon {
+      grid-row: 1 / 3;
+      align-self: start;
+    }
+    .tool-actions {
+      grid-column: 2 / -1;
+      flex-wrap: wrap;
+    }
+  }
+  @media (max-width: 600px) {
+    .record-list.tool-management-list > li {
+      padding: 18px 16px;
+      gap: 10px 14px;
+      grid-template-columns: 40px minmax(0, 1fr);
+    }
+    .tool-management-list .custom-tool-icon {
+      width: 40px;
+      height: 40px;
+    }
+    .tool-list-cost {
+      grid-column: 2;
+    }
+    .tool-actions {
+      gap: 2px;
+    }
+  }
+}

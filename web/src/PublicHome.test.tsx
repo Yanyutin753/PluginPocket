@@ -7,7 +7,7 @@ beforeEach(() => {
   localStorage.clear();
   window.history.replaceState({}, '', '/');
 });
-it('opens the public landing page without requesting a private account and exposes working signup/login destinations', async () => {
+it('opens the public landing page with an optional session check and exposes working signup/login destinations', async () => {
   const fetcher = vi.fn(() =>
     Promise.resolve(Response.json({ error: 'unauthorized' }, { status: 401 })),
   );
@@ -35,5 +35,9 @@ it('opens the public landing page without requesting a private account and expos
   expect(
     screen.getByRole('link', { name: '创建账号，开始装备' }),
   ).toHaveAttribute('href', '/register');
-  expect(fetcher).not.toHaveBeenCalled();
+  expect(fetcher).toHaveBeenCalled();
+  expect(screen.getByRole('link', { name: '插件市场' })).toHaveAttribute(
+    'href',
+    '/plugins',
+  );
 });

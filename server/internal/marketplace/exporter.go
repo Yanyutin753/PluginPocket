@@ -11,7 +11,7 @@ import (
 	"regexp"
 	"sort"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5"
 )
 
 // ExportInput 是导出输入：市场条目 + 预解析的技能文件（github 源由调用方解析，失败整条跳过）。
@@ -220,7 +220,9 @@ func mcpServerEntry(transport, endpoint string) map[string]any {
 
 // LoadExportInputs 从数据库装配导出输入：内联技能直接取文件，github 技能
 // 由服务端解析（失败记入 unresolved，整条不导出——宁可少发不发坏的）。
-func LoadExportInputs(ctx context.Context, pool *pgxpool.Pool, o Options) (entries []ExportInput, unresolved []string, err error) {
+func LoadExportInputs(ctx context.Context, pool interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+}, o Options) (entries []ExportInput, unresolved []string, err error) {
 	rows, err := pool.Query(ctx, "SELECT slug,name,description,kind,transport,endpoint,version,spec FROM marketplace_items ORDER BY id")
 	if err != nil {
 		return nil, nil, err
@@ -247,7 +249,7 @@ func LoadExportInputs(ctx context.Context, pool *pgxpool.Pool, o Options) (entri
 		if json.Unmarshal(entry.Spec, &spec) != nil {
 			return nil
 		}
-		if spec.Source == "inline" {
+		if spec.Source == "inline" || (spec.Source == "github" && len(spec.Files) > 0) {
 			return spec.Files
 		}
 		files, err := ResolveSkillFiles(ctx, o, spec.Repo, spec.Path)

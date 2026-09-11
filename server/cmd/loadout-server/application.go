@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -18,6 +19,7 @@ import (
 	"github.com/Yanyutin753/loadout/server/internal/observability"
 	"github.com/Yanyutin753/loadout/server/internal/settings"
 	"github.com/Yanyutin753/loadout/server/internal/store"
+	"github.com/jackc/pgx/v5"
 )
 
 func applicationHandler(ctx context.Context, cfg config.Config, logger *slog.Logger) (http.Handler, func(), error) {
@@ -62,7 +64,7 @@ func applicationHandler(ctx context.Context, cfg config.Config, logger *slog.Log
 		GitHubEnabled:  cfg.GitHubClientID != "", GitHubClientID: cfg.GitHubClientID, GitHubClientSecret: cfg.GitHubClientSecret, GitHubOrg: cfg.GitHubOrg,
 		SMTPEnabled: cfg.SMTPAddress != "", SMTPAddress: cfg.SMTPAddress, SMTPFrom: cfg.SMTPFrom, SMTPUsername: cfg.SMTPUsername, SMTPPassword: cfg.SMTPPassword,
 	}}
-	options := app.Options{Runtime: runtime, InitialCredits: &cfg.InitialCredits, Origin: cfg.PublicURL, SecureCookies: strings.HasPrefix(cfg.PublicURL, "https://"), Gateway: g, EncryptionKey: cfg.EncryptionKey, Marketplace: marketplace.Options{BaseURL: cfg.GitHubAPIURL, Token: cfg.GitHubToken}, MarketplaceRegistry: marketplace.NewGitRegistry(database.Pool, marketplace.Options{BaseURL: cfg.GitHubAPIURL, Token: cfg.GitHubToken})}
+	options := app.Options{Runtime: runtime, InitialCredits: &cfg.InitialCredits, Origin: cfg.PublicURL, SecureCookies: strings.HasPrefix(cfg.PublicURL, "https://"), Gateway: g, EncryptionKey: cfg.EncryptionKey, Marketplace: marketplace.Options{BaseURL: cfg.GitHubAPIURL, Token: cfg.GitHubToken}}
 	identityOptions := identity.Options{Runtime: runtime, Origin: cfg.PublicURL, SecureCookies: options.SecureCookies, SMTPAllowLocalInsecure: cfg.SMTPAllowLocalInsecure}
 	identityHandler := identity.New(database, identityOptions)
 	mux := http.NewServeMux()
@@ -74,19 +76,17 @@ func applicationHandler(ctx context.Context, cfg config.Config, logger *slog.Log
 	mux.Handle("/api/v1/health", base)
 	appHandler := app.New(database, options)
 	mux.Handle("/api/v1/", appHandler)
-	mux.Handle("/plugins", appHandler)
-	mux.Handle("/plugins/", appHandler)
 	// 服务端即插件市场源：哑 HTTP git 裸仓，codex plugin marketplace add <origin>/marketplace.git
-	mux.HandleFunc("/marketplace.git/", func(w http.ResponseWriter, r *http.Request) {
-		files, err := options.MarketplaceRegistry.Files(r.Context())
-		if err != nil {
-			http.Error(w, "marketplace unavailable", http.StatusServiceUnavailable)
+	registry := marketplace.NewGitRegistry(database.Pool, options.Marketplace)
+	mux.HandleFunc("GET /marketplace.git/", func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/marketplace.git/")
+		content, err := registry.File(r.Context(), path)
+		if errors.Is(err, pgx.ErrNoRows) {
+			httpapi.Fail(w, http.StatusNotFound, "not_found")
 			return
 		}
-		path := strings.TrimPrefix(r.URL.Path, "/marketplace.git/")
-		content, ok := files[path]
-		if !ok {
-			http.NotFound(w, r)
+		if err != nil {
+			httpapi.Fail(w, http.StatusServiceUnavailable, "marketplace_unavailable")
 			return
 		}
 		w.Header().Set("Content-Type", "application/octet-stream")

@@ -2,10 +2,15 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
 	"net/url"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"testing/synctest"
@@ -118,6 +123,53 @@ func TestProductJourneyWithoutStickySessionsSurvivesReplicaExit(t *testing.T) {
 		proxies = append(proxies, httputil.NewSingleHostReverseProxy(target))
 	}
 	p := &productProcess{f: f, origin: balancer.URL}
+	checkPages := func() {
+		t.Helper()
+		client := p.client()
+		for _, path := range []string{"/", "/login", "/register", "/verify-email", "/health", "/overview", "/dashboard", "/tokens", "/usage", "/tools", "/billing", "/teams", "/teams/1", "/teams/1/usage", "/device", "/devices", "/settings", "/admin/users", "/admin/tools", "/admin/plans", "/admin/codes", "/admin/usage", "/admin/ledger", "/admin/settings", "/plugins", "/plugins/deepwiki"} {
+			for range 2 {
+				response, err := client.Get(p.origin + path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				body, err := io.ReadAll(response.Body)
+				_ = response.Body.Close()
+				if err != nil || response.StatusCode != 200 || !strings.Contains(string(body), `id="root"`) {
+					t.Fatalf("balanced page %s: %d %v", path, response.StatusCode, err)
+				}
+			}
+		}
+		for _, path := range []string{"/images/workshop-mark.webp", "/fonts/manrope-latin.woff2"} {
+			for range 2 {
+				response, err := client.Get(p.origin + path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				_ = response.Body.Close()
+				if response.StatusCode != 200 {
+					t.Fatalf("balanced asset %s: %d", path, response.StatusCode)
+				}
+			}
+		}
+		p.api(client, "GET", "/plugins", nil, 200)
+		p.api(client, "GET", "/plugins/deepwiki", nil, 200)
+		p.api(client, "GET", "/plugins/missing", nil, 404)
+	}
+	checkPages()
+	cloneDir := filepath.Join(t.TempDir(), "marketplace")
+	git := func(args ...string) {
+		t.Helper()
+		command := exec.CommandContext(f.ctx, "git", args...)
+		command.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "HOME="+t.TempDir())
+		if output, err := command.CombinedOutput(); err != nil {
+			t.Fatalf("balanced git: %v %s", err, output)
+		}
+	}
+	git("clone", "--quiet", p.origin+"/marketplace.git", cloneDir)
+	if _, err := f.conn.Exec(f.ctx, "UPDATE marketplace_items SET description='distributed revision' WHERE slug='deepwiki'"); err != nil {
+		t.Fatal(err)
+	}
+	git("-C", cloneDir, "pull", "--ff-only")
 	user, id := p.register("balanced-user")
 	p.api(user, "GET", "/account/me", nil, 200)
 	token := p.token(user)
@@ -145,6 +197,15 @@ func TestProductJourneyWithoutStickySessionsSurvivesReplicaExit(t *testing.T) {
 	// Stop the issuing node before device consumption; the load balancer probes
 	// readiness and routes subsequent requests to the remaining real process.
 	replicas[0].stop(false)
+	checkPages()
+	git("-C", cloneDir, "pull", "--ff-only")
+	p.api(user, "GET", "/account/me", nil, 200)
+	// Refresh remains valid after the issuing replica exits.
+	if _, err := f.conn.Exec(f.ctx, "UPDATE session_access SET expires_at=statement_timestamp()-interval '1 second' WHERE session_id IN (SELECT id FROM sessions WHERE user_id=$1)", id); err != nil {
+		t.Fatal(err)
+	}
+	p.api(user, "GET", "/account/me", nil, 401)
+	p.api(user, "POST", "/auth/refresh", nil, 204)
 	p.api(user, "GET", "/account/me", nil, 200)
 	deviceToken := p.api(p.client(), "POST", "/device/token", map[string]any{"device_code": device["device_code"]}, 200)["token"].(string)
 	deviceSession := p.mcp(deviceToken)
@@ -161,5 +222,6 @@ func TestProductJourneyWithoutStickySessionsSurvivesReplicaExit(t *testing.T) {
 	user.Jar.SetCookies(origin, cookies)
 	for range 2 {
 		p.api(user, "GET", "/account/me", nil, 401)
+		p.api(user, "POST", "/auth/refresh", nil, 401)
 	}
 }

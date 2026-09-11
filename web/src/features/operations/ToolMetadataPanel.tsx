@@ -37,6 +37,7 @@ function OverrideEditor({
     ),
   );
   const save = useMutation({
+    mutationKey: ['tool-metadata', tool.id],
     gcTime: 0,
     mutationFn: async () => {
       let parsed: unknown;
@@ -74,6 +75,11 @@ function OverrideEditor({
       }}
     >
       <FieldGroup>
+        <p>
+          {t(
+            '只覆盖展示给客户端的工具说明和参数定义，不改变上游执行逻辑或计费。参数字段必须与上游实际接受的输入一致。',
+          )}
+        </p>
         <Field>
           <FieldLabel htmlFor={`override-description-${remote.name}`}>
             {t('覆盖描述')}
@@ -133,6 +139,7 @@ export default function ToolMetadataPanel({ tool }: { tool: Tool }) {
       ),
   });
   const remove = useMutation({
+    mutationKey: ['tool-metadata', tool.id],
     mutationFn: (name: string) =>
       request(
         `/admin/tools/${tool.id}/metadata/${encodeURIComponent(name)}`,
@@ -151,6 +158,11 @@ export default function ToolMetadataPanel({ tool }: { tool: Tool }) {
   return (
     <section className="metadata-panel" aria-label={t('上游工具与描述')}>
       <h3>{t('上游工具与描述')}</h3>
+      <p>
+        {t(
+          '下面列出服务器发现的实际工具。按工具分别优化说明和参数；清除覆盖后恢复上游定义。连接失败时先检查服务地址、凭证和允许名单，再重试。',
+        )}
+      </p>
       <ErrorNotice
         error={upstream.error}
         retry={() => void upstream.refetch()}

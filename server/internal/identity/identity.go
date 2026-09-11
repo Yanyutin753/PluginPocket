@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/Yanyutin753/loadout/server/internal/auth"
+	"github.com/Yanyutin753/loadout/server/internal/httpapi"
 	"github.com/Yanyutin753/loadout/server/internal/settings"
 	"github.com/Yanyutin753/loadout/server/internal/store"
 	"github.com/jackc/pgx/v5"
@@ -20,6 +21,7 @@ import (
 )
 
 type Options struct {
+	BrowserTTL             auth.BrowserTTL
 	Runtime                *settings.Manager
 	SMTPAllowLocalInsecure bool
 	InitialCredits         *int64
@@ -58,6 +60,7 @@ func New(s *store.Store, o Options) http.Handler {
 			}
 			current := o
 			current.Runtime = nil
+			current.BrowserTTL = auth.BrowserTTL{AccessSeconds: snapshot.AccessTokenSeconds, RefreshSeconds: snapshot.RefreshTokenSeconds}
 			current.InitialCredits = &snapshot.InitialCredits
 			current.RequiredOrg = snapshot.GitHubOrg
 			current.GitHub = nil
@@ -132,7 +135,7 @@ func reply(w http.ResponseWriter, status int, value any) {
 	_ = json.NewEncoder(w).Encode(value)
 }
 func failure(w http.ResponseWriter, status int, code string) {
-	reply(w, status, map[string]string{"error": code})
+	httpapi.Fail(w, status, code)
 }
 func decode(w http.ResponseWriter, r *http.Request, value any) bool {
 	d := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096))
@@ -144,13 +147,13 @@ func decode(w http.ResponseWriter, r *http.Request, value any) bool {
 	return true
 }
 func (a *identity) user(w http.ResponseWriter, r *http.Request) (int64, bool) {
-	cookie, e := r.Cookie("loadout_session")
-	if e != nil {
+	digest, valid := auth.AccessDigest(r)
+	if !valid {
 		failure(w, 401, "unauthorized")
 		return 0, false
 	}
 	var id int64
-	e = a.s.Pool.QueryRow(r.Context(), "SELECT u.id FROM sessions s JOIN users u ON u.id=s.user_id WHERE session_hash=$1 AND expires_at>now() AND u.enabled", auth.Digest(cookie.Value)).Scan(&id)
+	e := a.s.Pool.QueryRow(r.Context(), "SELECT u.id FROM sessions s JOIN users u ON u.id=s.user_id WHERE "+auth.SessionMatch+" AND u.enabled", digest).Scan(&id)
 	if errors.Is(e, pgx.ErrNoRows) {
 		failure(w, 401, "unauthorized")
 		return 0, false

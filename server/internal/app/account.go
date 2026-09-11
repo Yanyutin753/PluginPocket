@@ -17,8 +17,6 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-const sessionCookie = "loadout_session"
-
 type User struct {
 	ID       int64  `json:"id"`
 	Username string `json:"username"`
@@ -39,7 +37,11 @@ type Token struct {
 var usernamePattern = regexp.MustCompile(`^[a-zA-Z0-9_-]{3,32}$`)
 
 func decode(w http.ResponseWriter, r *http.Request, dst any) bool {
-	r.Body = http.MaxBytesReader(w, r.Body, 16384)
+	return decodeLimit(w, r, dst, 16384)
+}
+
+func decodeLimit(w http.ResponseWriter, r *http.Request, dst any, limit int64) bool {
+	r.Body = http.MaxBytesReader(w, r.Body, limit)
 	d := json.NewDecoder(r.Body)
 	d.DisallowUnknownFields()
 	if e := d.Decode(dst); e != nil {
@@ -67,12 +69,12 @@ type userQuerier interface {
 // Read authorization after business locks using a fresh database statement timestamp.
 func currentUserQuery(w http.ResponseWriter, r *http.Request, admin bool, q userQuerier) (User, bool) {
 	var u User
-	cookie, e := r.Cookie(sessionCookie)
-	if e != nil || cookie.Value == "" {
+	digest, valid := auth.AccessDigest(r)
+	if !valid {
 		fail(w, 401, "unauthorized")
 		return u, false
 	}
-	e = q.QueryRow(r.Context(), "SELECT u.id,u.username,u.role,w.balance,u.enabled FROM sessions s JOIN users u ON u.id=s.user_id JOIN wallets w ON w.user_id=u.id WHERE s.session_hash=$1 AND s.expires_at>statement_timestamp() AND u.enabled", auth.Digest(cookie.Value)).Scan(&u.ID, &u.Username, &u.Role, &u.Balance, &u.Enabled)
+	e := q.QueryRow(r.Context(), "SELECT u.id,u.username,u.role,w.balance,u.enabled FROM sessions s JOIN users u ON u.id=s.user_id JOIN wallets w ON w.user_id=u.id WHERE "+auth.SessionMatch+" AND u.enabled", digest).Scan(&u.ID, &u.Username, &u.Role, &u.Balance, &u.Enabled)
 	if errors.Is(e, pgx.ErrNoRows) {
 		fail(w, 401, "unauthorized")
 		return u, false
@@ -86,9 +88,6 @@ func currentUserQuery(w http.ResponseWriter, r *http.Request, admin bool, q user
 		return u, false
 	}
 	return u, true
-}
-func (a *application) setCookie(w http.ResponseWriter, value string, expires time.Time) {
-	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: value, Path: "/", HttpOnly: true, Secure: a.options.SecureCookies, SameSite: http.SameSiteLaxMode, Expires: expires, MaxAge: 7 * 24 * 3600})
 }
 func (a *application) register(w http.ResponseWriter, r *http.Request) {
 	var in struct {
@@ -127,11 +126,6 @@ func (a *application) register(w http.ResponseWriter, r *http.Request) {
 		fail(w, 500, "internal_error")
 		return
 	}
-	secret, e := auth.Secret("")
-	if e != nil {
-		fail(w, 500, "internal_error")
-		return
-	}
 	tx, e := a.s.Pool.Begin(r.Context())
 	if e != nil {
 		fail(w, 500, "internal_error")
@@ -161,8 +155,13 @@ func (a *application) register(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	u.Balance = initial
-	var expires time.Time
-	if e = tx.QueryRow(r.Context(), "INSERT INTO sessions(user_id,session_hash,expires_at) VALUES($1,$2,statement_timestamp()+interval '7 days') RETURNING expires_at", u.ID, auth.Digest(secret)).Scan(&expires); e != nil {
+	ttl, e := a.browserTTL(r.Context(), tx)
+	if e != nil {
+		fail(w, 503, "temporarily_unavailable")
+		return
+	}
+	session, e := auth.NewBrowserSession(r.Context(), tx, u.ID, ttl)
+	if e != nil {
 		fail(w, 500, "internal_error")
 		return
 	}
@@ -170,7 +169,7 @@ func (a *application) register(w http.ResponseWriter, r *http.Request) {
 		fail(w, 500, "internal_error")
 		return
 	}
-	a.setCookie(w, secret, expires)
+	auth.SetBrowserCookies(w, session, a.options.SecureCookies)
 	respond(w, 201, map[string]any{"user": u})
 }
 func (a *application) login(w http.ResponseWriter, r *http.Request) {
@@ -197,27 +196,44 @@ func (a *application) login(w http.ResponseWriter, r *http.Request) {
 		fail(w, 401, "invalid_credentials")
 		return
 	}
-	secret, e := auth.Secret("")
+	tx, e := a.s.Pool.Begin(r.Context())
 	if e != nil {
 		fail(w, 500, "internal_error")
 		return
 	}
-	var expires time.Time
-	if e = a.s.Pool.QueryRow(r.Context(), "INSERT INTO sessions(user_id,session_hash,expires_at) VALUES($1,$2,statement_timestamp()+interval '7 days') RETURNING expires_at", u.ID, auth.Digest(secret)).Scan(&expires); e != nil {
+	defer func() { _ = tx.Rollback(context.Background()) }()
+	ttl, e := a.browserTTL(r.Context(), tx)
+	if e != nil {
+		fail(w, 503, "temporarily_unavailable")
+		return
+	}
+	session, e := auth.NewBrowserSession(r.Context(), tx, u.ID, ttl)
+	if e != nil {
 		fail(w, 500, "internal_error")
 		return
 	}
-	a.setCookie(w, secret, expires)
+	if e = tx.Commit(r.Context()); e != nil {
+		fail(w, 500, "internal_error")
+		return
+	}
+	auth.SetBrowserCookies(w, session, a.options.SecureCookies)
 	respond(w, 200, map[string]any{"user": u})
 }
 func (a *application) logout(w http.ResponseWriter, r *http.Request) {
-	if cookie, e := r.Cookie(sessionCookie); e == nil {
-		if _, e = a.s.Pool.Exec(r.Context(), "DELETE FROM sessions WHERE session_hash=$1", auth.Digest(cookie.Value)); e != nil {
-			fail(w, 500, "internal_error")
-			return
-		}
+	var access, refresh string
+	if c, err := r.Cookie(auth.AccessCookie); err == nil {
+		access = auth.Digest(c.Value)
 	}
-	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: "", Path: "/", HttpOnly: true, Secure: a.options.SecureCookies, SameSite: http.SameSiteLaxMode, MaxAge: -1, Expires: time.Unix(1, 0)})
+	if c, err := r.Cookie(auth.RefreshCookie); err == nil {
+		refresh = auth.Digest(c.Value)
+	}
+	if _, err := a.s.Pool.Exec(r.Context(), "DELETE FROM sessions WHERE session_hash=$1 OR session_hash=$2 OR id IN (SELECT session_id FROM session_access WHERE access_hash=$1)", access, refresh); err != nil {
+		fail(w, 500, "internal_error")
+		return
+	}
+	for _, name := range []string{auth.AccessCookie, auth.RefreshCookie} {
+		http.SetCookie(w, &http.Cookie{Name: name, Value: "", Path: "/", HttpOnly: true, Secure: a.options.SecureCookies, SameSite: http.SameSiteLaxMode, MaxAge: -1, Expires: time.Unix(1, 0)})
+	}
 	w.WriteHeader(204)
 }
 func (a *application) me(w http.ResponseWriter, r *http.Request) {

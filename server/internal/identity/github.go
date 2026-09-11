@@ -144,9 +144,8 @@ func (a *identity) githubCallback(w http.ResponseWriter, r *http.Request) {
 		failure(w, 403, "forbidden")
 		return
 	}
-	session := rand.Text()
-	var expires time.Time
-	if e = tx.QueryRow(ctx, "INSERT INTO sessions(user_id,session_hash,expires_at) VALUES($1,$2,now()+interval '7 days') RETURNING expires_at", id, auth.Digest(session)).Scan(&expires); e != nil {
+	session, e := auth.NewBrowserSession(ctx, tx, id, a.o.BrowserTTL)
+	if e != nil {
 		failure(w, 500, "internal_error")
 		return
 	}
@@ -154,6 +153,6 @@ func (a *identity) githubCallback(w http.ResponseWriter, r *http.Request) {
 		failure(w, 500, "internal_error")
 		return
 	}
-	http.SetCookie(w, &http.Cookie{Name: "loadout_session", Value: session, Path: "/", HttpOnly: true, Secure: a.o.SecureCookies, SameSite: http.SameSiteLaxMode, MaxAge: 7 * 24 * 3600, Expires: expires})
+	auth.SetBrowserCookies(w, session, a.o.SecureCookies)
 	http.Redirect(w, r, "/", http.StatusFound)
 }

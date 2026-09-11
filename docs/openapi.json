@@ -3,7 +3,7 @@
   "info": {
     "title": "Loadout HTTP API",
     "version": "0.2.0",
-    "description": "实际Go app/identity/运维路由。网页会话与ldt_网关令牌分离；业务写请求校验Origin；外部支付目前不可用。Body总大小app16KiB、identity4KiB；字符串长度限制以Go UTF-8字节校验为准，JSON Schema maxLength仅作客户端提示。"
+    "description": "实际Go app/identity/运维路由。网页会话与ldt_网关令牌分离；业务写请求校验Origin；外部支付目前不可用。Body总大小app默认16KiB、技能发布50MiB（另验32文件/单文件256KiB）、identity4KiB；字符串长度限制以Go UTF-8字节校验为准，JSON Schema maxLength仅作客户端提示。"
   },
   "servers": [
     {
@@ -235,7 +235,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "loadout_session；HttpOnly、SameSite=Lax、Path=/，有效期7天；生产Secure。"
+                "description": "loadout_session AT 与 loadout_refresh RT；均 HttpOnly、SameSite=Lax、Path=/，生产Secure；默认900/604800秒，系统配置可热更新。"
               }
             }
           },
@@ -308,7 +308,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "loadout_session；HttpOnly、SameSite=Lax、Path=/，有效期7天；生产Secure。"
+                "description": "loadout_session AT 与 loadout_refresh RT；均 HttpOnly、SameSite=Lax、Path=/，生产Secure；默认900/604800秒，系统配置可热更新。"
               }
             }
           },
@@ -3175,7 +3175,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "start设置10分钟state cookie；callback清state并设置7天session。"
+                "description": "start设置10分钟state cookie；callback清state并签发AT/RT，期限由共享系统配置读取。"
               }
             }
           },
@@ -3220,7 +3220,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "description": "start设置10分钟state cookie；callback清state并设置7天session。"
+                "description": "start设置10分钟state cookie；callback清state并签发AT/RT，期限由共享系统配置读取。"
               }
             }
           },
@@ -3603,6 +3603,499 @@
           }
         ]
       }
+    },
+    "/api/v1/plugins": {
+      "get": {
+        "summary": "Anonymous plugin catalog",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Public metadata only",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["items", "origin"],
+                  "properties": {
+                    "origin": {
+                      "type": "string"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "slug",
+                          "name",
+                          "description",
+                          "kind",
+                          "version",
+                          "gateway"
+                        ],
+                        "properties": {
+                          "slug": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": ["mcp", "skill", "bundle"]
+                          },
+                          "gateway": {
+                            "type": "boolean"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Directory unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/plugins/{slug}": {
+      "get": {
+        "summary": "Anonymous plugin detail",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Public metadata only",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["item", "origin"],
+                  "properties": {
+                    "origin": {
+                      "type": "string"
+                    },
+                    "item": {
+                      "type": "object",
+                      "required": [
+                        "slug",
+                        "name",
+                        "description",
+                        "kind",
+                        "version",
+                        "gateway"
+                      ],
+                      "properties": {
+                        "slug": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": ["mcp", "skill", "bundle"]
+                        },
+                        "gateway": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Directory unavailable"
+          },
+          "404": {
+            "description": "Plugin not found"
+          }
+        },
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/account/usage/{callID}": {
+      "get": {
+        "operationId": "get__api_v1_account_usage_detail",
+        "summary": "个人调用详情",
+        "description": "继承对应列表权限。原样保存网关收到的参数与返回客户端的 MCP 结果，不额外脱敏；每方向最多 64 KiB。历史/恢复记录可能没有载荷。既有网关错误摘要与结算注记仍属于返回结果。",
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "callID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "item": {
+                      "$ref": "#/components/schemas/UsageDetail"
+                    }
+                  },
+                  "required": ["item"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/usage/{callID}": {
+      "get": {
+        "operationId": "get__api_v1_admin_usage_detail",
+        "summary": "全局调用详情",
+        "description": "继承对应列表权限。原样保存网关收到的参数与返回客户端的 MCP 结果，不额外脱敏；每方向最多 64 KiB。历史/恢复记录可能没有载荷。既有网关错误摘要与结算注记仍属于返回结果。",
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "callID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "item": {
+                      "$ref": "#/components/schemas/UsageDetail"
+                    }
+                  },
+                  "required": ["item"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/account/teams/{id}/usage/{callID}": {
+      "get": {
+        "operationId": "get__api_v1_account_teams_id_usage_detail",
+        "summary": "团队调用详情",
+        "description": "继承对应列表权限。原样保存网关收到的参数与返回客户端的 MCP 结果，不额外脱敏；每方向最多 64 KiB。历史/恢复记录可能没有载荷。既有网关错误摘要与结算注记仍属于返回结果。",
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "callID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "item": {
+                      "$ref": "#/components/schemas/UsageDetail"
+                    }
+                  },
+                  "required": ["item"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/tools/settlement-preview": {
+      "post": {
+        "operationId": "post_api_v1_admin_tools_settlement_preview",
+        "summary": "结算规则试算",
+        "tags": ["管理"],
+        "description": "仅管理员、同源写请求。复用网关判定，不调用上游、不写数据库或扣费。脚本异常、超时及业务规则未通过时charge=false。请求体最多512KiB；text最多64KiB UTF-8。",
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          },
+          "200": {
+            "description": "判定结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "charge": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["charge"]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "format": "uri"
+            },
+            "description": "必须与部署公开站点源一致；浏览器同源写请求自动携带。"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "settlement": {
+                    "type": ["object", "null"],
+                    "additionalProperties": true,
+                    "description": "{} 或 null 使用默认 isError 判定；支持 content:{path,equals}、content:{pattern} 或 script（最多8192字节，200ms沙箱）。PATCH省略时保留。"
+                  },
+                  "text": {
+                    "type": "string",
+                    "maxLength": 65536
+                  },
+                  "is_error": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/marketplace/skills": {
+      "post": {
+        "summary": "Create or update skills",
+        "description": "Administrator only. New entries return 201; same-kind updates return 200; conflicting kinds return 409. GitHub skills store validated file snapshots. Bundle members must be installable.",
+        "responses": {
+          "200": {
+            "description": "Updated item"
+          },
+          "201": {
+            "description": "Created item"
+          },
+          "400": {
+            "description": "Invalid fields, files or members"
+          },
+          "403": {
+            "description": "Administrator required"
+          },
+          "409": {
+            "description": "Slug belongs to another kind"
+          },
+          "502": {
+            "description": "GitHub synchronization failed"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/marketplace/bundles": {
+      "post": {
+        "summary": "Create or update bundles",
+        "description": "Administrator only. New entries return 201; same-kind updates return 200; conflicting kinds return 409. GitHub skills store validated file snapshots. Bundle members must be installable.",
+        "responses": {
+          "200": {
+            "description": "Updated item"
+          },
+          "201": {
+            "description": "Created item"
+          },
+          "400": {
+            "description": "Invalid fields, files or members"
+          },
+          "403": {
+            "description": "Administrator required"
+          },
+          "409": {
+            "description": "Slug belongs to another kind"
+          },
+          "502": {
+            "description": "GitHub synchronization failed"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "operationId": "post_api_v1_auth_refresh",
+        "summary": "刷新浏览器访问凭据",
+        "tags": ["账号"],
+        "description": "使用 HttpOnly loadout_refresh Cookie 签发新 AT；RT 绝对期限不延长。共享 PostgreSQL，支持无粘性多副本。",
+        "responses": {
+          "204": {
+            "description": "成功，Set-Cookie 更新 loadout_session"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "refreshCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "format": "uri"
+            },
+            "description": "必须与部署公开站点源一致；浏览器同源写请求自动携带。"
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -3611,13 +4104,18 @@
         "type": "apiKey",
         "in": "cookie",
         "name": "loadout_session",
-        "description": "HttpOnly、SameSite=Lax，7天opaque session；生产Secure。"
+        "description": "HttpOnly、SameSite=Lax，默认900秒opaque AT；生产Secure。旧7天session在原期限内兼容。"
       },
       "GatewayToken": {
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "ldt_ token",
         "description": "网页会话不能替代此令牌。"
+      },
+      "refreshCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "loadout_refresh"
       }
     },
     "schemas": {
@@ -3969,6 +4467,15 @@
           "input_schema": {
             "type": "object",
             "additionalProperties": true
+          },
+          "icon": {
+            "type": "string",
+            "description": "空字符串清除图标；HTTPS 图片 URL（无凭证，最多2048字节），或 base64 data:image/svg+xml、png、jpeg、webp（解码后最多64KiB）。SVG仅静态绘图元素/属性；禁脚本、事件、CSS、foreignObject与外部资源。"
+          },
+          "settlement": {
+            "type": ["object", "null"],
+            "additionalProperties": true,
+            "description": "{} 或 null 使用默认 isError 判定；支持 content:{path,equals}、content:{pattern} 或 script（最多8192字节，200ms沙箱）。PATCH省略时保留。"
           }
         },
         "required": [
@@ -3979,7 +4486,8 @@
           "kind",
           "enabled",
           "units_per_call",
-          "input_schema"
+          "input_schema",
+          "icon"
         ]
       },
       "HTTPConfig": {
@@ -4551,6 +5059,15 @@
           },
           "configured": {
             "type": "boolean"
+          },
+          "icon": {
+            "type": "string",
+            "description": "空字符串清除图标；HTTPS 图片 URL（无凭证，最多2048字节），或 base64 data:image/svg+xml、png、jpeg、webp（解码后最多64KiB）。SVG仅静态绘图元素/属性；禁脚本、事件、CSS、foreignObject与外部资源。"
+          },
+          "settlement": {
+            "type": ["object", "null"],
+            "additionalProperties": true,
+            "description": "{} 或 null 使用默认 isError 判定；支持 content:{path,equals}、content:{pattern} 或 script（最多8192字节，200ms沙箱）。PATCH省略时保留。"
           }
         },
         "required": [
@@ -4562,7 +5079,8 @@
           "enabled",
           "units_per_call",
           "input_schema",
-          "configured"
+          "configured",
+          "icon"
         ]
       },
       "ToolWrite": {
@@ -4615,6 +5133,15 @@
               }
             ],
             "writeOnly": true
+          },
+          "icon": {
+            "type": "string",
+            "description": "空字符串清除图标；HTTPS 图片 URL（无凭证，最多2048字节），或 base64 data:image/svg+xml、png、jpeg、webp（解码后最多64KiB）。SVG仅静态绘图元素/属性；禁脚本、事件、CSS、foreignObject与外部资源。"
+          },
+          "settlement": {
+            "type": ["object", "null"],
+            "additionalProperties": true,
+            "description": "{} 或 null 使用默认 isError 判定；支持 content:{path,equals}、content:{pattern} 或 script（最多8192字节，200ms沙箱）。PATCH省略时保留。"
           }
         },
         "required": [
@@ -4626,7 +5153,7 @@
           "input_schema"
         ],
         "additionalProperties": false,
-        "description": "POST/PATCH均提交完整工具定义；PATCH省略config保留原配置。builtin仅echo/time_now，不提交config。HTTP/stdio配置加密后存储，不回传。所有请求体总计至多16KiB。"
+        "description": "POST/PATCH提交完整工具定义；PATCH省略config/icon/settlement保留原值。builtin支持echo/time_now/tools_catalog/account_usage/account_balance，不提交config。HTTP/stdio配置加密存储，不回传。请求体最多512KiB。"
       },
       "AdminLedger": {
         "type": "object",
@@ -4946,6 +5473,20 @@
           },
           "smtp_password_set": {
             "type": "boolean"
+          },
+          "access_token_seconds": {
+            "type": "integer",
+            "minimum": 60,
+            "maximum": 86400,
+            "default": 900,
+            "description": "保存后跨副本热更新，影响新签发凭据；RT 不短于 AT，已有 RT 到期不变。"
+          },
+          "refresh_token_seconds": {
+            "type": "integer",
+            "minimum": 60,
+            "maximum": 31536000,
+            "default": 604800,
+            "description": "保存后跨副本热更新，影响新签发凭据；RT 不短于 AT，已有 RT 到期不变。"
           }
         },
         "required": [
@@ -4959,7 +5500,9 @@
           "smtp_from",
           "smtp_username",
           "github_client_secret_set",
-          "smtp_password_set"
+          "smtp_password_set",
+          "access_token_seconds",
+          "refresh_token_seconds"
         ]
       },
       "RuntimeSettingsResponse": {
@@ -5026,6 +5569,20 @@
             "maxLength": 4096,
             "writeOnly": true,
             "description": "省略保留；空字符串清除。SMTP用户名与密码须配对。"
+          },
+          "access_token_seconds": {
+            "type": "integer",
+            "minimum": 60,
+            "maximum": 86400,
+            "default": 900,
+            "description": "保存后跨副本热更新，影响新签发凭据；RT 不短于 AT，已有 RT 到期不变。"
+          },
+          "refresh_token_seconds": {
+            "type": "integer",
+            "minimum": 60,
+            "maximum": 31536000,
+            "default": 604800,
+            "description": "保存后跨副本热更新，影响新签发凭据；RT 不短于 AT，已有 RT 到期不变。"
           }
         },
         "required": [
@@ -5038,6 +5595,36 @@
           "smtp_address",
           "smtp_from",
           "smtp_username"
+        ]
+      },
+      "UsageDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Usage"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "input_data": {
+                "type": ["string", "null"]
+              },
+              "output_data": {
+                "type": ["string", "null"]
+              },
+              "input_truncated": {
+                "type": "boolean"
+              },
+              "output_truncated": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "input_data",
+              "output_data",
+              "input_truncated",
+              "output_truncated"
+            ]
+          }
         ]
       }
     },

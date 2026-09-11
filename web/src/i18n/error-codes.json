@@ -1,0 +1,322 @@
+[
+  {
+    "code": "already_installed",
+    "status": [
+      409
+    ]
+  },
+  {
+    "code": "already_member",
+    "status": [
+      409
+    ]
+  },
+  {
+    "code": "already_redeemed",
+    "status": [
+      409
+    ]
+  },
+  {
+    "code": "auth_busy",
+    "status": [
+      429
+    ]
+  },
+  {
+    "code": "authorization_pending",
+    "status": [
+      400
+    ]
+  },
+  {
+    "code": "cannot_disable_self",
+    "status": [
+      409
+    ]
+  },
+  {
+    "code": "config_required",
+    "status": [
+      400
+    ]
+  },
+  {
+    "code": "directory_unavailable",
+    "status": [
+      503
+    ]
+  },
+  {
+    "code": "email_unavailable",
+    "status": [
+      409,
+      503
+    ]
+  },
+  {
+    "code": "expired_token",
+    "status": [
+      400
+    ]
+  },
+  {
+    "code": "forbidden",
+    "status": [
+      403
+    ]
+  },
+  {
+    "code": "forbidden_origin",
+    "status": [
+      403
+    ]
+  },
+  {
+    "code": "gateway_unavailable",
+    "status": [
+      503
+    ]
+  },
+  {
+    "code": "github_failed",
+    "status": [
+      502
+    ]
+  },
+  {
+    "code": "github_unavailable",
+    "status": [
+      503
+    ]
+  },
+  {
+    "code": "idempotency_conflict",
+    "status": [
+      409
+    ]
+  },
+  {
+    "code": "insufficient_balance",
+    "status": [
+      409
+    ]
+  },
+  {
+    "code": "internal_error",
+    "status": [
+      500
+    ]
+  },
+  {
+    "code": "invalid_credentials",
+    "status": [
+      401
+    ]
+  },
+  {
+    "code": "invalid_device_code",
+    "status": [
+      409
+    ]
+  },
+  {
+    "code": "invalid_grant",
+    "status": [
+      400
+    ]
+  },
+  {
+    "code": "invalid_icon",
+    "status": [
+      400
+    ]
+  },
+  {
+    "code": "invalid_request",
+    "status": [
+      400
+    ]
+  },
+  {
+    "code": "invalid_settlement",
+    "status": [
+      400
+    ]
+  },
+  {
+    "code": "invalid_state",
+    "status": [
+      400
+    ]
+  },
+  {
+    "code": "invalid_token",
+    "status": [
+      400
+    ]
+  },
+  {
+    "code": "invite_expired",
+    "status": [
+      410
+    ]
+  },
+  {
+    "code": "invite_used",
+    "status": [
+      409
+    ]
+  },
+  {
+    "code": "key_taken",
+    "status": [
+      409
+    ]
+  },
+  {
+    "code": "last_admin",
+    "status": [
+      409
+    ]
+  },
+  {
+    "code": "last_owner",
+    "status": [
+      409
+    ]
+  },
+  {
+    "code": "marketplace_unavailable",
+    "status": [
+      503
+    ]
+  },
+  {
+    "code": "method_not_allowed",
+    "status": [
+      405
+    ]
+  },
+  {
+    "code": "not_found",
+    "status": [
+      404
+    ]
+  },
+  {
+    "code": "not_installed",
+    "status": [
+      409
+    ]
+  },
+  {
+    "code": "organization_required",
+    "status": [
+      403
+    ]
+  },
+  {
+    "code": "payment_unavailable",
+    "status": [
+      503
+    ]
+  },
+  {
+    "code": "rate_limit_unavailable",
+    "status": [
+      503
+    ]
+  },
+  {
+    "code": "rate_limited",
+    "status": [
+      429
+    ]
+  },
+  {
+    "code": "registration_unavailable",
+    "status": [
+      503
+    ]
+  },
+  {
+    "code": "seats_in_use",
+    "status": [
+      409
+    ]
+  },
+  {
+    "code": "settings_conflict",
+    "status": [
+      409
+    ]
+  },
+  {
+    "code": "settings_encryption_unavailable",
+    "status": [
+      503
+    ]
+  },
+  {
+    "code": "settings_unavailable",
+    "status": [
+      503
+    ]
+  },
+  {
+    "code": "slow_down",
+    "status": [
+      429
+    ]
+  },
+  {
+    "code": "team_full",
+    "status": [
+      409
+    ]
+  },
+  {
+    "code": "temporarily_unavailable",
+    "status": [
+      503
+    ]
+  },
+  {
+    "code": "tool_disabled",
+    "status": [
+      409
+    ]
+  },
+  {
+    "code": "transport_not_supported",
+    "status": [
+      400
+    ]
+  },
+  {
+    "code": "transport_required",
+    "status": [
+      400
+    ]
+  },
+  {
+    "code": "unauthorized",
+    "status": [
+      401
+    ]
+  },
+  {
+    "code": "upstream_unavailable",
+    "status": [
+      502,
+      503
+    ]
+  },
+  {
+    "code": "username_taken",
+    "status": [
+      409
+    ]
+  }
+]

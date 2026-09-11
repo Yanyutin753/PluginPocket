@@ -1,14 +1,24 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router';
 import { expect, it } from 'vitest';
 import { PreferencesProvider } from '../i18n';
 import LandingPage from './LandingPage';
 
 it('introduces Loadout publicly with honest setup steps and account navigation', () => {
   render(
-    <PreferencesProvider>
-      <LandingPage />
-    </PreferencesProvider>,
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
+    >
+      <PreferencesProvider>
+        <MemoryRouter>
+          <LandingPage />
+        </MemoryRouter>
+      </PreferencesProvider>
+    </QueryClientProvider>,
   );
   expect(
     screen.getByRole('heading', { level: 1, name: '给你的 AI，装上超能力' }),
@@ -45,9 +55,17 @@ it('introduces Loadout publicly with honest setup steps and account navigation',
 it('switches public copy to English while preserving account destinations', async () => {
   const user = userEvent.setup();
   render(
-    <PreferencesProvider>
-      <LandingPage />
-    </PreferencesProvider>,
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
+    >
+      <PreferencesProvider>
+        <MemoryRouter>
+          <LandingPage />
+        </MemoryRouter>
+      </PreferencesProvider>
+    </QueryClientProvider>,
   );
   await user.click(screen.getByRole('combobox', { name: '语言' }));
   await user.click(screen.getByRole('option', { name: 'English' }));

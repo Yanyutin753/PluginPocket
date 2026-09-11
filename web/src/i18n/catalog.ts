@@ -1,4 +1,20 @@
 export const en: Record<string, string> = {
+  浏览器登录有效期: 'Browser session lifetimes',
+  'AT 有效期（秒）': 'AT lifetime (seconds)',
+  'RT 有效期（秒）': 'RT lifetime (seconds)',
+  '保存后各副本立即采用新期限签发凭据；已有 RT 到期时间不变，刷新 AT 不延长 RT。':
+    'All replicas use the new lifetimes when issuing credentials after saving. Existing RT expiry stays unchanged; refreshing an AT does not extend the RT.',
+  详情: 'Details',
+  查看详情: 'View details',
+  调用详情: 'Call details',
+  传入数据: 'Input data',
+  传出数据: 'Output data',
+  未记录: 'Not recorded',
+  '内容较大，仅保留前 64 KiB。':
+    'Content is large; only the first 64 KiB was retained.',
+  编辑系统配置: 'Edit system settings',
+  已配置连接: 'Connection configured',
+  关闭面板: 'Close panel',
   正在检查服务: 'Checking service',
   服务已连接: 'Service connected',
   暂时无法连接: 'Unable to connect',

@@ -7,6 +7,7 @@ import (
 
 	"github.com/Yanyutin753/loadout/server/internal/auth"
 	"github.com/Yanyutin753/loadout/server/internal/gateway"
+	"github.com/Yanyutin753/loadout/server/internal/httpapi"
 	"github.com/Yanyutin753/loadout/server/internal/marketplace"
 	"github.com/Yanyutin753/loadout/server/internal/settings"
 	"github.com/Yanyutin753/loadout/server/internal/store"
@@ -20,8 +21,6 @@ type Options struct {
 	SecureCookies  bool
 	Origin         string
 	Marketplace    marketplace.Options
-	// MarketplaceRegistry 非 nil 时，市场内容变更会即时刷新 /marketplace.git。
-	MarketplaceRegistry *marketplace.GitRegistry
 }
 type application struct {
 	s       *store.Store
@@ -35,12 +34,16 @@ func New(s *store.Store, options Options) http.Handler {
 	mux.HandleFunc("POST /api/v1/auth/register", a.register)
 	mux.HandleFunc("POST /api/v1/auth/login", a.login)
 	mux.HandleFunc("POST /api/v1/auth/logout", a.logout)
+	mux.HandleFunc("POST /api/v1/auth/refresh", a.refresh)
 	mux.HandleFunc("GET /api/v1/account/me", a.me)
 	mux.HandleFunc("GET /api/v1/account/verify", a.verify)
 	mux.HandleFunc("GET /api/v1/account/tokens", a.listTokens)
 	mux.HandleFunc("POST /api/v1/account/tokens", a.createToken)
 	mux.HandleFunc("DELETE /api/v1/account/tokens/{id}", a.revokeToken)
 	mux.HandleFunc("GET /api/v1/account/usage", a.usage)
+	mux.HandleFunc("GET /api/v1/account/usage/{callID}", a.usageDetail)
+	mux.HandleFunc("GET /api/v1/admin/usage/{callID}", a.usageDetail)
+	mux.HandleFunc("GET /api/v1/account/teams/{id}/usage/{callID}", a.usageDetail)
 	mux.HandleFunc("GET /api/v1/admin/settings", a.getSettings)
 	mux.HandleFunc("PATCH /api/v1/admin/settings", a.saveSettings)
 	mux.HandleFunc("GET /api/v1/admin/users", a.users)
@@ -48,9 +51,10 @@ func New(s *store.Store, options Options) http.Handler {
 	mux.HandleFunc("GET /api/v1/tools", a.listTools)
 	mux.HandleFunc("GET /api/v1/admin/tools", a.listTools)
 	mux.HandleFunc("POST /api/v1/admin/tools", a.saveTool)
+	mux.HandleFunc("POST /api/v1/admin/tools/settlement-preview", a.previewSettlement)
 	mux.HandleFunc("PATCH /api/v1/admin/tools/{id}", a.saveTool)
-	mux.HandleFunc("GET /plugins", a.pluginDirectory)
-	mux.HandleFunc("GET /plugins/{slug}", a.pluginDetail)
+	mux.HandleFunc("GET /api/v1/plugins", a.pluginDirectory)
+	mux.HandleFunc("GET /api/v1/plugins/{slug}", a.pluginDetail)
 	mux.HandleFunc("GET /api/v1/admin/marketplace", a.listMarketplace)
 	mux.HandleFunc("GET /api/v1/marketplace", a.publicMarketplace)
 	mux.HandleFunc("GET /api/v1/marketplace/{slug}/files", a.marketplaceFiles)
@@ -132,5 +136,5 @@ func respond(w http.ResponseWriter, status int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 func fail(w http.ResponseWriter, status int, code string) {
-	respond(w, status, map[string]string{"error": code})
+	httpapi.Fail(w, status, code)
 }

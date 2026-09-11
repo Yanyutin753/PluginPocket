@@ -1,0 +1,75 @@
+import { mkdtemp, rm } from 'node:fs/promises';
+import { createServer as createHTTPServer } from 'node:http';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { createServer, resolveConfig } from 'vite';
+import { expect, it, vi } from 'vitest';
+
+it('keeps each development instance dependency cache inside its isolated run directory', async () => {
+  const first = await mkdtemp(join(tmpdir(), 'loadout-vite-first-'));
+  const second = await mkdtemp(join(tmpdir(), 'loadout-vite-second-'));
+  try {
+    vi.stubEnv('LOADOUT_RUN_DIR', first);
+    const a = await resolveConfig(
+      { configFile: resolve('vite.config.ts') },
+      'serve',
+    );
+    vi.stubEnv('LOADOUT_RUN_DIR', second);
+    const b = await resolveConfig(
+      { configFile: resolve('vite.config.ts') },
+      'serve',
+    );
+    expect(a.cacheDir).toBe(join(first, 'vite-cache'));
+    expect(b.cacheDir).toBe(join(second, 'vite-cache'));
+    expect(a.cacheDir).not.toBe(b.cacheDir);
+  } finally {
+    vi.unstubAllEnvs();
+    await Promise.all([
+      rm(first, { recursive: true, force: true }),
+      rm(second, { recursive: true, force: true }),
+    ]);
+  }
+});
+
+it('serves anonymous plugin documents and git files through the real development proxy', async () => {
+  const runDir = await mkdtemp(join(tmpdir(), 'loadout-proxy-vite-'));
+  vi.stubEnv('LOADOUT_RUN_DIR', runDir);
+  const upstream = createHTTPServer((req, res) => {
+    res.statusCode = req.url === '/api/v1/plugins/missing' ? 404 : 200;
+    res.setHeader('content-type', 'text/plain');
+    res.end(`upstream:${req.url}`);
+  });
+  await new Promise<void>((resolve) =>
+    upstream.listen(0, '127.0.0.1', resolve),
+  );
+  const address = upstream.address();
+  if (!address || typeof address === 'string') throw new Error('No port');
+  vi.stubEnv('LOADOUT_API_ORIGIN', `http://127.0.0.1:${address.port}`);
+  const vite = await createServer({
+    configFile: resolve('vite.config.ts'),
+    server: { port: 0, host: '127.0.0.1' },
+  });
+  try {
+    await vite.listen();
+    const origin = vite.resolvedUrls?.local[0];
+    if (!origin) throw new Error('No Vite URL');
+    for (const path of [
+      '/api/v1/plugins',
+      '/api/v1/plugins/deepwiki',
+      '/marketplace.git/HEAD',
+      '/marketplace.git/info/refs',
+      '/api/v1/plugins/missing',
+    ]) {
+      const response = await fetch(new URL(path, origin));
+      expect(await response.text()).toBe(`upstream:${path}`);
+      expect(response.status).toBe(path.endsWith('/missing') ? 404 : 200);
+    }
+  } finally {
+    await vite.close();
+    await new Promise<void>((resolve, reject) =>
+      upstream.close((error) => (error ? reject(error) : resolve())),
+    );
+    vi.unstubAllEnvs();
+    await rm(runDir, { recursive: true, force: true });
+  }
+}, 20000);

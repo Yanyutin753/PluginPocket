@@ -44,13 +44,26 @@ function network(
     init: RequestInit,
   ) => Response | Promise<Response> | undefined,
 ) {
-  const mock = vi.fn(
-    (url: string, init: RequestInit = {}) =>
-      handler?.(url, init) ??
-      (url === '/api/v1/account/me'
-        ? Response.json(account)
-        : Response.json({ error: 'not_found' }, { status: 404 })),
-  );
+  let signedIn = true;
+  const mock = vi.fn(async (url: string, init: RequestInit = {}) => {
+    const response =
+      (await handler?.(url, init)) ??
+      (url === '/api/v1/auth/refresh' ||
+      (url === '/api/v1/account/me' && !signedIn)
+        ? Response.json({ error: 'unauthorized' }, { status: 401 })
+        : url === '/api/v1/account/me'
+          ? Response.json(account)
+          : Response.json({ error: 'not_found' }, { status: 404 }));
+    if (
+      (url === '/api/v1/auth/login' || url === '/api/v1/auth/register') &&
+      response.ok
+    )
+      signedIn = true;
+    if (url === '/api/v1/auth/logout' && response.ok) signedIn = false;
+    if (url.startsWith('/api/v1/account/') && response.status === 401)
+      signedIn = false;
+    return response;
+  });
   vi.stubGlobal('fetch', mock);
   return mock;
 }
@@ -58,6 +71,43 @@ beforeEach(() => {
   window.history.replaceState({}, '', '/overview');
 });
 describe('account console', () => {
+  it('exposes the public plugin directory in workspace navigation', async () => {
+    network((url) =>
+      url === '/api/v1/plugins'
+        ? Response.json({ items: [], origin: '' })
+        : undefined,
+    );
+    mount();
+    await screen.findByRole('heading', { name: '账号概览' });
+    expect(
+      within(screen.getByRole('navigation', { name: '主导航' })).queryByRole(
+        'link',
+        { name: '工具目录' },
+      ),
+    ).not.toBeInTheDocument();
+    const link = within(
+      screen.getByRole('navigation', { name: '主导航' }),
+    ).getByRole('link', { name: '插件市场' });
+    expect(link).toHaveAttribute('href', '/plugins');
+    link.focus();
+    expect(link).toHaveFocus();
+    await userEvent.setup().keyboard('{Enter}');
+    expect(
+      await screen.findByRole('heading', { name: '插件市场', level: 1 }),
+    ).toBeVisible();
+    expect(window.location.pathname).toBe('/plugins');
+  });
+  it('keeps the service status page out of workspace navigation', async () => {
+    network();
+    mount();
+    await screen.findByRole('heading', { name: '账号概览' });
+    expect(
+      within(screen.getByRole('navigation', { name: '主导航' })).queryByRole(
+        'link',
+        { name: '服务状态' },
+      ),
+    ).not.toBeInTheDocument();
+  });
   it('logs in with keyboard and shows account values; logout removes account data', async () => {
     let signedIn = false;
     network((url) => {
@@ -126,6 +176,8 @@ describe('account console', () => {
   it('registers an account and does not leak server errors before a successful retry', async () => {
     let attempts = 0;
     network((url) => {
+      if (url.endsWith('/account/me') && attempts < 2)
+        return Response.json({ error: 'unauthorized' }, { status: 401 });
       if (url.endsWith('/auth/register'))
         return ++attempts === 1
           ? Response.json(
@@ -193,6 +245,7 @@ describe('account console', () => {
     const { client } = mount('/tokens');
     const user = userEvent.setup();
     expect(await screen.findByText('还没有令牌')).toBeVisible();
+    await user.click(await screen.findByRole('button', { name: '创建令牌' }));
     await user.type(screen.getByLabelText('令牌名称'), '工作电脑');
     await user.click(screen.getByRole('button', { name: '创建令牌' }));
     expect(await screen.findByText('ldt_only_once_secret')).toBeVisible();
@@ -208,6 +261,7 @@ describe('account console', () => {
       screen.getByRole('button', { name: '我已保存，隐藏令牌' }),
     );
     expect(screen.queryByText('ldt_only_once_secret')).not.toBeInTheDocument();
+    await user.keyboard('{Escape}');
     await user.click(screen.getByRole('button', { name: '撤销 工作电脑' }));
     expect(screen.getByRole('button', { name: '确认撤销' })).toBeVisible();
     await user.click(screen.getByRole('button', { name: '确认撤销' }));
@@ -338,6 +392,7 @@ describe('recovery and navigation', () => {
     );
     mount('/tokens');
     const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: '创建令牌' }));
     await user.type(await screen.findByLabelText('令牌名称'), '工作电脑');
     await user.click(screen.getByRole('button', { name: '创建令牌' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -357,10 +412,15 @@ describe('recovery and navigation', () => {
     );
     mount('/tokens');
     const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: '创建令牌' }));
     await user.type(await screen.findByLabelText('令牌名称'), '工作电脑');
     await user.click(screen.getByRole('button', { name: '创建令牌' }));
     await user.click(await screen.findByRole('button', { name: '复制令牌' }));
     expect(await navigator.clipboard.readText()).toBe('ldt_only_once_secret');
+    await user.click(
+      screen.getByRole('button', { name: '我已保存，隐藏令牌' }),
+    );
+    await user.keyboard('{Escape}');
     await user.click(screen.getByRole('link', { name: '概览', hidden: true }));
     await screen.findByRole('heading', { name: '账号概览' });
     await user.click(

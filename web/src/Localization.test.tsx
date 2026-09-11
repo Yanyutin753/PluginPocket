@@ -67,11 +67,11 @@ it.each([
   ['/tokens', 'Gateway tokens', 'Create token'],
   ['/tools', 'Tool catalog', 'No tools available'],
   ['/billing', 'Billing', 'Redeem code'],
-  ['/settings', 'Account settings', 'Send verification email'],
+  ['/settings', 'Account settings', 'Email verification'],
   ['/admin/tools', 'Tool management', 'Add tool'],
   ['/admin/plans', 'Plan management', 'Create plan'],
   ['/admin/codes', 'Redemption codes', 'Create redemption code'],
-  ['/teams', 'My teams', 'Join team'],
+  ['/teams', 'My teams', 'Accept invitation'],
   ['/usage', 'Usage', 'No tool calls yet'],
   ['/admin/usage', 'Global usage', 'Export CSV'],
   ['/admin/ledger', 'Credit audit', 'Filter transactions'],
@@ -79,7 +79,7 @@ it.each([
 ])('renders English content on %s', async (path, heading, label) => {
   mount(path);
   expect(await screen.findByRole('heading', { name: heading })).toBeVisible();
-  expect(await screen.findByText(label, { exact: true })).toBeVisible();
+  expect((await screen.findAllByText(label, { exact: true }))[0]).toBeVisible();
   expect(screen.getAllByText('中文用户名').length).toBeGreaterThan(0);
 });
 
@@ -147,12 +147,19 @@ it('shows English form validation and preserves tool configuration for recovery'
     screen.getByLabelText('Connection type'),
     'HTTP service',
   );
+  await chooseOption(
+    user,
+    screen.getByLabelText('Input method'),
+    'Advanced JSON',
+  );
   await user.type(
     screen.getByLabelText('Connection configuration (JSON)'),
     'not-json',
   );
   await user.click(screen.getByRole('button', { name: 'Save tool' }));
-  expect(await screen.findByRole('alert')).toHaveTextContent('Invalid JSON');
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Connection settings must be a JSON object',
+  );
   expect(screen.getByLabelText('Connection configuration (JSON)')).toHaveValue(
     'not-json',
   );

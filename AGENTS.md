@@ -4,17 +4,22 @@
 
 ## 产品速查（2026-09-11）
 
+管理员市场管理入口 `/admin/marketplace` 支持技能/装备组创建编辑与精选 GitHub 批量同步；GitHub 发布保存文件快照，技能变更同时更新引用装备组版本。
+
 登录即武装的 MCP 生态：**插件市场**（三种 kind——HTTP MCP 插件 / Agent Skill / 装备组 bundle，GitHub 同步 + 精选）→ 服务端预设池（鉴权/计量/扣费/结算中间件）→ CLI `apply`（bridge，零密钥）与 `install`（本地直连插件与技能，一键复刻专家配置）。账号、团队、套餐、兑换码、运营后台、Rust CLI、Tauri 桌面端齐备。
 
 ### 模块地图
 
+工具管理支持共享数据库图标（静态SVG/PNG/JPEG/WebP，64 KiB）与管理员结算试算；试算复用网关判定，不执行上游调用、不写账本。
+
 | 区域 | 位置 | 要点 |
 |---|---|---|
-| HTTP API / 运营后台 | `server/internal/app` | 账号/令牌/团队/账单/市场/元数据覆盖；会话 + Bearer 双鉴权 |
+| HTTP API / 运营后台 | `server/internal/app` | 账号/令牌/团队/账单/市场/元数据覆盖；HttpOnly AT/RT 会话 + Bearer 双鉴权（期限由共享PG系统配置热更新）；用量详情按本人/团队/管理员范围读取网关输入输出 |
 | MCP 网关 | `server/internal/gateway` | `/mcp` 无状态；目录 5s 缓存；预留→执行→**结算中间件**（`tools.settlement`：content path/pattern 或 goja 沙箱 script）→失败退款 |
-| 市场 | `server/internal/marketplace` | GitHub 同步 + 技能代取 + **服务端即 Codex 插件市场源**（`/marketplace.git` 哑 HTTP git 实时渲染，gateway 独享组件→bridge 条目；`/plugins` SEO 目录页；`loadout-export` 离线导出） |
+| 市场 | `server/internal/marketplace` | GitHub 同步 + 技能代取 + **服务端即 Codex 插件市场源**（`/marketplace.git` 哑 HTTP git 实时渲染，gateway 独享组件→bridge 条目；`/plugins` 公共 React 目录页；`loadout-export` 离线导出） |
 | 存储 | `server/internal/store` | pgx + 事务账本（append-only 触发器）；**SQLite 迁移轨道** `migrations_sqlite/`（ADR 0002 阶段 2 地基，已验证） |
 | CLI | `cli/src` | login/apply/bridge + market/install/uninstall（按 kind 分发；托管标记 + 备份 + 清单） |
+| 桌面发行 | `desktop` + `.github/workflows/release.yml` | Windows x64、macOS/Linux 双架构；独立发布密钥，安装包 bridge 验证 + Minisign 验签后公开；平台受信任证书与 GUI 验收另计 |
 | Web 控制台 | `web/src` | TanStack Query + Zod + shadcn/ui；市场面板、覆盖编辑器、结算策略编辑（前端语法预检） |
 | 压测设施 | `server/cmd/loadout-server/load_test.go`（build tag `load`） | QPS / 慢上游 / 内存安全三件套，`make load-test` |
 
@@ -57,6 +62,7 @@
 - 市场只收 HTTP MCP；stdio 是部署者受控能力（`LOADOUT_STDIO_COMMANDS` 允许名单）。技能文件路径安全（拒 `..`/绝对路径，≤32 文件、单文件 ≤256KB）。
 - 客户端配置零密钥：bridge 条目不落令牌；本地直连只写公共端点；修改真实客户端配置需用户明确授权。
 - 新业务模块有真实需求才创建；未实现功能不得返回模拟成功、虚构余额或账单。
+- 本地根目录 `pnpm run dev`（VS Code：`Loadout: dev`）运行 Go/Air 自动重载 + Vite；固定 Air 版本在 Makefile，`.env` 修改需重启整个任务。
 - 变更在当前工作区完成，保留无关修改；没有用户指令不 push、发布或修改真实客户端配置。
 
 ## 文档同步义务（改哪类东西必须动哪份文档）

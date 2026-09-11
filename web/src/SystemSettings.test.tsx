@@ -7,6 +7,38 @@ import { chooseOption } from './test/select';
 
 beforeEach(() => localStorage.clear());
 
+it('edits access and refresh lifetimes and saves them through the runtime settings API', async () => {
+  let body: Record<string, unknown> = {};
+  const user = mount((init) => {
+    if (init.method === 'PATCH') body = JSON.parse(String(init.body));
+    return Response.json({
+      item: {
+        ...defaults,
+        access_token_seconds: 900,
+        refresh_token_seconds: 604800,
+        ...body,
+      },
+      secret_writes_available: true,
+    });
+  });
+  await user.click(await screen.findByRole('button', { name: '编辑系统配置' }));
+  const access = await screen.findByLabelText('AT 有效期（秒）');
+  const refresh = screen.getByLabelText('RT 有效期（秒）');
+  expect(access).toHaveValue(900);
+  expect(refresh).toHaveValue(604800);
+  await user.clear(access);
+  await user.type(access, '120');
+  await user.clear(refresh);
+  await user.type(refresh, '3600');
+  screen.getByRole('button', { name: '保存系统配置' }).focus();
+  await user.keyboard('{Enter}');
+  expect(await screen.findByRole('status')).toHaveTextContent('配置已保存');
+  expect(body).toMatchObject({
+    access_token_seconds: 120,
+    refresh_token_seconds: 3600,
+  });
+});
+
 const defaults = {
   revision: 0,
   initial_credits: 1000,
@@ -73,6 +105,7 @@ it('saves runtime settings with keyboard, preserves blank secrets and retries wi
     }
     return Response.json({ item, secret_writes_available: true });
   });
+  await user.click(await screen.findByRole('button', { name: '编辑系统配置' }));
   const credits = await screen.findByLabelText('注册赠送额度');
   expect(credits).toHaveValue(1000);
   expect(screen.getByLabelText('GitHub Client Secret')).toHaveValue('');
@@ -104,6 +137,7 @@ it('reports settings conflicts and explicitly reloads the current revision', asy
       secret_writes_available: true,
     });
   });
+  await user.click(await screen.findByRole('button', { name: '编辑系统配置' }));
   const credits = await screen.findByLabelText('注册赠送额度');
   await user.clear(credits);
   await user.type(credits, '42');
@@ -148,6 +182,9 @@ it('localizes system settings and recovers from a failed load', async () => {
   ).toBeVisible();
   expect(await screen.findByRole('alert')).toBeVisible();
   await user.click(screen.getByRole('button', { name: 'Retry' }));
+  await user.click(
+    await screen.findByRole('button', { name: 'Edit system settings' }),
+  );
   expect(await screen.findByLabelText('Registration credits')).toHaveValue(
     1000,
   );
@@ -180,6 +217,7 @@ it('replaces a secret and explicitly clears a disabled integration credential', 
     }
     return Response.json({ item: defaults, secret_writes_available: true });
   });
+  await user.click(await screen.findByRole('button', { name: '编辑系统配置' }));
   await user.type(
     await screen.findByLabelText('GitHub Client Secret'),
     'replacement-secret',

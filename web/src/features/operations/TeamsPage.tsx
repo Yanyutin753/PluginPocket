@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { z } from 'zod';
 import { Pagination } from '@/components/Pagination';
+import { SidePanel } from '@/components/SidePanel';
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -50,57 +51,69 @@ function TeamList() {
       <Heading title={t('我的团队')} artwork="teams">
         {t('让成员共用额度，并按成员查看工具调用。')}
       </Heading>
-      <div className="two-column">
-        <form
-          className="editor-panel"
-          onSubmit={(event) => {
-            event.preventDefault();
-            create.mutate();
-          }}
+      <div className="action-row">
+        <SidePanel
+          title={t('新建团队')}
+          trigger={t('新建团队')}
+          locked={create.isPending}
         >
-          <h2>{t('新建团队')}</h2>
-          <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="team-name">{t('团队名称')}</FieldLabel>
-              <Input
-                id="team-name"
-                required
-                maxLength={80}
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-              />
-            </Field>
-            <ErrorNotice error={create.error} />
-            <Button disabled={create.isPending} type="submit">
-              {t('创建团队')}
-            </Button>
-          </FieldGroup>
-        </form>
-        <form
-          className="editor-panel"
-          onSubmit={(event) => {
-            event.preventDefault();
-            join.mutate();
-          }}
+          <form
+            className="editor-panel"
+            onSubmit={(event) => {
+              event.preventDefault();
+              create.mutate();
+            }}
+          >
+            <h2>{t('新建团队')}</h2>
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="team-name">{t('团队名称')}</FieldLabel>
+                <Input
+                  id="team-name"
+                  required
+                  maxLength={80}
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                />
+              </Field>
+              <ErrorNotice error={create.error} />
+              <Button disabled={create.isPending} type="submit">
+                {t('创建团队')}
+              </Button>
+            </FieldGroup>
+          </form>
+        </SidePanel>
+        <SidePanel
+          title={t('接受邀请')}
+          trigger={t('接受邀请')}
+          locked={join.isPending}
         >
-          <h2>{t('接受邀请')}</h2>
-          <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="team-invite">{t('团队邀请码')}</FieldLabel>
-              <Input
-                id="team-invite"
-                required
-                value={code}
-                onChange={(event) => setCode(event.target.value)}
-                autoComplete="off"
-              />
-            </Field>
-            <ErrorNotice error={join.error} />
-            <Button disabled={join.isPending} type="submit">
-              {t('加入团队')}
-            </Button>
-          </FieldGroup>
-        </form>
+          <form
+            className="editor-panel"
+            onSubmit={(event) => {
+              event.preventDefault();
+              join.mutate();
+            }}
+          >
+            <h2>{t('接受邀请')}</h2>
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="team-invite">{t('团队邀请码')}</FieldLabel>
+                <Input
+                  id="team-invite"
+                  required
+                  value={code}
+                  onChange={(event) => setCode(event.target.value)}
+                  autoComplete="off"
+                />
+              </Field>
+              <ErrorNotice error={join.error} />
+              <Button disabled={join.isPending} type="submit">
+                {t('加入团队')}
+              </Button>
+            </FieldGroup>
+          </form>
+        </SidePanel>
       </div>
       <ErrorNotice error={teams.error} retry={() => void teams.retry()} />
       {teams.isPending && <Loading />}
@@ -157,65 +170,71 @@ function Funding({ team }: { team: Team }) {
     },
   });
   return (
-    <section className="editor-panel">
-      <h2>{t('转入团队额度')}</h2>
-      <p>{t('从你的个人钱包转入。转入后由团队共同使用。')}</p>
-      {fund.isSuccess ? (
-        <>
-          <p role="status">
-            {t('已转入 {credits} 额度。', {
-              credits: number(operation?.credits ?? 0, locale),
-            })}
-          </p>
-          <Button
-            variant="outline"
-            onClick={() => {
-              fund.reset();
-              setOperation(null);
-              setCredits('');
+    <SidePanel
+      title={t('转入团队额度')}
+      trigger={t('转入团队额度')}
+      locked={fund.isPending}
+    >
+      <section className="editor-panel">
+        <h2>{t('转入团队额度')}</h2>
+        <p>{t('从你的个人钱包转入。转入后由团队共同使用。')}</p>
+        {fund.isSuccess ? (
+          <>
+            <p role="status">
+              {t('已转入 {credits} 额度。', {
+                credits: number(operation?.credits ?? 0, locale),
+              })}
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => {
+                fund.reset();
+                setOperation(null);
+                setCredits('');
+              }}
+            >
+              {t('再转入一笔')}
+            </Button>
+          </>
+        ) : (
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              const next = operation ?? {
+                credits: Number(credits),
+                idempotency_key: crypto.randomUUID(),
+              };
+              setOperation(next);
+              fund.mutate(next);
             }}
           >
-            {t('再转入一笔')}
-          </Button>
-        </>
-      ) : (
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            const next = operation ?? {
-              credits: Number(credits),
-              idempotency_key: crypto.randomUUID(),
-            };
-            setOperation(next);
-            fund.mutate(next);
-          }}
-        >
-          <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="team-fund">{t('转入额度')}</FieldLabel>
-              <Input
-                id="team-fund"
-                type="number"
-                min="1"
-                max="1000000000000"
-                step="1"
-                required
-                disabled={Boolean(operation)}
-                value={credits}
-                onChange={(event) => setCredits(event.target.value)}
-              />
-            </Field>
-            <ErrorNotice error={fund.error} />
-            {fund.isError && (
-              <p>{t('重试沿用同一个操作编号，避免重复转入。')}</p>
-            )}
-            <Button disabled={fund.isPending} type="submit">
-              {t('确认转入')}
-            </Button>
-          </FieldGroup>
-        </form>
-      )}
-    </section>
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="team-fund">{t('转入额度')}</FieldLabel>
+                <Input
+                  id="team-fund"
+                  type="number"
+                  min="1"
+                  max="1000000000000"
+                  step="1"
+                  required
+                  disabled={Boolean(operation)}
+                  value={credits}
+                  onChange={(event) => setCredits(event.target.value)}
+                />
+              </Field>
+              <ErrorNotice error={fund.error} />
+              {fund.isError && (
+                <p>{t('重试沿用同一个操作编号，避免重复转入。')}</p>
+              )}
+              <Button disabled={fund.isPending} type="submit">
+                {t('确认转入')}
+              </Button>
+            </FieldGroup>
+          </form>
+        )}
+      </section>
+    </SidePanel>
   );
 }
 function TeamDetail({ id }: { id: string }) {
@@ -297,27 +316,33 @@ function TeamDetail({ id }: { id: string }) {
         </Link>
       </div>
       {item.role === 'owner' && (
-        <div className="two-column">
+        <div className="action-row">
           <Funding team={item} />
-          <section className="editor-panel">
-            <h2>{t('邀请成员')}</h2>
-            <p>{t('邀请码仅可使用一次，24 小时内有效。')}</p>
-            <Button
-              disabled={invitation.isPending || Boolean(invite)}
-              onClick={() => invitation.mutate()}
-            >
-              {t('生成邀请')}
-            </Button>
-            <ErrorNotice error={invitation.error} />
-            {invite && (
-              <OneTimeCode
-                title={t('邀请码')}
-                code={invite.code}
-                expires={date(invite.expires_at, locale)}
-                hide={() => setInvite(null)}
-              />
-            )}
-          </section>
+          <SidePanel
+            title={t('邀请成员')}
+            trigger={t('邀请成员')}
+            locked={invitation.isPending || Boolean(invite)}
+          >
+            <section className="editor-panel">
+              <h2>{t('邀请成员')}</h2>
+              <p>{t('邀请码仅可使用一次，24 小时内有效。')}</p>
+              <Button
+                disabled={invitation.isPending || Boolean(invite)}
+                onClick={() => invitation.mutate()}
+              >
+                {t('生成邀请')}
+              </Button>
+              <ErrorNotice error={invitation.error} />
+              {invite && (
+                <OneTimeCode
+                  title={t('邀请码')}
+                  code={invite.code}
+                  expires={date(invite.expires_at, locale)}
+                  hide={() => setInvite(null)}
+                />
+              )}
+            </section>
+          </SidePanel>
         </div>
       )}
       {transferred && <p role="status">{t('团队所有权已交接')}</p>}

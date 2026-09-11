@@ -1,0 +1,29 @@
+.custom-tool-icon {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  object-fit: contain;
+}
+.tool-icon-editor textarea {
+  overflow-wrap: anywhere;
+}
+.tool-icon-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.tool-icon-upload {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+.tool-icon-upload input {
+  max-width: 100%;
+}
+.tool-icon-filename {
+  overflow-wrap: anywhere;
+}
+.tool-icon-error {
+  color: var(--destructive);
+  font-size: 13px;
+}

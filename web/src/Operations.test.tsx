@@ -195,11 +195,13 @@ it('redeems credits and refreshes the actual ledger without pretending payment i
     },
     'user',
   );
+  await user.click(await screen.findByRole('button', { name: '兑换额度' }));
   await user.type(await screen.findByLabelText('兑换码'), 'redeem_test');
   await user.click(screen.getByRole('button', { name: '兑换额度' }));
   expect(await screen.findByRole('status')).toHaveTextContent(
     '已兑换 100 额度',
   );
+  await user.keyboard('{Escape}');
   expect(await screen.findByRole('cell', { name: '兑换额度' })).toBeVisible();
   await user.click(screen.getByRole('button', { name: '购买 开发额度' }));
   expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -254,6 +256,7 @@ it('creates a redemption code whose plaintext is shown once and kept out of quer
         )
       : undefined,
   );
+  await user.click(await screen.findByRole('button', { name: '生成兑换码' }));
   await user.type(await screen.findByLabelText('兑换额度'), '100');
   await user.type(screen.getByLabelText('备注'), '活动');
   await user.click(screen.getByRole('button', { name: '生成兑换码' }));
@@ -299,9 +302,12 @@ it('creates a team, funds it idempotently and creates an invitation', async () =
     if (url.startsWith('/api/v1/account/teams'))
       return Response.json({ items: exists ? [team] : [], next_cursor: '' });
   });
+  await user.click(await screen.findByRole('button', { name: '新建团队' }));
   await user.type(await screen.findByLabelText('团队名称'), '研发组');
   await user.click(screen.getByRole('button', { name: '创建团队' }));
+  await user.keyboard('{Escape}');
   await user.click(await screen.findByRole('link', { name: '管理 研发组' }));
+  await user.click(await screen.findByRole('button', { name: '转入团队额度' }));
   await user.type(await screen.findByLabelText('转入额度'), '100');
   await user.click(screen.getByRole('button', { name: '确认转入' }));
   expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -312,6 +318,8 @@ it('creates a team, funds it idempotently and creates an invitation', async () =
     '已转入 100 额度',
   );
   expect(requests[0]).toEqual(requests[1]);
+  await user.keyboard('{Escape}');
+  await user.click(await screen.findByRole('button', { name: '邀请成员' }));
   await user.click(screen.getByRole('button', { name: '生成邀请' }));
   expect(await screen.findByText('invite_once')).toBeVisible();
 });
@@ -345,8 +353,10 @@ it('accepts an invitation and lets a member leave after confirmation', async () 
     },
     'user',
   );
+  await user.click(await screen.findByRole('button', { name: '接受邀请' }));
   await user.type(await screen.findByLabelText('团队邀请码'), 'invite_once');
   await user.click(screen.getByRole('button', { name: '加入团队' }));
+  await user.keyboard('{Escape}');
   await user.click(await screen.findByRole('link', { name: '管理 研发组' }));
   expect(
     screen.queryByRole('button', { name: '生成邀请' }),
@@ -376,6 +386,7 @@ it('creates a token charged to the selected team wallet', async () => {
       });
     }
   });
+  await user.click(await screen.findByRole('button', { name: '创建令牌' }));
   await user.type(await screen.findByLabelText('令牌名称'), '团队电脑');
   await chooseOption(user, screen.getByLabelText('扣费钱包'), '研发组');
   await user.click(screen.getByRole('button', { name: '创建令牌' }));
@@ -458,6 +469,7 @@ it('updates team seats and transfers ownership only after confirmation', async (
         next_cursor: '',
       });
   });
+  await user.click(await screen.findByRole('button', { name: '团队设置' }));
   await user.clear(await screen.findByLabelText('团队席位'));
   await user.type(screen.getByLabelText('团队席位'), '8');
   await user.click(screen.getByRole('button', { name: '保存团队设置' }));
@@ -503,16 +515,21 @@ it('preserves tool configuration fields after invalid JSON and never shows a fak
   await user.type(screen.getByLabelText('工具标识'), 'remote');
   await user.type(screen.getByLabelText('显示名称'), '远程文档');
   await chooseOption(user, screen.getByLabelText('连接方式'), 'HTTP 服务');
+  await chooseOption(user, screen.getByLabelText('填写方式'), '高级 JSON');
   await user.type(screen.getByLabelText('连接配置（JSON）'), 'not-json');
   await user.click(screen.getByRole('button', { name: '保存工具' }));
-  expect(await screen.findByRole('alert')).toHaveTextContent('JSON 格式不正确');
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    '连接配置必须是 JSON 对象',
+  );
   expect(screen.getByLabelText('连接配置（JSON）')).toHaveValue('not-json');
 });
 it('shows GitHub login only when metadata confirms the provider is configured', async () => {
   setup('/login', (url) =>
-    url === '/api/v1/meta'
-      ? Response.json({ github: true, email: false, payments: false })
-      : undefined,
+    url === '/api/v1/account/me'
+      ? Response.json({ error: 'unauthorized' }, { status: 401 })
+      : url === '/api/v1/meta'
+        ? Response.json({ github: true, email: false, payments: false })
+        : undefined,
   );
   expect(
     await screen.findByRole('link', { name: '通过 GitHub 登录' }),
@@ -528,6 +545,9 @@ it('shows an unavailable email configuration without allowing a fake send', asyn
     'user',
   );
   expect(await screen.findByText('邮件服务尚未配置')).toBeVisible();
+  await userEvent
+    .setup()
+    .click(screen.getByRole('button', { name: '邮箱验证' }));
   expect(screen.getByRole('button', { name: '发送验证邮件' })).toBeDisabled();
 });
 it('recovers from an email rate limit and reports only confirmed delivery', async () => {
@@ -548,6 +568,7 @@ it('recovers from an email rate limit and reports only confirmed delivery', asyn
     },
     'user',
   );
+  await user.click(await screen.findByRole('button', { name: '邮箱验证' }));
   await user.type(
     await screen.findByLabelText('邮箱地址'),
     'alice@example.com',
@@ -615,6 +636,7 @@ it('keeps a team chosen by URL visible even when it is outside the first team pa
       ? Response.json({ item: { ...team, id: 99, name: '远端团队' } })
       : undefined,
   );
+  await user.click(await screen.findByRole('button', { name: '创建令牌' }));
   expect(
     await within(await screen.findByLabelText('扣费钱包')).findByText(
       '远端团队',
@@ -656,6 +678,7 @@ it('displays an actionable expired invitation error without joining the team', a
       ? Response.json({ error: 'invite_expired' }, { status: 410 })
       : undefined,
   );
+  await user.click(await screen.findByRole('button', { name: '接受邀请' }));
   await user.type(await screen.findByLabelText('团队邀请码'), 'expired_code');
   await user.click(screen.getByRole('button', { name: '加入团队' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('邀请码已过期');

@@ -397,9 +397,6 @@
     font-weight: 600;
     margin-bottom: 1rem;
   }
-  .workshop-account .stats-grid > div:first-child {
-    border-inline-start: 0;
-  }
   .command-heading button {
     margin-left: auto;
     color: var(--art-foreground);
@@ -475,7 +472,7 @@
   }
   .app-sidebar {
     padding: 1rem 1.25rem;
-    background: var(--sidebar);
+    background: color-mix(in srgb, var(--sidebar) 65%, var(--card));
     border-bottom: 1px solid var(--border);
   }
   .main-nav {
@@ -498,7 +495,7 @@
     align-items: center;
     min-height: 44px;
     padding: 0.5rem 0.75rem;
-    border-radius: 8px;
+    border-radius: 12px;
     color: var(--muted-foreground);
     font-size: 14px;
     transition:
@@ -577,6 +574,7 @@
     min-height: 64px;
     padding: 1rem 1.25rem;
     border-bottom: 1px solid var(--border);
+    background: var(--card);
   }
   .breadcrumb {
     display: flex;
@@ -588,7 +586,7 @@
   }
   .breadcrumb strong {
     color: var(--foreground);
-    font-weight: 500;
+    font-weight: 650;
   }
   .breadcrumb > span {
     display: none;
@@ -683,7 +681,7 @@
   }
   .page-heading > div {
     display: grid;
-    gap: 0.55rem;
+    gap: 0.75rem;
   }
   .page-heading h1 {
     font-size: clamp(1.65rem, 2.5vw, 2.2rem);
@@ -696,7 +694,7 @@
     max-width: 65ch;
     color: var(--muted-foreground);
     line-height: 1.85;
-    font-size: 13px;
+    font-size: 14px;
   }
   .client-wordmarks {
     display: flex;
@@ -725,8 +723,10 @@
     padding: 0;
   }
   .stats-grid > div {
-    padding: 0.5rem 1.25rem;
-    border-inline-start: 1px solid var(--border);
+    padding: 1.25rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
   }
   .stats-grid dt {
     display: flex;
@@ -847,7 +847,7 @@
     min-width: 0;
   }
   .field p {
-    font-size: 12px;
+    font-size: 13px;
     line-height: 1.7;
     color: var(--muted-foreground);
   }
@@ -897,7 +897,7 @@
     justify-items: start;
     padding: 2rem;
     position: relative;
-    background: transparent;
+    background: color-mix(in srgb, var(--card) 65%, var(--background));
     border: 1px dashed var(--border);
     border-radius: var(--radius);
     color: var(--muted-foreground);
@@ -925,7 +925,7 @@
     align-items: flex-start;
     flex-direction: column;
     gap: 0.75rem;
-    padding: 1rem 1.25rem;
+    padding: 1.25rem 1.5rem;
     border-bottom: 1px solid var(--border);
   }
   .record-main {
@@ -937,13 +937,13 @@
   .record-main h3 {
     font-size: 15px;
     font-weight: 650;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.35rem;
   }
   .record-main p {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--muted-foreground);
     margin-top: 0.3rem;
-    line-height: 1.6;
+    line-height: 1.75;
   }
   .record-main code {
     color: var(--muted-foreground);
@@ -1012,14 +1012,15 @@
   }
   th,
   td {
-    padding: 0.85rem 1rem;
+    padding: 1rem 1.25rem;
     white-space: nowrap;
     border-bottom: 1px solid var(--border);
   }
   tbody tr:last-child td {
     border-bottom: 0;
   }
-  tbody tr:hover {
+  tbody tr:hover,
+  tbody tr:focus-within {
     background: color-mix(in srgb, var(--muted) 40%, transparent);
   }
   .standalone {
@@ -1063,7 +1064,7 @@
     flex-direction: column;
     justify-content: space-between;
     gap: 1.5rem;
-    background: var(--background);
+    background: color-mix(in srgb, var(--signal-mint) 12%, var(--background));
     border-radius: 22px;
     padding: 2.5rem;
     min-width: 0;
@@ -1107,7 +1108,7 @@
   }
   .auth-form-heading {
     text-align: center;
-    margin-bottom: 2rem;
+    margin-bottom: 2.5rem;
   }
   .auth-form-heading > .workshop-mark {
     width: 80px;
@@ -1139,6 +1140,7 @@
     height: 52px;
     font-size: 16px;
     border-radius: 12px;
+    background: color-mix(in srgb, var(--background) 55%, var(--card));
   }
   .auth-form-panel label {
     font-size: 14px;
@@ -1344,10 +1346,6 @@
   .tool-records .record-main h2 {
     font-size: 20px;
     margin-bottom: 0.75rem;
-  }
-  .tool-records .record-main > button {
-    margin-top: 0.75rem;
-    color: var(--link);
   }
   .tool-records .record-main > p {
     font-size: 14px;
@@ -2132,5 +2130,114 @@
   from {
     opacity: 0;
     transform: translateY(2px);
+  }
+}
+
+/* Dense records keep the scan path on the page; details live in SidePanel. */
+@layer components {
+  .tool-records > li {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px 16px;
+    padding: 20px 24px;
+  }
+  .tool-records .tool-icon {
+    width: 40px;
+    height: 40px;
+    background: var(--muted);
+    color: var(--muted-foreground);
+    border-radius: 12px;
+  }
+  .tool-records .tool-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+  .tool-records .record-main h2 {
+    font-size: 15px;
+    margin: 0 0 4px;
+  }
+  .tool-records .record-main > p {
+    font-size: 13px;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .tool-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--muted-foreground);
+  }
+  .tool-cost {
+    font-variant-numeric: tabular-nums;
+  }
+  .tool-records > li > .action-row {
+    grid-column: 2 / -1;
+  }
+  .tool-records > li > button {
+    font-size: 13px;
+    color: var(--link);
+  }
+  .settings-summary {
+    display: grid;
+    margin: 0;
+    border-block: 1px solid var(--border);
+  }
+  .settings-summary > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 18px 0;
+  }
+  .settings-summary > div + div {
+    border-top: 1px solid var(--border);
+  }
+  .settings-summary dt {
+    color: var(--muted-foreground);
+  }
+  .settings-summary dd {
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+  }
+  @media (min-width: 1100px) {
+    .tool-records .record-main {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 0 24px;
+      align-items: center;
+    }
+    .tool-records .record-main > p {
+      grid-column: 1;
+    }
+    .tool-records .tool-summary {
+      grid-column: 2;
+      grid-row: 1 / 3;
+      margin: 0;
+    }
+  }
+  @media (max-width: 600px) {
+    .tool-records > li {
+      grid-template-columns: 32px minmax(0, 1fr);
+      padding: 16px;
+      gap: 8px 12px;
+    }
+    .tool-records .tool-icon {
+      width: 32px;
+      height: 32px;
+      align-self: start;
+    }
+    .tool-records > li > button {
+      grid-column: 2;
+      justify-self: start;
+    }
+    .tool-records .record-main > p {
+      -webkit-line-clamp: 2;
+    }
   }
 }

@@ -1,20 +1,89 @@
 # HTTP 与 MCP 契约
 
+## 技能与装备组管理
+
+- `POST /api/v1/admin/marketplace/skills`：管理员创建/更新同 slug 技能，输入 `slug,name,description,source`；inline 使用 `files`，github 使用 `repo,path`。GitHub 同步保存已验证的文件快照，读取和导出优先快照。新建 201、更新 200、跨 kind 冲突 409。文件约束仍为 32 文件、每文件 256 KiB；请求体最多 50 MiB（容纳 JSON 转义），默认其他接口上限不变。文件内容变化推进技能和引用装备组的 patch 版本。
+- `POST /api/v1/admin/marketplace/bundles`：输入 `slug,name,description,includes`，1–32 个唯一技能或可安装 MCP（gateway 或带端点的 HTTP），不支持嵌套装备组。新建 201、同类型更新 200、跨类型冲突 409、非法成员 400。重复无变化提交保留版本。
+- `GET /api/v1/admin/marketplace`：包含 `kind,version,spec`，供管理表单编辑；公开目录不返回管理配置。
+
 机器可读定义：[OpenAPI 3.1](openapi.json)。本文件与 `server/internal/app`、`server/internal/identity`、`server/internal/gateway`、`server/cmd/loadout-server/application.go` 的实际处理器同步；不把未配置支付或身份服务写成可用功能。
 
 ## 通用规则
 
-- 业务 REST 前缀为 `/api/v1`，网页同源访问；请求和响应使用 JSON。业务处理器错误为 `{ "error": "stable_code" }`，不返回原始上游内容或秘密。
-- 网页使用 `loadout_session` Cookie：opaque 随机会话，服务端只保存哈希，7 天有效；`HttpOnly`、`SameSite=Lax`、`Path=/`，生产开启 `Secure`。退出会即时删除对应会话。启用状态与角色在服务端重新验证。
+用量详情：`GET /api/v1/account/usage/{callID}`、`GET /api/v1/account/teams/{id}/usage/{callID}`、`GET /api/v1/admin/usage/{callID}` 返回 `{item: UsageDetail}`。权限与对应列表相同（本人 / 当前团队成员 / 管理员）；越权记录返回 404，非管理员访问全局详情返回 403。UsageDetail 在原用量字段上增加 `input_data:string|null`、`output_data:string|null`、`input_truncated:boolean`、`output_truncated:boolean`。数据为网关收到的工具参数和返回客户端的 MCP 结果 JSON 文本，按用户要求不额外脱敏；既有网关错误摘要与结算注记保留。每方向最多 64 KiB，UTF-8 边界截断后可能不再是完整 JSON，消费者须以文本展示；`null` 为未记录（如历史/恢复记录）。列表、汇总与 CSV 不携带这些字段，不额外采集 HTTP 头和上游配置。
+
+- 业务 REST 前缀为 `/api/v1`，网页同源访问；请求和响应使用 JSON。业务处理器错误为 `{ "error": "stable_code" }`，不返回原始上游内容或秘密。全部 HTTP 错误码以 `server/internal/httpapi/codes.go` 注册表为唯一事实源，机器契约同步到 `web/src/i18n/error-codes.json`（`go test ./internal/httpapi -run TestErrorCodes -update` 再生成），前端 `web/src/i18n/errors.ts` 按码提供中英文案并测试锁定覆盖。
+- 网页使用 `loadout_session` AT（默认 900 秒）与 `loadout_refresh` RT（默认 604800 秒）Cookie：opaque 随机凭据，服务端只保存哈希，均 HttpOnly/SameSite=Lax/Path=/，生产 Secure。POST `/auth/refresh` 返回 204 与新 AT；RT 绝对到期不延长，固定 RT 在期限内可重复兑换，多标签 AT 互不失效。退出删除父会话和全部 AT；停用账号立即拒绝。旧单 Cookie 会话在原期限内兼容。凭据不进 JSON 或 Web storage。
 - REST 写请求必须提供匹配部署公开源的 `Origin`；浏览器同源请求自动携带。只有公开的 `/device/authorize`、`/device/token` 不要求 Origin。邮箱验证仍要求同源 Origin，即使不要求登录。
 - CLI/MCP 使用 `Authorization: Bearer ldt_…`，与网页 Cookie 分离；`/account/verify` 和 `/mcp` 不接受网页会话替代 Bearer。
-- 普通业务 JSON body 上限 16 KiB，身份模块上限 4 KiB；未知字段、多个 JSON 值、非法 body 返回 `400 invalid_request`。工具/套餐 PATCH 是完整定义更新；只有团队 PATCH 是按字段更新。
+- 普通业务 JSON body 上限 16 KiB，工具保存与结算试算上限 512 KiB，身份模块上限 4 KiB；未知字段、多个 JSON 值、非法 body 返回 `400 invalid_request`。工具/套餐 PATCH 是完整定义更新；工具 PATCH 省略 config/icon/settlement 保留原值；团队 PATCH 是按字段更新。
 - 金额为整数 credit；价格字段 `price_cents` 为整数分，不使用浮点金额。单次额度调整、兑换、转入和工具成本上限为 `1e12`。Go 的字符串长度校验按 UTF-8 **字节**计算；OpenAPI 的 `maxLength` 为客户端提示，非字节长度证明。
 - 时间为带时区的 ISO/RFC3339 时间字符串。概览今日/月度与汇总日期边界使用 UTC。
 - 列表返回 `{ "items": [], "next_cursor": "" }`，没有 `null` 列表。默认 `limit=50`，范围 `1..100`；`cursor` 是上页最后 ID 的十进制字符串，省略/空字符串从头开始；ID 降序，空 `next_cursor` 表示结束。
-- 业务数据使用 `Cache-Control: no-store`。生产总入口提供 `X-Request-ID`；客户端报错只显示安全摘要。未知 API 路径/错误 method 的路由级错误与 MCP HTTP 错误可能为纯文本，不能对每个 HTTP 错误盲目执行 JSON 解码；它们绝不能被当作 SPA 首页或模拟成功。
+- 业务数据使用 `Cache-Control: no-store`。生产总入口提供 `X-Request-ID`；客户端报错只显示安全摘要。所有 `/api/v1`、`/api/v1/meta`、`/marketplace.git` 与 `/mcp` 的 HTTP 级错误统一为 JSON `{ "error": "stable_code" }`（含路由级 404/405）；`/mcp` 协议层错误仍遵循 MCP JSON-RPC 形状。客户端仍不得把任何错误响应当作 SPA 首页或模拟成功。
+
+## 错误码注册表
+
+全部 HTTP 错误响应为 `{"error": "<code>"}`，状态码与码值一一登记于 `server/internal/httpapi/codes.go`；下表与注册表、`web/src/i18n/error-codes.json` 契约、openapi `Error` schema enum 由测试保证一致。前端另有两个本地码（`invalid_json` 本地 JSON 解析失败、`unknown` 非 JSON 错误体/网络失败回退），不经后端发射。
+
+| code | HTTP | 含义 |
+|---|---|---|
+| authorization_pending | 400 | 设备授权轮询：尚未批准 |
+| already_installed | 409 | 插件已安装 |
+| already_member | 409 | 已是团队成员 |
+| already_redeemed | 409 | 兑换码已使用 |
+| auth_busy | 429 | 登录服务繁忙 |
+| cannot_disable_self | 409 | 不能停用当前登录账号 |
+| config_required | 400 | 发布池工具缺少连接配置 |
+| directory_unavailable | 503 | 插件目录服务不可用 |
+| email_unavailable | 409/503 | 邮箱被占用 / 邮件服务不可用 |
+| expired_token | 400 | 设备授权码已过期 |
+| forbidden | 403 | 无权限 |
+| forbidden_origin | 403 | Origin 校验失败 |
+| gateway_unavailable | 503 | 网关不可用 |
+| github_failed | 502 | GitHub 授权失败 |
+| github_unavailable | 503 | GitHub 服务不可用 |
+| idempotency_conflict | 409 | 幂等键冲突 |
+| insufficient_balance | 409 | 额度不足 |
+| internal_error | 500 | 内部错误 |
+| invalid_credentials | 401 | 用户名或密码不正确 |
+| invalid_device_code | 409 | 设备授权码无效/已使用/已过期 |
+| invalid_grant | 400 | 授权码无效或已使用 |
+| invalid_icon | 400 | 图标校验失败 |
+| invalid_request | 400 | 请求参数不合法 |
+| invalid_settlement | 400 | 结算策略校验失败 |
+| invalid_state | 400 | OAuth state 校验失败 |
+| invalid_token | 400 | 邮箱验证令牌无效或已过期 |
+| invite_expired | 410 | 邀请已过期 |
+| invite_used | 409 | 邀请已使用 |
+| key_taken | 409 | 市场条目标识已占用 |
+| last_admin | 409 | 需保留至少一位启用的管理员 |
+| last_owner | 409 | 最后一位团队所有者不能退出 |
+| marketplace_unavailable | 503 | 市场服务不可用 |
+| method_not_allowed | 405 | 请求方法不支持 |
+| not_found | 404 | 记录不存在 |
+| not_installed | 409 | 插件未安装 |
+| organization_required | 403 | GitHub 组织限制未满足 |
+| payment_unavailable | 503 | 在线支付未配置 |
+| rate_limited | 429 | 请求过于频繁 |
+| rate_limit_unavailable | 503 | 限流存储不可用 |
+| registration_unavailable | 503 | 注册依赖不可用 |
+| seats_in_use | 409 | 席位数不能低于现有成员数 |
+| settings_conflict | 409 | 系统配置已被其他管理员更新 |
+| settings_encryption_unavailable | 503 | 未配置加密主密钥 |
+| settings_unavailable | 503 | 系统配置运行时不可用 |
+| slow_down | 429 | 设备授权轮询过快 |
+| team_full | 409 | 团队席位已满 |
+| temporarily_unavailable | 503 | 服务暂时不可用 |
+| tool_disabled | 409 | 工具已停用 |
+| transport_not_supported | 400 | 传输类型不支持 |
+| transport_required | 400 | 缺少上游传输配置 |
+| unauthorized | 401 | 未登录或凭据失效 |
+| upstream_unavailable | 502/503 | 上游服务不可用 |
 
 ## 健康、能力与运维
+
+公共插件目录无需 Cookie 或 Bearer：`GET /api/v1/plugins` 返回 `{items:[{slug,name,description,kind,version,gateway}],origin}`；`GET /api/v1/plugins/{slug}` 返回 `{item,origin}`，不存在或 stdio 条目返回 `404 not_found`。仅发布安全元数据，不返回连接配置、上游凭证或技能文件；失败为 `503 directory_unavailable`，响应 `no-store`。`origin` 是统一部署公开地址，开发未设置时前端使用当前同源地址。前端 `/plugins` 与详情均由 React 渲染。
 
 | 方法与路径 | 响应 |
 |---|---|
@@ -56,18 +125,24 @@
 
 ## 工具目录与管理
 
+列表与保存响应包含 `icon:string`（默认为空）。图标存共享数据库，无本地上传目录；HTTPS URL 不允许凭证、最多 2048 字节，或 `data:image/(svg+xml|png|jpeg|webp);base64,...` 解码后最多 64 KiB。SVG 限静态绘图元素与属性，允许局部 `url(#id)`，禁止脚本、事件、CSS、foreignObject、外部资源与处理指令（仅允许文件开头单个XML声明）。客户端仅以图片展示。非法图标返回 `400 invalid_icon`；PATCH 省略 icon 保持原值，空字符串清除。
+
+结算支持 `{}` / `null`（默认按 isError）、`{content:{path,equals}}`（标量或最多16个成功码）、`{content:{pattern}}`（Go 正则，最多256字节）与 `{script}`（最多8192字节、200ms goja 沙箱），规则互斥。PATCH 省略 settlement 保持，`{}` / `null` 重置。试算 `text` 上限64KiB UTF-8；通过真实网关结算函数计算 `charge`，脚本异常/超时退款侧，不调用上游、不写账本/用量/数据库。规则非法为 `400 invalid_settlement`，超限样本文本为 `400 invalid_request`。内置编辑仅允许真实网关 key：echo、time_now、tools_catalog、account_usage、account_balance。
+
+
 | 方法与路径 | 请求 | 成功响应 |
 |---|---|---|
 | `GET /tools` | 登录；`limit,cursor` | 公共工具元数据页 |
 | `GET /admin/tools` | 管理员；`limit,cursor` | 管理元数据页，增加 `configured` |
 | `POST /admin/tools` | 完整工具定义 | `201 {item}` |
-| `PATCH /admin/tools/:id` | 完整工具定义 | `200 {item}` |
+| `PATCH /admin/tools/:id` | 完整工具定义（省略 config/icon/settlement 保留） | `200 {item}` |
+| `POST /admin/tools/settlement-preview` | 管理员；`{settlement,text,is_error}` | `200 {charge:boolean}` |
 
-公共字段：`{id,key,name,description,kind,enabled,units_per_call,input_schema}`。`kind` 为 `builtin/http/stdio`；不返回 `config`、`headers`、`env` 或秘密。
+公共字段：`{id,key,name,description,icon,kind,enabled,units_per_call,input_schema,settlement}`。`kind` 为 `builtin/http/stdio`；不返回 `config`、`headers`、`env` 或秘密。
 
-工具写请求只允许 `{key,name,description,kind,enabled,units_per_call,input_schema,config?}`；不得回传列表里的 `id/configured`。key 遵循用户名字符规则，name 1–80 字节，description 最多 2000 字节，`input_schema` 必须是 `type:"object"` 的 JSON Schema。`units_per_call` 为非负整数 credit，不是浮点价格。
+工具写请求只允许 `{key,name,description,kind,enabled,units_per_call,input_schema,config?,icon?,settlement?}`；不得回传列表里的 `id/configured`。key 遵循用户名字符规则，name 1–80 字节，description 最多 2000 字节，`input_schema` 必须是 `type:"object"` 的 JSON Schema。`units_per_call` 为非负整数 credit，不是浮点价格。
 
-- `builtin` 只支持 `echo`、`time_now`；不提供任意命令执行能力。
+- `builtin` 只支持 `echo`、`time_now`、`tools_catalog`、`account_usage`、`account_balance`；不提供任意命令执行能力。
 - `http` 配置 `{url,headers?}`，默认只允许公开 HTTPS 地址；显式开发配置才允许私网，连接时重新检查目标且禁止重定向。
 - `stdio` 配置 `{command,args?,env?}`，command 为服务器部署白名单的别名；默认不可启动任意本地进程。
 - PATCH 省略 config 保留原配置；更换连接类型可能需要新 config。秘密写入后加密存储，列表只返回配置状态。成功更新使网关目录缓存失效。
@@ -171,9 +246,9 @@ meta.github 为 true 才显示 GitHub 登录入口。未配置返回 `503 github
 
 `POST /mcp` 由官方 MCP Go SDK 处理 JSON-RPC 2.0，配置为 stateless、JSON response、传播请求取消，请求 body 上限 1 MiB。客户端使用 SDK 协商协议版本并携带 `MCP-Protocol-Version`，Accept 声明 `application/json, text/event-stream`。当前部署仅 POST；已鉴权的 GET/DELETE 等返回 405，未鉴权返回 401，不支持持久 HTTP session 的恢复语义。
 
-标准流程为 `initialize` → `notifications/initialized` → `tools/list` / `tools/call`。OpenAPI 仅描述传输边界，不重新发明 SDK 的完整消息协议。内置工具为 `echo/time_now`；远程 HTTP/stdio 工具带预设池命名空间。初始化和列表不收费，调用经过鉴权、限频、预占和结算：成功保留扣费，失败退款，异常待结算由恢复任务处理；查询实际账本确认结果。工具业务错误可通过 `result.isError=true` 返回，不等同于 HTTP 非 2xx。
+标准流程为 `initialize` → `notifications/initialized` → `tools/list` / `tools/call`。OpenAPI 仅描述传输边界，不重新发明 SDK 的完整消息协议。内置工具为 `echo/time_now/tools_catalog/account_usage/account_balance`；远程 HTTP/stdio 工具带预设池命名空间。初始化和列表不收费，调用经过鉴权、限频、预占和结算：成功保留扣费，失败退款，异常待结算由恢复任务处理；查询实际账本确认结果。工具业务错误可通过 `result.isError=true` 返回，不等同于 HTTP 非 2xx。
 
-网关鉴权/方法/上游目录不可用等 HTTP 错误可能为纯文本；客户端不得打印原始上游 body、令牌或包含凭证的 URL。网络失败后不得自动重放非幂等工具调用；`loadout bridge` 的 stdout 专用于协议，诊断写 stderr。
+网关鉴权/方法/上游目录不可用等 HTTP 级错误统一为 JSON `{"error":"stable_code"}`（见错误码注册表）；客户端不得打印原始上游 body、令牌或包含凭证的 URL。网络失败后不得自动重放非幂等工具调用；`loadout bridge` 的 stdout 专用于协议，诊断写 stderr。
 
 ## 文档校验
 
@@ -196,3 +271,5 @@ OpenAPI 覆盖实际 app/identity 注册的 51 个方法/路径，并另列健�
 ### 工具名称兼容性
 
 远程工具公开名为 `escaped_key__remote_name`；provider key中每个 `_` 编码为 `_u`，远程原名不变。无下划线provider保留旧名称；含下划线provider需客户端刷新tools/list。例如 `foo/bar__baz` 为 `foo__bar__baz`，`foo__bar/baz` 为 `foo_u_ubar__baz`，不会相互覆盖。目录按ID有界分批读取所有启用上游，每批128行、最多8路并发，整体超时不发布截断目录。
+
+浏览器有效期运行时字段：`access_token_seconds`（60–86400，默认900）、`refresh_token_seconds`（60–31536000，默认604800，且不短于AT）。GET/PATCH `/admin/settings` 返回/接受这两个字段；PATCH 省略保留旧值，0/越界拒绝。各副本每次登录/注册/GitHub回调/刷新读取共享PG配置，无需重启；已有RT期限不变，新AT不超过父RT期限。刷新401表示RT无效，403表示跨源，500/503为可重试服务故障。

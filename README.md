@@ -28,7 +28,7 @@ loadout install expert-pack          # 一条命令复刻专家配置：MCP 直�
 loadout uninstall expert-pack
 ```
 
-市场条目三种：**mcp**（HTTP 插件，服务端池计量或本地直连零密钥）、**skill**（Agent Skill 写入 `~/.codex/skills/`、`~/.claude/skills/`，可从 GitHub 仓库导入由服务端代取）、**bundle** 装备组（一键复刻专家整套配置）。**服务端本身就是 Codex 插件市场源**：运营方在后台定制插件（网关独享 MCP + 技能 + 装备组，独享工具凭证密封、按次计量），服务端在 `/marketplace.git` 实时渲染官方插件格式并直出 SEO 目录页 `/plugins`；用户 `codex plugin marketplace add <服务地址>/marketplace.git` 一行接入，独享工具以本地 bridge 形态进插件、走鉴权计量——登录即武装的完整闭环。
+市场条目三种：**mcp**（HTTP 插件，服务端池计量或本地直连零密钥）、**skill**（Agent Skill 写入 `~/.codex/skills/`、`~/.claude/skills/`，可从 GitHub 仓库导入由服务端代取）、**bundle** 装备组（一键复刻专家整套配置）。**服务端本身就是 Codex 插件市场源**：运营方在后台定制插件（网关独享 MCP + 技能 + 装备组，独享工具凭证密封、按次计量），服务端在 `/marketplace.git` 实时渲染官方插件格式并提供免登录 React 目录页 `/plugins`；用户 `codex plugin marketplace add <服务地址>/marketplace.git` 一行接入，独享工具以本地 bridge 形态进插件、走鉴权计量——登录即武装的完整闭环。
 
 ## 架构一览
 
@@ -50,6 +50,10 @@ Codex / Claude Code / Cursor
 
 ## 项目状态
 
+工具管理支持图片/SVG 上传及共享图标、分区连接配置、常用结算规则表单与服务端试算；试算不调用上游、不扣费，图标与规则在服务副本间共享。
+
+用量明细支持按次查看网关传入参数和返回内容，个人、团队与管理员按各自权限读取；新调用原样记录，超出每方向 64 KiB 会标注截断，历史未保存内容显示“未记录”。
+
 已实现账号与令牌、MCP 网关、事务额度账本、运营后台、套餐/兑换码、团队共享额度、设备授权、Rust CLI 和 Tauri 桌面端；插件市场收录 HTTP MCP（GitHub 热门同步 + 精选直装 + 上游工具描述/参数覆盖 + CLI 本地直连安装）。React 控制台采用 AI 装备工坊风格，支持中英文与浅色/深色/跟随系统，手机、平板和桌面共用 API 与功能。GitHub/邮箱通过部署配置启用；外部支付按本次范围仅预留接口，不产生虚假支付成功。
 
 管理员可在“系统配置”页热更新注册赠送额度、GitHub登录与SMTP邮件参数；配置版本化保存在数据库，密钥加密且不回显，多个副本的新请求同时生效。部署连接和安全边界参数仍由环境变量管理，详见 [环境配置](docs/ENVIRONMENT.md)。
@@ -59,6 +63,8 @@ Codex / Claude Code / Cursor
 2026-09-11 本机完整 `make check` 通过：真实 PostgreSQL / Redis、多实例与故障恢复、Web79项组件及生产/开发真实HTTP旅程、CLI与桌面bridge、Linux deb构建。新增分布式与Redis验收见 [执行记录](docs/superpowers/plans/2026-09-10-development-e2e-execution.md)；此前数据库基准结果见产品执行记录。真实屏幕/托盘、macOS/Windows 桌面和外部 OAuth/邮件服务仍需在对应环境验收；CI 配置不等于远程 CI 已通过。
 
 ## 快速开始
+
+桌面打包已配置 Windows x64、macOS 双架构及 Linux 双架构，使用独立 Loadout 发布签名并在公开前验签；当前本机已产出 Linux x64 包，其他平台尚未远程验收。下载与证书边界见 [桌面发行说明](desktop/README.md#桌面发行)。
 
 工具链固定为搭建时最新稳定版：**Node 26.8.2、pnpm 12.3.4、Go 1.27.1、Rust 1.98.1**。Go 可自动下载模块要求的工具链；Rust 由 rustup 读取 `rust-toolchain.toml` 安装。Rust HTTPS 依赖需要本机 C/C++ 编译环境；完整 harness 在 Linux 运行，CLI 同时配置 macOS/Windows CI。
 
@@ -74,7 +80,13 @@ make setup
 
 先完成 [数据库与部署配置](docs/DEPLOYMENT.md)，导出 `LOADOUT_DATABASE_URL`、`LOADOUT_PUBLIC_URL` 和管理员配置。Linux 桌面构建还需要 GTK/WebKit 开发库，具体命令见该文档。未配置数据库只提供基建健康检查，无法使用账号业务。配置完成后执行 `make up`；若已用旧配置启动，执行 `make restart`。
 
-打开 **http://127.0.0.1:5173**，页面通过 Vite 代理访问 **http://127.0.0.1:8787** 的 Go 服务。使用 `make down` 关闭后台服务；偏好前台日志时运行 `make dev`，Ctrl+C 关闭。
+打开 **http://127.0.0.1:5173**，页面通过 Vite 代理访问 **http://127.0.0.1:8787** 的 Go 服务。使用 `make down` 关闭后台服务；偏好前台日志时在**仓库根目录**运行 `pnpm run dev`（或 `make dev`），VS Code 选择任务 **Loadout: dev**，Ctrl+C 关闭前后端。不要同时启动后台实例或 `web` 目录的 dev 脚本，否则会占用相同端口。Go 开发服务使用固定版本 Air 自动编译重启，监听 `server/` 的 Go、SQL、go.mod/go.sum；编译失败停止旧程序，修复保存后恢复。首次 `make setup` / `make dev-server` 安装 Air 需要网络。
+
+首页和工作空间可直接进入 **http://127.0.0.1:5173/plugins** 公共插件市场；目录与详情共用前端样式、通过免鉴权 API 读取；开发代理转发 API 与 `/marketplace.git`，与生产地址一致。
+
+公共市场采用响应式插件卡片，支持搜索、类型筛选和每页 12 项分页；筛选与页码可通过 URL 分享。
+
+管理员从侧栏 **市场管理**（`/admin/marketplace`）创建或编辑技能与装备组。技能支持自定义 Markdown 和 GitHub `owner/repo` + 目录导入；“精选 GitHub 技能”提供逐项及一键全部同步，失败条目可重试。装备组勾选可安装的 MCP 与技能组成，保存后在公共市场展示。GitHub 同步保存已验证文件，重复同步内容变化才升级版本；技能更新也更新引用它的装备组版本。
 
 日常命令（直接运行 `make` 或 `make help` 查看全部入口）：
 
@@ -85,10 +97,10 @@ make setup
 | `make ready` | 一键完整检查，成功后后台启动全部开发服务 |
 | `make up` / `make start` | 后台启动 Go + Vite，等待 HTTP 就绪；已启动时保持现有实例 |
 | `make down` / `make stop` | 关闭后台开发进程，保留日志 |
-| `make restart` | 先关闭再启动，重新构建 Go；服务端代码或启动配置变更后使用 |
+| `make restart` | 先关闭再启动，重新构建 Go；`.env` 等启动配置变更后使用 |
 | `make status` | 查看后台运行状态和地址 |
 | `make logs` | 跟随最近 100 行及新日志；Ctrl+C 仅退出日志查看 |
-| `make dev` | 前台运行 Go + Vite，Ctrl+C 停止 |
+| `make dev` / 根目录 `pnpm run dev` | 前台运行 Go 自动重载 + Vite，Ctrl+C 停止 |
 | `make test` | Go / Rust / React 三端测试 |
 | `make check` / `make test-all` | 真实测试数据库、四端检查/构建、跨进程产品流程；需 Linux 桌面依赖 |
 | `make db-up` / `make redis-up` | 启动 PostgreSQL / Redis，供源码开发 |
@@ -143,3 +155,5 @@ make down
 ## License
 
 [MIT](LICENSE) © Loadout contributors
+
+浏览器登录使用 HttpOnly AT/RT，公共页面自动识别登录态；管理员可在系统配置热更新有效期，凭据与配置由共享 PostgreSQL 支持无粘性多副本。首次升级的版本兼容边界见 [集群规范](docs/CLUSTER.md#浏览器-atrt-与有效期热更新)。

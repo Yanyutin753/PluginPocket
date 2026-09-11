@@ -1,4 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
+import { useState } from 'react';
 import { useParams, useSearchParams } from 'react-router';
 import { Pagination } from '@/components/Pagination';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { useI18n } from '@/i18n';
 import { UsageSummary } from '../operations/UsageSummary';
 import { date, number, requestCSV, usageSchema } from './api';
 import { ErrorNotice, Heading, Loading } from './shared';
+import { UsageDetail } from './UsageDetail';
 import { usePagedList } from './usePagedList';
 
 const status = {
@@ -26,6 +28,7 @@ export default function UsagePage({
   team?: boolean;
 }) {
   const { t, locale } = useI18n();
+  const [detailPath, setDetailPath] = useState<string | null>(null);
   const { id } = useParams();
   const [params, setParams] = useSearchParams();
   const base = admin
@@ -192,6 +195,7 @@ export default function UsagePage({
                   <th scope="col" className="numeric">
                     {t('额度')}
                   </th>
+                  <th scope="col">{t('详情')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -227,6 +231,14 @@ export default function UsagePage({
                     <td data-label={t('额度')} className="numeric">
                       {number(item.cost, locale)}
                     </td>
+                    <td data-label={t('详情')}>
+                      <Button
+                        variant="ghost"
+                        onClick={() => setDetailPath(`${base}/${item.id}`)}
+                      >
+                        {t('查看详情')}
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -235,6 +247,13 @@ export default function UsagePage({
         )
       )}
       <Pagination label={t('调用明细')} {...usage.pagination} />
+      {detailPath && (
+        <UsageDetail
+          key={detailPath}
+          path={detailPath}
+          onClose={() => setDetailPath(null)}
+        />
+      )}
     </>
   );
 }

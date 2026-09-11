@@ -10,6 +10,7 @@ import {
   LogOut,
   Menu,
   Monitor,
+  PackageOpen,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
@@ -32,12 +33,18 @@ import {
 import { z } from 'zod';
 import { PreferencesControls } from './components/Preferences';
 import { Button } from './components/ui/button';
-import { ApiError, accountQuery, request } from './features/account/api';
+import {
+  ApiError,
+  accountQuery,
+  publicSessionQuery,
+  request,
+} from './features/account/api';
 import { ErrorNotice, Loading } from './features/account/shared';
 import { PreferencesProvider, useI18n } from './i18n';
 import { SessionBoundary } from './SessionBoundary';
 
 const LandingPage = lazy(() => import('./features/LandingPage'));
+const PluginsPage = lazy(() => import('./features/PluginsPage'));
 const HealthPage = lazy(() => import('./HealthPage'));
 const AuthPage = lazy(() => import('./features/account/AuthPage'));
 const OverviewPage = lazy(() => import('./features/account/OverviewPage'));
@@ -45,6 +52,9 @@ const TokensPage = lazy(() => import('./features/account/TokensPage'));
 const UsagePage = lazy(() => import('./features/account/UsagePage'));
 const AdminPage = lazy(() => import('./features/account/AdminPage'));
 const ToolsPage = lazy(() => import('./features/operations/ToolsPage'));
+const MarketplacePage = lazy(
+  () => import('./features/operations/MarketplacePage'),
+);
 const BillingPage = lazy(() => import('./features/operations/BillingPage'));
 const PlansPage = lazy(() => import('./features/operations/PlansPage'));
 const CodesPage = lazy(() => import('./features/operations/CodesPage'));
@@ -85,7 +95,17 @@ function SessionEvents() {
       ) {
         handled = true;
         client.clear();
-        if (location.pathname !== '/login') {
+        const publicPage =
+          [
+            '/',
+            '/login',
+            '/register',
+            '/health',
+            '/verify-email',
+            '/plugins',
+          ].includes(location.pathname) ||
+          location.pathname.startsWith('/plugins/');
+        if (!publicPage) {
           navigate('/login', {
             replace: true,
             state: { from: location.pathname + location.search },
@@ -115,10 +135,16 @@ function SessionEvents() {
   }, [client, navigate, location.pathname, location.search]);
   return null;
 }
-function Shell() {
+function Shell({ publicCatalog = false }: { publicCatalog?: boolean }) {
   const { t } = useI18n();
   const location = useLocation();
-  const account = useQuery(accountQuery);
+  const sessionOptions = publicCatalog ? publicSessionQuery : accountQuery;
+  const account = useQuery({
+    queryKey: sessionOptions.queryKey,
+    queryFn: sessionOptions.queryFn,
+    staleTime: publicCatalog ? 0 : 30_000,
+    retry: false,
+  });
   const client = useQueryClient();
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
@@ -130,6 +156,7 @@ function Shell() {
       navigate('/login', { replace: true });
     },
   });
+  if (publicCatalog && (!account.data || account.error)) return <PluginsPage />;
   if (account.isPending)
     return (
       <main className="standalone">
@@ -145,11 +172,12 @@ function Shell() {
         />
       </main>
     );
+  if (!account.data) return null;
   const links = [
     { to: '/overview', title: '概览', icon: House },
     { to: '/tokens', title: '网关令牌', icon: KeyRound },
     { to: '/usage', title: '用量明细', icon: ChartNoAxesCombined },
-    { to: '/tools', title: '工具目录', icon: Layers },
+    { to: '/plugins', title: '插件市场', icon: PackageOpen },
     { to: '/billing', title: '额度与账单', icon: CreditCard },
     { to: '/teams', title: '我的团队', icon: Users },
     { to: '/device', title: '设备授权', icon: Monitor },
@@ -158,6 +186,7 @@ function Shell() {
       ? [
           { to: '/admin/users', title: '用户管理', icon: Users },
           { to: '/admin/tools', title: '工具管理', icon: Layers },
+          { to: '/admin/marketplace', title: '市场管理', icon: Layers },
           { to: '/admin/plans', title: '套餐管理', icon: ChartNoAxesCombined },
           { to: '/admin/codes', title: '兑换码管理', icon: KeyRound },
           { to: '/admin/usage', title: '全局用量', icon: ChartNoAxesCombined },
@@ -165,7 +194,6 @@ function Shell() {
           { to: '/admin/settings', title: '系统配置', icon: Settings },
         ]
       : []),
-    { to: '/health', title: '服务状态', icon: Activity },
   ];
   return (
     <div className={`app-shell${collapsed ? ' sidebar-collapsed' : ''}`}>
@@ -226,9 +254,8 @@ function Shell() {
                   group === '管理后台'
                     ? to.startsWith('/admin')
                     : group === '账号与支持'
-                      ? ['/settings', '/health'].includes(to)
-                      : !to.startsWith('/admin') &&
-                        !['/settings', '/health'].includes(to),
+                      ? to === '/settings'
+                      : !to.startsWith('/admin') && to !== '/settings',
                 )
                 .map(({ to, title, icon: Icon }) => (
                   <NavLink
@@ -387,6 +414,10 @@ function AppRoutes() {
         >
           <Routes>
             <Route path="/" element={<LandingPage />} />
+            <Route element={<Shell publicCatalog />}>
+              <Route path="/plugins" element={<PluginsPage embedded />} />
+              <Route path="/plugins/:slug" element={<PluginsPage embedded />} />
+            </Route>
             <Route path="/health" element={<HealthPage />} />
             <Route path="/login" element={<AuthPage />} />
             <Route path="/register" element={<AuthPage register />} />
@@ -396,6 +427,14 @@ function AppRoutes() {
               <Route path="tokens" element={<TokensPage />} />
               <Route path="usage" element={<UsagePage />} />
               <Route path="admin/users" element={<AdminPage />} />
+              <Route
+                path="admin/marketplace"
+                element={
+                  <AdminOnly>
+                    <MarketplacePage />
+                  </AdminOnly>
+                }
+              />
               <Route path="tools" element={<ToolsPage />} />
               <Route path="billing" element={<BillingPage />} />
               <Route path="teams" element={<TeamsPage />} />

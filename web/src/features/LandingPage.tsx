@@ -1,6 +1,6 @@
 import { ArrowRight, Layers3, Terminal } from 'lucide-react';
-import { PreferencesControls } from '../components/Preferences';
 import { Button } from '../components/ui/button';
+import { PublicHeader } from './PublicHeader';
 import './LandingPage.css';
 import { useI18n } from '../i18n';
 
@@ -11,24 +11,7 @@ export default function LandingPage() {
       <a className="skip-link" href="#landing-main">
         {t('跳至主要内容')}
       </a>
-      <header className="landing-nav">
-        <a className="landing-brand" href="/" aria-label={t('Loadout 首页')}>
-          <img src="/images/workshop-mark.webp" alt="" width="48" height="48" />
-          <span>
-            <span className="brand-wordmark">Loadout</span>
-            <small>{t('AI 装备工坊')}</small>
-          </span>
-        </a>
-        <nav aria-label={t('主导航')}>
-          <PreferencesControls />
-          <a className="inline-action" href="/login">
-            {t('登录')}
-          </a>
-          <Button asChild>
-            <a href="/register">{t('创建账号')}</a>
-          </Button>
-        </nav>
-      </header>
+      <PublicHeader />
       <main id="landing-main">
         <section className="landing-hero">
           <div className="landing-hero-copy">

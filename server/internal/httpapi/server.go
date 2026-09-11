@@ -14,7 +14,7 @@ func New(webDir, version string) http.Handler {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			w.Header().Set("Allow", "GET, HEAD")
-			writeJSON(w, r, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+			Fail(w, http.StatusMethodNotAllowed, "method_not_allowed")
 			return
 		}
 		if r.URL.Path == "/healthz" || r.URL.Path == "/api/v1/health" {
@@ -22,7 +22,7 @@ func New(webDir, version string) http.Handler {
 			return
 		}
 		if r.URL.Path == "/api" || strings.HasPrefix(r.URL.Path, "/api/") || r.URL.Path == "/mcp" || strings.HasPrefix(r.URL.Path, "/mcp/") {
-			writeJSON(w, r, http.StatusNotFound, map[string]string{"error": "not_found"})
+			Fail(w, http.StatusNotFound, "not_found")
 			return
 		}
 		if webDir != "" {
@@ -41,7 +41,7 @@ func New(webDir, version string) http.Handler {
 				}
 			}
 		}
-		writeJSON(w, r, http.StatusNotFound, map[string]string{"error": "not_found"})
+		Fail(w, http.StatusNotFound, "not_found")
 	})
 }
 

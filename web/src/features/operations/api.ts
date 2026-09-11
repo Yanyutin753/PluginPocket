@@ -1,5 +1,22 @@
 import { z } from 'zod';
 
+export const publicPluginSchema = z.object({
+  slug: z.string(),
+  name: z.string(),
+  description: z.string(),
+  kind: z.enum(['mcp', 'skill', 'bundle']),
+  version: z.string(),
+  gateway: z.boolean(),
+});
+export const publicPluginsSchema = z.object({
+  items: z.array(publicPluginSchema),
+  origin: z.string(),
+});
+export const publicPluginDetailSchema = z.object({
+  item: publicPluginSchema,
+  origin: z.string(),
+});
+
 const timestamp = z.iso.datetime({ offset: true });
 export const toolSchema = z.object({
   id: z.number().int(),
@@ -12,6 +29,7 @@ export const toolSchema = z.object({
   input_schema: z.record(z.string(), z.unknown()),
   settlement: z.record(z.string(), z.unknown()).optional(),
   configured: z.boolean().optional(),
+  icon: z.string().optional(),
 });
 export type Tool = z.infer<typeof toolSchema>;
 export const marketplaceItemSchema = z.object({
@@ -23,7 +41,17 @@ export const marketplaceItemSchema = z.object({
   source: z.enum(['curated', 'github']),
   repo_url: z.string(),
   homepage: z.string(),
-  transport: z.enum(['http', 'stdio', 'unknown']),
+  transport: z.enum(['http', 'stdio', 'unknown', 'gateway']),
+  version: z.string().default('1.0.0'),
+  spec: z
+    .object({
+      source: z.enum(['inline', 'github']).optional(),
+      repo: z.string().optional(),
+      path: z.string().optional(),
+      files: z.record(z.string(), z.string()).optional(),
+      includes: z.array(z.string()).optional(),
+    })
+    .optional(),
   endpoint: z.string(),
   package: z.string(),
   stars: z.number().int(),

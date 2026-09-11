@@ -59,6 +59,9 @@ it('marks pending content busy and replaces the placeholder with the real form w
     screen.queryByRole('textbox', { name: '邮箱地址' }),
   ).not.toBeInTheDocument();
   resolve(Response.json(email));
+  await userEvent
+    .setup()
+    .click(await screen.findByRole('button', { name: '邮箱验证' }));
   expect(await screen.findByRole('textbox', { name: '邮箱地址' })).toHaveValue(
     email.email,
   );
@@ -81,6 +84,9 @@ it('removes the busy placeholder on failure and provides a working retry', async
   ).not.toBeInTheDocument();
   vi.mocked(fetch).mockResolvedValueOnce(Response.json(email));
   await user.click(screen.getByRole('button', { name: '重试' }));
+  await userEvent
+    .setup()
+    .click(await screen.findByRole('button', { name: '邮箱验证' }));
   expect(await screen.findByRole('textbox', { name: '邮箱地址' })).toHaveValue(
     email.email,
   );
@@ -89,6 +95,9 @@ it('removes the busy placeholder on failure and provides a working retry', async
 it('keeps existing content available during background refresh', async () => {
   vi.mocked(fetch).mockResolvedValueOnce(Response.json(email));
   const client = mount();
+  await userEvent
+    .setup()
+    .click(await screen.findByRole('button', { name: '邮箱验证' }));
   await screen.findByRole('textbox', { name: '邮箱地址' });
   const resolve = pendingRequest();
   void client.invalidateQueries({ queryKey: ['/account/email'] });

@@ -1,12 +1,21 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
+import { mkdtemp, rm } from 'node:fs/promises';
 import net from 'node:net';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { test } from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
 
 function request(url) {
   return fetch(url, { signal: AbortSignal.timeout(1_000) });
+}
+
+async function runDir(t) {
+  const dir = await mkdtemp(join(tmpdir(), 'loadout-process-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  return dir;
 }
 
 async function listen() {
@@ -105,6 +114,7 @@ test('terminal interruption stops both development services', {
   const apiPort = await unusedPort();
   const webPort = await unusedPort();
   const proc = launch('pnpm', ['dev'], {
+    LOADOUT_RUN_DIR: await runDir(t),
     LOADOUT_ADDR: `127.0.0.1:${apiPort}`,
     LOADOUT_DEV_PORT: String(webPort),
     LOADOUT_API_ORIGIN: `http://127.0.0.1:${apiPort}`,
@@ -154,6 +164,7 @@ test('a development subprocess failure shuts down its sibling', {
   t.after(() => blocked.close());
   const apiPort = await unusedPort();
   const proc = launch('pnpm', ['dev'], {
+    LOADOUT_RUN_DIR: await runDir(t),
     LOADOUT_ADDR: `127.0.0.1:${apiPort}`,
     LOADOUT_DEV_PORT: String(blocked.address().port),
   });

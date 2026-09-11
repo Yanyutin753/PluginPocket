@@ -1,5 +1,27 @@
 # Loadout —— 产品与技术总体方案
 
+2026-09-11 工具列表视觉精修：缺省及失效自定义图标使用原创薄荷工具箱插图；名称与状态同行、说明和连接信息分层，成本独立对齐，动作采用轻量按钮。窄屏自然换行，保留参数、编辑及启停功能。
+
+公共市场登录态布局：`/plugins` 与 `/plugins/:slug` 匿名保留公开导航；会话有效时复用工作空间 Shell（侧栏、账号菜单、移动导航），不再显示独立公共页头。公开目录仍免鉴权，使用现有 publicSessionQuery 探测会话，未登录/探测失败不阻断浏览；URL 和筛选不变。
+
+2026-09-11 工作空间导航去重：插件市场统一作为工具与插件的发现入口，桌面侧栏与移动导航移除重复的「工具目录」项；旧 `/tools` 页面仍可直达，管理员工具管理保持原有入口。
+
+2026-09-11 公共目录视觉第二轮：用户授权实际浏览器检查；首屏采用搜索与专属工具箱插图的双栏展台，卡片增加名称字标与类型图标层级，保留12项分页与所有筛选行为。桌面、移动和浅深主题以本轮浏览器验收为准。
+
+2026-09-11 技能与装备组管理：管理员 `/admin/marketplace` 提供独立导航、类型筛选与搜索，技能内联创建/编辑和 GitHub 导入、精选来源快捷同步、勾选 MCP/技能创建及编辑装备组。复用 `POST /api/v1/admin/marketplace/skills` 与 `POST /api/v1/admin/marketplace/bundles`（同 slug 同 kind 更新，版本随内容变化）；GitHub 文件按 Contents API 分别读取，失败不发布。执行记录见 `superpowers/plans/2026-09-11-marketplace-authoring.md`。
+
+2026-09-11 工具编辑优化：工具图标支持 HTTPS 图片与上传/粘贴的静态 SVG、PNG、JPEG、WebP（解码后最多 64 KiB），随 tools 配置存数据库供多副本读取；列表增加连接类型与规则摘要。编辑器分区提供连接说明、参数示例、可视化结算规则和同引擎试算，保留高级 JSON。PATCH 省略图标/规则保持原值，图标空字符串移除，规则 {} 或 null 恢复默认。`POST /api/v1/admin/tools/settlement-preview` 接收 `{settlement,text,is_error}` 返回 `{charge}`，仅管理员可调用，不调用上游或写账本。验收见 `superpowers/plans/2026-09-11-tool-editor.md`。
+
+2026-09-11 用量详情：个人、团队、管理员用量列表新增按需详情面板。`GET /api/v1/account/usage/{callID}`、`GET /api/v1/account/teams/{id}/usage/{callID}`、`GET /api/v1/admin/usage/{callID}` 返回 `{item}`，继承对应列表权限；输入/输出文本及截断标记仅详情返回。新调用每方向保存最多 64 KiB（按用户要求不脱敏、UTF-8 安全截断），历史未记录数据不补造，CSV 保持摘要。执行证据见 [用量详情](superpowers/plans/2026-09-11-usage-details.md)。
+
+2026-09-11 公共插件市场改为 Apify 风格的搜索入口、类型导航与响应式卡片目录；客户端对公开 API 的完整目录先筛选再分页，每页 12 项，URL 保存 q/kind/page，筛选变化回到首页，非法/越界页码安全收敛。保留匿名详情、安装命令、错误恢复和双语主题。执行证据见 `superpowers/plans/2026-09-11-plugins-catalog-pagination.md`。
+
+2026-09-11 插件目录接通与全站精修：用户最终要求公共 `/plugins`、`/plugins/:slug` 使用 React 页面，与前端统一布局、语言与主题；通过免鉴权 `GET /api/v1/plugins`、`GET /api/v1/plugins/{slug}` 读取公开元数据（`items/item` + `origin`），首页与工作空间均有入口。替代独立 SEO HTML，`/marketplace.git` 保持公开，见 [执行记录](superpowers/plans/2026-09-11-plugins-route-polish.md)。
+
+同轮补齐所有页面与市场源的无粘性多副本验收：Git 提交与对象改为 PostgreSQL 持久共享，市场变更事务内失效，重启/换副本保留完整提交链；SQLite 迁移轨道同步。静态资源滚动版本仍要求共享保留新旧构建资源，见 docs/CLUSTER.md。
+
+2026-09-11 桌面分发扩展：Windows x64（MSI/NSIS）、macOS ARM64/Intel（DMG/app）、Linux x64/ARM64（deb/rpm/AppImage），使用独立 Loadout 发布签名密钥，macOS ad-hoc 封印；不含手机端，不等同于平台受信任证书公证。实施及真实验收状态见 [桌面发布记录](superpowers/plans/2026-09-11-desktop-release.md)。
+
 > **一句话定位**：登录即武装的 MCP 订阅网关 —— 用户在网页端注册/充值，本地一条命令把整套预设好的 MCP 工具写进 Codex / Claude Code / Cursor，开箱即用；服务端统一鉴权、计量、扣额度，后台看得见每一次调用。
 >
 > 名字来源：游戏术语 *Loadout*（预设装备 / 出战配置）—— 角色进场前配好的整套武器和配件，一键上身直接开战。
@@ -268,6 +290,8 @@ Codex(用户按 F5 调用 time_now)
 - **网页会话**：HttpOnly/SameSite `loadout_session` Cookie，7天；写请求校验 Origin，服务端可立即注销
 - **网关令牌**：`Authorization: Bearer ldt_xxx`（opaque，仅用于 `/mcp` 与 verify）
 
+错误响应统一 `{"error":"<code>"}`：码表唯一事实源在 `server/internal/httpapi/codes.go` 注册表（含码→HTTP 状态映射），机器契约 `web/src/i18n/error-codes.json` 由测试锁定，前端 `web/src/i18n/errors.ts` 按码双语映射（完整表见 `docs/API.md` 错误码注册表）。
+
 ### 8.1 认证与账号（网页会话）
 
 | 方法 | 路径 | 说明 |
@@ -310,7 +334,7 @@ Codex(用户按 F5 调用 time_now)
 | GET | `/mcp` | 无状态模式下不支持 SSE 长连接 → 405 |
 | DELETE | `/mcp` | 无会话可断开 → 405 |
 
-统一错误码：`401 {error:"unauthorized"}`（token 无效/吊销）、`403 {error:"forbidden"}`（非 admin）、`402` 语义在工具结果中表达（MCP 层面返回 isError 文案，不用 HTTP 402，避免破坏协议）。
+统一错误码：`401 {error:"unauthorized"}`（token 无效/吊销）、`403 {error:"forbidden"}`（非 admin）、HTTP 级错误统一 JSON envelope（见第 8 章错误码注册表）；`402` 语义在工具结果中表达（MCP 层面返回 isError 文案，不用 HTTP 402，避免破坏协议）。
 
 ---
 
@@ -501,7 +525,9 @@ P0 起使用 React + TypeScript + Vite、Tailwind CSS、shadcn/ui、TanStack Que
 
 ### 11.3 交互原则
 
-- 所有 API 失败给中文 toast；401 统一跳登录页；
+- 数据面板采用摘要列表 + 按需右侧抽屉：工具参数、工具/套餐编辑、插件安装、调账，以及令牌/兑换码创建、团队操作和账号配置；窄屏抽屉全宽，支持键盘退出与返回触发入口，提交中和未保存的一次性凭据阻止误关闭。
+
+- 公共页识别浏览器会话，已登录显示工作空间入口；登录/注册页恢复有效会话，网络失败可重试。受保护 API 的 401 先经 HttpOnly RT 刷新默认 15 分钟 AT 并重试一次；RT 默认绝对有效期 7 天，同页并发共享刷新。POST `/api/v1/auth/refresh` 成功 204 + Cookie，失败 401/403/500。旧会话在原期限内兼容，注销撤销全部关联 AT；所有凭据状态由共享 PG 管理，支持 K8s 无粘性多副本。
 - token 明文只在创建响应里出现一次，刷新即不可见；
 - 移动端可用（响应式栅格）。
 
@@ -540,7 +566,7 @@ P0 起使用 React + TypeScript + Vite、Tailwind CSS、shadcn/ui、TanStack Que
 |---|---|
 | 密码泄露 | scrypt 加盐哈希；登录失败不区分"用户不存在/密码错" |
 | 网关 token 泄露 | 库中只存 sha256；明文仅创建时一次；可吊销；多设备分 token |
-| 会话劫持 | 随机 opaque session 哈希入库、HttpOnly/SameSite/Secure cookie；7天过期，可撤销 |
+| 会话劫持 | 随机 opaque AT/RT 哈希入库、HttpOnly/SameSite/Secure Cookie；默认15分钟/7天，系统配置可热更新，可撤销 |
 | 本地凭证泄露 | `~/.loadout/config.json` 0600；客户端配置零密钥（bridge 模式） |
 | **服务端任意命令执行（stdio 上游）** | stdio 上游 = 服务器上跑任意命令。**P0 默认禁用**；P1 开启时仅 admin 可配 + 命令白名单；生产建议放容器/独立沙箱节点 |
 | 上游凭证泄露 | AES-GCM 加密 JSONB，部署密钥；管理列表不返回秘密 |
@@ -596,7 +622,7 @@ loadout/
 
 M0.0 环境变量：`LOADOUT_ADDR`（默认 `127.0.0.1:8787`）、`LOADOUT_WEB_DIR`（默认 `web/dist`，相对服务工作目录）。数据库、会话密钥和额度配置随对应业务任务增加，不在基建接收无效选项。
 
-本地开发提供 `make dev` 前台启动，以及 `make up/down/restart/status/logs` 后台管理 Go + Vite；CLI 是按需运行的命令，不作为常驻服务。`make ready` 串行执行完整 `check` 后再 `up`。后台状态与日志默认保存在 `.loadout/`，可用 `LOADOUT_RUN_DIR` 隔离；通过本地 Unix socket 控制本次开发进程，不按端口或进程名杀进程。后台启动须等待真实 API 和 Web 就绪，重复启动保持现有实例，启动失败清理已启动的子进程。
+本地开发提供根目录 `pnpm run dev` / `make dev` 前台启动（VS Code 任务固定根目录），Go 通过固定版本 Air 监听 `server/` 的 Go、SQL、go.mod/go.sum 变更自动编译重启；编译失败停止旧程序，修复后恢复；`.env` 修改需重启整个任务。另提供 `make up/down/restart/status/logs` 后台管理 Go + Vite；CLI 是按需运行的命令，不作为常驻服务。`make ready` 串行执行完整 `check` 后再 `up`。后台状态与日志默认保存在 `.loadout/`，可用 `LOADOUT_RUN_DIR` 隔离；通过本地 Unix socket 控制本次开发进程，不按端口或进程名杀进程。后台启动须等待真实 API 和 Web 就绪，重复启动保持现有实例，启动失败清理已启动的子进程。
 
 ---
 
@@ -698,7 +724,7 @@ React 状态页 → Go 健康 API ← Rust doctor；完整 TDD / harness、三�
 |---|---|
 | credit | 计费单位；1 credit = 1 次成功调用 × 工具倍率 |
 | 网关令牌 / `ldt_` | 用户创建的 opaque 密钥，调 `/mcp` 用，库中只存哈希 |
-| 网页会话 | 可撤销 opaque Cookie，网页控制台用，7天 |
+| 网页会话 | 可撤销 opaque AT/RT Cookie，网页控制台用，默认15分钟/7天 |
 | bridge | CLI 内置本地 stdio→HTTP 转发进程，客户端配置零密钥的关键 |
 | direct 模式 | 客户端直连网关 HTTP 端点的配置方式（高级选项） |
 | 上游 / 预设池 | 网关聚合的 MCP server 集合（builtin/http/stdio 三类） |
@@ -708,3 +734,5 @@ React 状态页 → Go 健康 API ← Rust doctor；完整 TDD / harness、三�
 ---
 
 *本文档为 Loadout 项目的唯一开发依据；实现与文档冲突时，先改文档再改代码。*
+
+浏览器鉴权期限由系统配置 `access_token_seconds` / `refresh_token_seconds` 热更新（默认900/604800秒，范围60–86400 / 60–31536000，RT≥AT）；所有副本签发时读共享PG，不延长已签发RT，凭据过期判断使用数据库时钟。

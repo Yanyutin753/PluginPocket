@@ -66,7 +66,7 @@ func register(t *testing.T, h http.Handler, name string) *http.Cookie {
 		t.Fatalf("register expected 201, got %d: %s", w.Code, w.Body)
 	}
 	cookies := w.Result().Cookies()
-	if len(cookies) != 1 || !cookies[0].HttpOnly || cookies[0].SameSite != http.SameSiteLaxMode {
+	if len(cookies) != 2 || !cookies[0].HttpOnly || cookies[0].SameSite != http.SameSiteLaxMode {
 		t.Fatal("missing secure session attributes")
 	}
 	return cookies[0]

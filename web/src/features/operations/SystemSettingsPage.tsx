@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
+import { SidePanel } from '@/components/SidePanel';
 import { Button } from '@/components/ui/button';
 import {
   Field,
@@ -18,6 +19,13 @@ const schema = z.object({
   item: z.object({
     revision: z.number().int().nonnegative(),
     initial_credits: z.number().int().min(0).max(1_000_000_000_000),
+    access_token_seconds: z.number().int().min(60).max(86400).default(900),
+    refresh_token_seconds: z
+      .number()
+      .int()
+      .min(60)
+      .max(31536000)
+      .default(604800),
     github_enabled: z.boolean(),
     github_client_id: z.string(),
     github_org: z.string(),
@@ -77,155 +85,219 @@ export default function SystemSettingsPage() {
       />
       {settings.isPending && <Loading variant="form" />}
       {item && (
-        <form
-          key={item.revision}
-          className="max-w-3xl"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const data = new FormData(event.currentTarget);
-            const body: Record<string, unknown> = {
-              revision: item.revision,
-              initial_credits: Number(data.get('initial_credits')),
-              github_enabled: data.get('github_enabled') === 'true',
-              smtp_enabled: data.get('smtp_enabled') === 'true',
-            };
-            for (const [key] of [...fields.github, ...fields.smtp])
-              body[key] = String(data.get(key) ?? '').trim();
-            for (const key of ['github_client_secret', 'smtp_password']) {
-              const value = data.get(key);
-              if (data.get(`clear_${key}`) === 'on') body[key] = '';
-              else if (typeof value === 'string' && value.length > 0)
-                body[key] = value;
-            }
-            save.mutate(body);
-          }}
-        >
-          <FieldSet disabled={save.isPending}>
-            <FieldGroup>
-              <Field>
-                <FieldLabel htmlFor="initial_credits">
-                  {t('注册赠送额度')}
-                </FieldLabel>
-                <Input
-                  id="initial_credits"
-                  name="initial_credits"
-                  type="number"
-                  min="0"
-                  max="1000000000000"
-                  step="1"
-                  required
-                  defaultValue={item.initial_credits}
-                />
-                <p>{t('仅影响之后注册的新账号，不修改已有余额。')}</p>
-              </Field>
-              {(['github', 'smtp'] as const).map((group) => {
-                const secret =
-                  group === 'github' ? 'github_client_secret' : 'smtp_password';
-                const secretLabel =
-                  group === 'github' ? 'GitHub Client Secret' : 'SMTP 密码';
-                const enabled =
-                  group === 'github' ? 'github_enabled' : 'smtp_enabled';
-                return (
-                  <FieldSet key={group}>
-                    <FieldLegend>
-                      {t(group === 'github' ? 'GitHub 登录' : '邮件服务')}
-                    </FieldLegend>
+        <section className="section-stack">
+          <dl className="settings-summary">
+            <div>
+              <dt>{t('注册赠送额度')}</dt>
+              <dd>{item.initial_credits}</dd>
+            </div>
+            <div>
+              <dt>{t('GitHub 登录')}</dt>
+              <dd>{item.github_enabled ? t('启用') : t('停用')}</dd>
+            </div>
+            <div>
+              <dt>{t('邮件服务')}</dt>
+              <dd>{item.smtp_enabled ? t('启用') : t('停用')}</dd>
+            </div>
+          </dl>
+          <SidePanel
+            title={t('编辑系统配置')}
+            trigger={t('编辑系统配置')}
+            locked={save.isPending}
+          >
+            <form
+              key={item.revision}
+              className="max-w-3xl"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const data = new FormData(event.currentTarget);
+                const body: Record<string, unknown> = {
+                  revision: item.revision,
+                  initial_credits: Number(data.get('initial_credits')),
+                  access_token_seconds: Number(
+                    data.get('access_token_seconds'),
+                  ),
+                  refresh_token_seconds: Number(
+                    data.get('refresh_token_seconds'),
+                  ),
+                  github_enabled: data.get('github_enabled') === 'true',
+                  smtp_enabled: data.get('smtp_enabled') === 'true',
+                };
+                for (const [key] of [...fields.github, ...fields.smtp])
+                  body[key] = String(data.get(key) ?? '').trim();
+                for (const key of ['github_client_secret', 'smtp_password']) {
+                  const value = data.get(key);
+                  if (data.get(`clear_${key}`) === 'on') body[key] = '';
+                  else if (typeof value === 'string' && value.length > 0)
+                    body[key] = value;
+                }
+                save.mutate(body);
+              }}
+            >
+              <FieldSet disabled={save.isPending}>
+                <FieldGroup>
+                  <Field>
+                    <FieldLabel htmlFor="initial_credits">
+                      {t('注册赠送额度')}
+                    </FieldLabel>
+                    <Input
+                      id="initial_credits"
+                      name="initial_credits"
+                      type="number"
+                      min="0"
+                      max="1000000000000"
+                      step="1"
+                      required
+                      defaultValue={item.initial_credits}
+                    />
+                    <p>{t('仅影响之后注册的新账号，不修改已有余额。')}</p>
+                  </Field>
+                  <FieldSet>
+                    <FieldLegend>{t('浏览器登录有效期')}</FieldLegend>
+                    <p>
+                      {t(
+                        '保存后各副本立即采用新期限签发凭据；已有 RT 到期时间不变，刷新 AT 不延长 RT。',
+                      )}
+                    </p>
                     <FieldGroup>
-                      <Field>
-                        <FieldLabel htmlFor={enabled}>
-                          {t(
-                            group === 'github'
-                              ? '启用 GitHub 登录'
-                              : '启用邮件服务',
-                          )}
-                        </FieldLabel>
-                        <Select
-                          id={enabled}
-                          name={enabled}
-                          defaultValue={String(item[enabled])}
-                          options={[
-                            { value: 'false', label: t('停用') },
-                            { value: 'true', label: t('启用') },
-                          ]}
-                        />
-                      </Field>
-                      {fields[group].map(([key, label]) => (
+                      {(
+                        [
+                          ['access_token_seconds', 'AT 有效期（秒）', 86400],
+                          [
+                            'refresh_token_seconds',
+                            'RT 有效期（秒）',
+                            31536000,
+                          ],
+                        ] as const
+                      ).map(([key, label, max]) => (
                         <Field key={key}>
                           <FieldLabel htmlFor={key}>{t(label)}</FieldLabel>
                           <Input
                             id={key}
                             name={key}
-                            maxLength={512}
+                            type="number"
+                            min="60"
+                            max={max}
+                            step="1"
+                            required
                             defaultValue={item[key]}
-                            autoComplete="off"
                           />
                         </Field>
                       ))}
-                      <Field>
-                        <FieldLabel htmlFor={secret}>
-                          {t(secretLabel)}
-                        </FieldLabel>
-                        <Input
-                          id={secret}
-                          name={secret}
-                          type="password"
-                          autoComplete="new-password"
-                          maxLength={4096}
-                          disabled={!settings.data?.secret_writes_available}
-                        />
-                        <p>
-                          {t(
-                            item[`${secret}_set`]
-                              ? '已设置密钥；留空保留，填写后替换。'
-                              : '尚未设置密钥。',
-                          )}
-                        </p>
-                      </Field>
-                      {item[`${secret}_set`] && (
-                        <Field orientation="horizontal">
-                          <Input
-                            id={`clear_${secret}`}
-                            name={`clear_${secret}`}
-                            type="checkbox"
-                            className="size-4"
-                          />
-                          <FieldLabel htmlFor={`clear_${secret}`}>
-                            {t('清除已保存的密钥')} ({t(secretLabel)})
-                          </FieldLabel>
-                        </Field>
-                      )}
                     </FieldGroup>
                   </FieldSet>
-                );
-              })}
-              {!settings.data?.secret_writes_available && (
-                <p>{t('部署未配置加密主密钥，暂不能保存新的集成密钥。')}</p>
-              )}
-              <ErrorNotice error={save.error} />
-              {save.isSuccess && (
-                <p role="status">
-                  {t('配置已保存，新请求将使用更新后的配置。')}
-                </p>
-              )}
-              <div className="flex flex-wrap gap-3">
-                <Button type="submit" disabled={save.isPending}>
-                  {t(save.isPending ? '正在保存…' : '保存系统配置')}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={save.isPending || settings.isFetching}
-                  onClick={async () => {
-                    const result = await settings.refetch();
-                    if (result.isSuccess) save.reset();
-                  }}
-                >
-                  {t('重新加载配置')}
-                </Button>
-              </div>
-            </FieldGroup>
-          </FieldSet>
-        </form>
+                  {(['github', 'smtp'] as const).map((group) => {
+                    const secret =
+                      group === 'github'
+                        ? 'github_client_secret'
+                        : 'smtp_password';
+                    const secretLabel =
+                      group === 'github' ? 'GitHub Client Secret' : 'SMTP 密码';
+                    const enabled =
+                      group === 'github' ? 'github_enabled' : 'smtp_enabled';
+                    return (
+                      <FieldSet key={group}>
+                        <FieldLegend>
+                          {t(group === 'github' ? 'GitHub 登录' : '邮件服务')}
+                        </FieldLegend>
+                        <FieldGroup>
+                          <Field>
+                            <FieldLabel htmlFor={enabled}>
+                              {t(
+                                group === 'github'
+                                  ? '启用 GitHub 登录'
+                                  : '启用邮件服务',
+                              )}
+                            </FieldLabel>
+                            <Select
+                              id={enabled}
+                              name={enabled}
+                              defaultValue={String(item[enabled])}
+                              options={[
+                                { value: 'false', label: t('停用') },
+                                { value: 'true', label: t('启用') },
+                              ]}
+                            />
+                          </Field>
+                          {fields[group].map(([key, label]) => (
+                            <Field key={key}>
+                              <FieldLabel htmlFor={key}>{t(label)}</FieldLabel>
+                              <Input
+                                id={key}
+                                name={key}
+                                maxLength={512}
+                                defaultValue={item[key]}
+                                autoComplete="off"
+                              />
+                            </Field>
+                          ))}
+                          <Field>
+                            <FieldLabel htmlFor={secret}>
+                              {t(secretLabel)}
+                            </FieldLabel>
+                            <Input
+                              id={secret}
+                              name={secret}
+                              type="password"
+                              autoComplete="new-password"
+                              maxLength={4096}
+                              disabled={!settings.data?.secret_writes_available}
+                            />
+                            <p>
+                              {t(
+                                item[`${secret}_set`]
+                                  ? '已设置密钥；留空保留，填写后替换。'
+                                  : '尚未设置密钥。',
+                              )}
+                            </p>
+                          </Field>
+                          {item[`${secret}_set`] && (
+                            <Field orientation="horizontal">
+                              <Input
+                                id={`clear_${secret}`}
+                                name={`clear_${secret}`}
+                                type="checkbox"
+                                className="size-4"
+                              />
+                              <FieldLabel htmlFor={`clear_${secret}`}>
+                                {t('清除已保存的密钥')} ({t(secretLabel)})
+                              </FieldLabel>
+                            </Field>
+                          )}
+                        </FieldGroup>
+                      </FieldSet>
+                    );
+                  })}
+                  {!settings.data?.secret_writes_available && (
+                    <p>{t('部署未配置加密主密钥，暂不能保存新的集成密钥。')}</p>
+                  )}
+                  <ErrorNotice error={save.error} />
+                  {save.isSuccess && (
+                    <p role="status">
+                      {t('配置已保存，新请求将使用更新后的配置。')}
+                    </p>
+                  )}
+                  <div className="flex flex-wrap gap-3">
+                    <Button type="submit" disabled={save.isPending}>
+                      {t(save.isPending ? '正在保存…' : '保存系统配置')}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={save.isPending || settings.isFetching}
+                      onClick={async () => {
+                        const result = await settings.refetch();
+                        if (result.isSuccess) save.reset();
+                      }}
+                    >
+                      {t('重新加载配置')}
+                    </Button>
+                  </div>
+                </FieldGroup>
+              </FieldSet>
+            </form>
+          </SidePanel>
+        </section>
       )}
       <p>
         {t(

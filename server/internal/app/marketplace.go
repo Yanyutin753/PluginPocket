@@ -66,9 +66,7 @@ func (a *application) listMarketplace(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *application) loadMarketplaceItem(w http.ResponseWriter, r *http.Request, slug string) (marketplaceItem, bool) {
-	var item marketplaceItem
-	e := a.s.Pool.QueryRow(r.Context(), "SELECT id,slug,name,description,source,repo_url,homepage,transport,endpoint,package,stars,synced_at,installed_tool_id,kind,version,spec FROM marketplace_items WHERE slug=$1", slug).
-		Scan(&item.ID, &item.Slug, &item.Name, &item.Description, &item.Source, &item.RepoURL, &item.Homepage, &item.Transport, &item.Endpoint, &item.Package, &item.Stars, &item.SyncedAt, &item.InstalledID, &item.Kind, &item.Version, &item.Spec)
+	item, e := readMarketplaceItem(r.Context(), a.s.Pool, slug)
 	if errors.Is(e, pgx.ErrNoRows) {
 		fail(w, 404, "not_found")
 		return item, false
@@ -77,8 +75,17 @@ func (a *application) loadMarketplaceItem(w http.ResponseWriter, r *http.Request
 		fail(w, 500, "internal_error")
 		return item, false
 	}
-	item.Installed = item.InstalledID != nil
 	return item, true
+}
+
+func readMarketplaceItem(ctx context.Context, database interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}, slug string) (marketplaceItem, error) {
+	var item marketplaceItem
+	e := database.QueryRow(ctx, "SELECT id,slug,name,description,source,repo_url,homepage,transport,endpoint,package,stars,synced_at,installed_tool_id,kind,version,spec FROM marketplace_items WHERE slug=$1", slug).
+		Scan(&item.ID, &item.Slug, &item.Name, &item.Description, &item.Source, &item.RepoURL, &item.Homepage, &item.Transport, &item.Endpoint, &item.Package, &item.Stars, &item.SyncedAt, &item.InstalledID, &item.Kind, &item.Version, &item.Spec)
+	item.Installed = item.InstalledID != nil
+	return item, e
 }
 
 // publicMarketplace 面向已登录用户与 CLI 令牌：市场是 HTTP MCP 目录，
@@ -160,7 +167,7 @@ func (a *application) createSkill(w http.ResponseWriter, r *http.Request) {
 		Path        string            `json:"path"`
 		Files       map[string]string `json:"files"`
 	}
-	if !decode(w, r, &in) {
+	if !decodeLimit(w, r, &in, 50<<20) {
 		return
 	}
 	slug := in.Slug
@@ -182,12 +189,14 @@ func (a *application) createSkill(w http.ResponseWriter, r *http.Request) {
 	case "github":
 		ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 		defer cancel()
-		if _, e := marketplace.ResolveSkillFiles(ctx, a.options.Marketplace, in.Repo, in.Path); e != nil {
+		files, e := marketplace.ResolveSkillFiles(ctx, a.options.Marketplace, in.Repo, in.Path)
+		if e != nil || !safeSkillFiles(files) {
 			fail(w, 502, "upstream_unavailable")
 			return
 		}
 		spec["repo"] = in.Repo
 		spec["path"] = in.Path
+		spec["files"] = files
 	default:
 		fail(w, 400, "invalid_request")
 		return
@@ -198,10 +207,22 @@ func (a *application) createSkill(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// 正式发版：内容指纹决定版本策略（不变沿用 / 显式发版 / 自动 patch+1）。
+	tx, e := a.s.Pool.Begin(r.Context())
+	if e != nil {
+		fail(w, 500, "internal_error")
+		return
+	}
+	defer func() { _ = tx.Rollback(r.Context()) }()
+	// Serialize authoring before row locks: skill updates also write bundles
+	// and the shared Git invalidation row. One order prevents cross-edit deadlocks.
+	if _, e = tx.Exec(r.Context(), "SELECT pg_advisory_xact_lock(hashtextextended(current_schema() || ':marketplace-publish', 0))"); e != nil {
+		fail(w, 500, "internal_error")
+		return
+	}
 	nextHash := contentFingerprint("skill", in.Name, in.Description, string(encoded))
 	var previousVersion, previousHash string
 	var existed bool
-	if e = a.s.Pool.QueryRow(r.Context(), "SELECT version,content_hash FROM marketplace_items WHERE slug=$1 AND kind='skill'", slug).Scan(&previousVersion, &previousHash); e == nil {
+	if e = tx.QueryRow(r.Context(), "SELECT version,content_hash FROM marketplace_items WHERE slug=$1 AND kind='skill' FOR UPDATE", slug).Scan(&previousVersion, &previousHash); e == nil {
 		existed = true
 	} else if !errors.Is(e, pgx.ErrNoRows) {
 		fail(w, 500, "internal_error")
@@ -213,19 +234,35 @@ func (a *application) createSkill(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var id int64
-	e = a.s.Pool.QueryRow(r.Context(), `INSERT INTO marketplace_items(slug,name,description,source,transport,kind,spec,version,content_hash)
+	e = tx.QueryRow(r.Context(), `INSERT INTO marketplace_items(slug,name,description,source,transport,kind,spec,version,content_hash)
 	 VALUES($1,$2,$3,'curated','unknown','skill',$4,$5,$6)
 	 ON CONFLICT(slug) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,spec=EXCLUDED.spec,version=EXCLUDED.version,content_hash=EXCLUDED.content_hash,updated_at=now()
 	 WHERE marketplace_items.kind='skill' RETURNING id`, slug, in.Name, in.Description, encoded, version, nextHash).Scan(&id)
+	if errors.Is(e, pgx.ErrNoRows) {
+		fail(w, 409, "key_taken")
+		return
+	}
 	if e != nil {
 		fail(w, 500, "internal_error")
 		return
 	}
-	item, ok := a.loadMarketplaceItem(w, r, slug)
-	if !ok {
+	if existed && nextHash != previousHash {
+		// A bundle embeds its skill files, so member updates are releases too.
+		if _, e = tx.Exec(r.Context(), `UPDATE marketplace_items SET version=split_part(version,'.',1)||'.'||split_part(version,'.',2)||'.'||(split_part(version,'.',3)::bigint+1)::text,updated_at=now()
+		 WHERE kind='bundle' AND spec->'includes' ? $1`, slug); e != nil {
+			fail(w, 500, "internal_error")
+			return
+		}
+	}
+	item, e := readMarketplaceItem(r.Context(), tx, slug)
+	if e != nil {
+		fail(w, 500, "internal_error")
 		return
 	}
-	a.refreshMarketplace()
+	if e = tx.Commit(r.Context()); e != nil {
+		fail(w, 500, "internal_error")
+		return
+	}
 	status := 201
 	if existed {
 		status = 200
@@ -261,9 +298,9 @@ func (a *application) createBundle(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		seen[include] = true
-		var kind string
-		e := a.s.Pool.QueryRow(r.Context(), "SELECT kind FROM marketplace_items WHERE slug=$1", include).Scan(&kind)
-		if errors.Is(e, pgx.ErrNoRows) || e != nil || kind == "bundle" {
+		var installable bool
+		e := a.s.Pool.QueryRow(r.Context(), "SELECT kind='skill' OR (kind='mcp' AND (transport='gateway' OR (transport='http' AND endpoint<>''))) FROM marketplace_items WHERE slug=$1", include).Scan(&installable)
+		if e != nil || !installable {
 			fail(w, 400, "invalid_request")
 			return
 		}
@@ -273,16 +310,52 @@ func (a *application) createBundle(w http.ResponseWriter, r *http.Request) {
 		fail(w, 500, "internal_error")
 		return
 	}
-	if _, e = a.s.Pool.Exec(r.Context(), "INSERT INTO marketplace_items(slug,name,description,source,transport,kind,spec) VALUES($1,$2,$3,'curated','unknown','bundle',$4)", slug, in.Name, in.Description, spec); e != nil {
+	tx, e := a.s.Pool.Begin(r.Context())
+	if e != nil {
 		fail(w, 500, "internal_error")
 		return
 	}
-	item, ok := a.loadMarketplaceItem(w, r, slug)
-	if !ok {
+	defer func() { _ = tx.Rollback(r.Context()) }()
+	if _, e = tx.Exec(r.Context(), "SELECT pg_advisory_xact_lock(hashtextextended(current_schema() || ':marketplace-publish', 0))"); e != nil {
+		fail(w, 500, "internal_error")
 		return
 	}
-	a.refreshMarketplace()
-	respond(w, 201, map[string]any{"item": item})
+	var previousVersion, previousHash, previousKind string
+	e = tx.QueryRow(r.Context(), "SELECT version,content_hash,kind FROM marketplace_items WHERE slug=$1 FOR UPDATE", slug).Scan(&previousVersion, &previousHash, &previousKind)
+	existed := e == nil
+	if e != nil && !errors.Is(e, pgx.ErrNoRows) {
+		fail(w, 500, "internal_error")
+		return
+	}
+	if existed && previousKind != "bundle" {
+		fail(w, 409, "key_taken")
+		return
+	}
+	nextHash := contentFingerprint("bundle", in.Name, in.Description, string(spec))
+	version, e := formalVersion(previousVersion, previousHash, "", nextHash)
+	if e != nil {
+		fail(w, 400, "invalid_request")
+		return
+	}
+	if _, e = tx.Exec(r.Context(), `INSERT INTO marketplace_items(slug,name,description,source,transport,kind,spec,version,content_hash) VALUES($1,$2,$3,'curated','unknown','bundle',$4,$5,$6)
+	 ON CONFLICT(slug) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,spec=EXCLUDED.spec,version=EXCLUDED.version,content_hash=EXCLUDED.content_hash,updated_at=now() WHERE marketplace_items.kind='bundle'`, slug, in.Name, in.Description, spec, version, nextHash); e != nil {
+		fail(w, 500, "internal_error")
+		return
+	}
+	item, e := readMarketplaceItem(r.Context(), tx, slug)
+	if e != nil {
+		fail(w, 500, "internal_error")
+		return
+	}
+	if e = tx.Commit(r.Context()); e != nil {
+		fail(w, 500, "internal_error")
+		return
+	}
+	status := 201
+	if existed {
+		status = 200
+	}
+	respond(w, status, map[string]any{"item": item})
 }
 
 // marketplaceFiles 返回技能文件集（内联直接返回，GitHub 由服务端解析），CLI 唯一文件来源。
@@ -318,6 +391,10 @@ func (a *application) marketplaceFiles(w http.ResponseWriter, r *http.Request) {
 	case "inline":
 		files = spec.Files
 	case "github":
+		if len(spec.Files) > 0 {
+			files = spec.Files
+			break
+		}
 		ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
 		defer cancel()
 		resolved, e := marketplace.ResolveSkillFiles(ctx, a.options.Marketplace, spec.Repo, spec.Path)
@@ -380,11 +457,6 @@ func formalVersion(previousVersion, previousHash, explicit, nextHash string) (st
 
 // publishPoolTool 把池内（密封凭证）工具发布为市场组件：无公共端点，
 // transport=gateway，经 bridge 计量使用——"服务端独享"插件的 MCP 半边。
-func (a *application) refreshMarketplace() {
-	if a.options.MarketplaceRegistry != nil {
-		a.options.MarketplaceRegistry.Invalidate()
-	}
-}
 
 func (a *application) publishPoolTool(w http.ResponseWriter, r *http.Request) {
 	if _, ok := a.currentUser(w, r, true); !ok {
@@ -437,7 +509,6 @@ func (a *application) publishPoolTool(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	a.refreshMarketplace()
 	respond(w, 201, map[string]any{"item": item})
 }
 
@@ -452,7 +523,6 @@ func (a *application) syncMarketplace(w http.ResponseWriter, r *http.Request) {
 		fail(w, 502, "upstream_unavailable")
 		return
 	}
-	a.refreshMarketplace()
 	respond(w, 200, map[string]any{"synced": count})
 }
 
@@ -609,7 +679,6 @@ func (a *application) uninstallMarketplace(w http.ResponseWriter, r *http.Reques
 	if !ok {
 		return
 	}
-	a.refreshMarketplace()
 	respond(w, 200, map[string]any{"item": updated})
 }
 

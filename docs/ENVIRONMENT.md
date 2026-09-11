@@ -61,7 +61,7 @@ Node .env支持引号，Shell `source`还会进行命令/变量展开。`kubectl
 | --- | --- | --- |
 | `LOADOUT_DEV_PORT` | Vite与dev.mjs，5173 | 本机Web端口；PUBLIC_URL、API_ORIGIN按实际地址匹配 |
 | `LOADOUT_API_ORIGIN` | Vite默认http://127.0.0.1:8787；dev.mjs未设置时从ADDR推导 | Vite代理Go地址；与公开PUBLIC_URL不同，不应指回Vite自身 |
-| `LOADOUT_RUN_DIR` | dev.mjs，`.loadout` | 开发主管socket/日志目录；up/down/status/logs必须使用同一个值 |
+| `LOADOUT_RUN_DIR` | dev.mjs，`.loadout` | 开发主管socket/日志及Vite依赖缓存目录；up/down/status/logs必须使用同一个值；并行开发/集成测试用不同目录，避免预构建缓存互相覆盖 |
 | `LOADOUT_PORT` | Compose，8787 | 应用发布到主机的回环端口，容器内仍8787 |
 | `LOADOUT_DB_PORT` | Compose，5432 | PG发布到主机的回环端口，容器内仍5432 |
 | `LOADOUT_DB_PASSWORD` | Compose，必填 | 初始化PG密码，同时插入容器内应用DB URL；只对新数据库卷执行初始化。修改变量不会更改既有PG用户密码 |
@@ -107,8 +107,14 @@ Compose固定使用内部`db:5432`与`redis:6379`，不会将根.env里的应用
 
 `/admin/settings` 支持注册赠送额度、GitHub登录开关/Client ID/Secret/组织限制、SMTP开关/地址/发件人/用户名/密码。对应环境变量只在数据库尚未保存系统配置时提供默认值；保存后以PostgreSQL记录为准，重启和其他服务副本均读取相同记录。页面更新不会改写 `.env`、进程环境或现有用户余额。
 
-首次更新包含此功能的服务端代码仍需重新构建并重启（本地使用 `make restart`）；前端开发热更新不会替换正在运行的 Go 程序。运行新版本后，通过系统配置页保存的值才会在后续请求热生效。
+生产服务更新代码仍需重新构建并重启；本地根目录 `pnpm run dev` / `make up` 通过 Air 自动编译重启 Go。修改 `.env` 仍需重启整个开发任务（后台实例使用 `make restart`）。运行新版本后，通过系统配置页保存的值才会在后续请求热生效。
 
 新请求使用最新配置；已开始的请求保持其快照。配置读取失败返回可重试错误，不静默回退。GitHub与邮件启用需要已有公开访问源；密钥加密持久化使用LOADOUT_ENCRYPTION_KEY，网页从不回显原文。未配置加密主密钥时只能保存不包含秘密的配置。
 
 数据库/Redis连接、命名空间、监听/公开地址、加密主密钥、bootstrap管理员、stdio执行白名单、允许私网上游与允许SMTP本地明文仍为部署参数，不在网页可编辑，修改须重启。不要通过页面放宽部署信任边界。
+
+## 桌面发行专用配置
+
+GitHub Actions Secrets：`TAURI_SIGNING_PRIVATE_KEY`（独立 Loadout Minisign 私钥或本地私钥路径）、`TAURI_SIGNING_PRIVATE_KEY_PASSWORD`（可选密码）。仅用于 `desktop/tauri.release.conf.json` 发行构建，不传入服务端、前端或安装包；公钥随仓库版本管理。详见 [桌面发行](../desktop/README.md#桌面发行)。
+
+浏览器 AT/RT 秒数在管理端系统配置中热更新（默认900/604800），不是进程环境变量；各副本从共享PG读取，旧RT期限不变。修改DB/Redis地址、PUBLIC_URL与加密主密钥仍需重启/滚动副本。

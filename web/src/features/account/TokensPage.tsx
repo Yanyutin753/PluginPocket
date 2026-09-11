@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { z } from 'zod';
 import { Pagination } from '@/components/Pagination';
+import { SidePanel } from '@/components/SidePanel';
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -89,101 +90,107 @@ export default function TokensPage() {
       <Heading title={t('网关令牌')} artwork="tokens">
         {t('为不同设备分别命名。令牌只显示一次，撤销后立即失效。')}
       </Heading>
-      <form
-        className="inline-form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          create.mutate(name);
-        }}
+      <SidePanel
+        title={t('创建令牌')}
+        trigger={t('创建令牌')}
+        locked={create.isPending || Boolean(secret)}
       >
-        <FieldGroup className="token-fields grid min-w-0 flex-1 gap-4">
-          <Field className="field">
-            <FieldLabel htmlFor="token-name">{t('令牌名称')}</FieldLabel>
-            <Input
-              id="token-name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder={t('例如：工作电脑')}
-              required
-              maxLength={80}
-              disabled={create.isPending}
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="token-wallet">{t('扣费钱包')}</FieldLabel>
-            <Select
-              id="token-wallet"
-              value={teamId}
-              onValueChange={setTeamId}
-              disabled={create.isPending}
-              options={[
-                { value: '', label: t('个人钱包') },
-                ...availableTeams.map((team) => ({
-                  value: String(team.id),
-                  label: team.name,
-                })),
-              ]}
-            />
-          </Field>
-          <More
-            hasNext={teams.hasNextPage}
-            pending={teams.isFetchingNextPage}
-            onClick={() => void teams.fetchNextPage()}
-          />
-        </FieldGroup>
-        <Button
-          type="submit"
-          disabled={
-            create.isPending ||
-            Boolean(secret) ||
-            (Boolean(teamId) &&
-              !availableTeams.some((team) => String(team.id) === teamId))
-          }
+        <form
+          className="inline-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            create.mutate(name);
+          }}
         >
-          {create.isPending ? t('正在创建…') : t('创建令牌')}
-        </Button>
-      </form>
-      {teamId && (
-        <ErrorNotice
-          error={selectedTeam.error}
-          retry={() => void selectedTeam.refetch()}
-        />
-      )}
-      {teamId && (
-        <ErrorNotice error={teams.error} retry={() => void teams.refetch()} />
-      )}
-      <ErrorNotice error={create.error} />
-      {secret && (
-        <section className="secret-panel" aria-label={t('新令牌')}>
-          <h2>{t('请立即保存令牌')}</h2>
-          <p>{t('离开此页面或隐藏后，将无法再次查看明文。')}</p>
-          <code>{secret}</code>
-          <div className="action-row">
-            <Button
-              variant="outline"
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(secret);
-                  setCopied('令牌已复制');
-                } catch {
-                  setCopied('无法自动复制，请选中令牌并手动复制。');
-                }
-              }}
-            >
-              {t('复制令牌')}
-            </Button>
-            <Button
-              onClick={() => {
-                setSecret('');
-                setCopied('');
-              }}
-            >
-              {t('我已保存，隐藏令牌')}
-            </Button>
-          </div>
-          {copied && <p role="status">{t(copied)}</p>}
-        </section>
-      )}
+          <FieldGroup className="token-fields grid min-w-0 flex-1 gap-4">
+            <Field className="field">
+              <FieldLabel htmlFor="token-name">{t('令牌名称')}</FieldLabel>
+              <Input
+                id="token-name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder={t('例如：工作电脑')}
+                required
+                maxLength={80}
+                disabled={create.isPending}
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="token-wallet">{t('扣费钱包')}</FieldLabel>
+              <Select
+                id="token-wallet"
+                value={teamId}
+                onValueChange={setTeamId}
+                disabled={create.isPending}
+                options={[
+                  { value: '', label: t('个人钱包') },
+                  ...availableTeams.map((team) => ({
+                    value: String(team.id),
+                    label: team.name,
+                  })),
+                ]}
+              />
+            </Field>
+            <More
+              hasNext={teams.hasNextPage}
+              pending={teams.isFetchingNextPage}
+              onClick={() => void teams.fetchNextPage()}
+            />
+          </FieldGroup>
+          <Button
+            type="submit"
+            disabled={
+              create.isPending ||
+              Boolean(secret) ||
+              (Boolean(teamId) &&
+                !availableTeams.some((team) => String(team.id) === teamId))
+            }
+          >
+            {create.isPending ? t('正在创建…') : t('创建令牌')}
+          </Button>
+        </form>
+        {teamId && (
+          <ErrorNotice
+            error={selectedTeam.error}
+            retry={() => void selectedTeam.refetch()}
+          />
+        )}
+        {teamId && (
+          <ErrorNotice error={teams.error} retry={() => void teams.refetch()} />
+        )}
+        <ErrorNotice error={create.error} />
+        {secret && (
+          <section className="secret-panel" aria-label={t('新令牌')}>
+            <h2>{t('请立即保存令牌')}</h2>
+            <p>{t('离开此页面或隐藏后，将无法再次查看明文。')}</p>
+            <code>{secret}</code>
+            <div className="action-row">
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(secret);
+                    setCopied('令牌已复制');
+                  } catch {
+                    setCopied('无法自动复制，请选中令牌并手动复制。');
+                  }
+                }}
+              >
+                {t('复制令牌')}
+              </Button>
+              <Button
+                onClick={() => {
+                  setSecret('');
+                  setCopied('');
+                }}
+              >
+                {t('我已保存，隐藏令牌')}
+              </Button>
+            </div>
+            {copied && <p role="status">{t(copied)}</p>}
+          </section>
+        )}
+      </SidePanel>
       <ErrorNotice error={tokens.error} retry={() => void tokens.retry()} />
       {tokens.isPending && <Loading />}
       {tokens.isSuccess && tokens.items.length === 0 && (

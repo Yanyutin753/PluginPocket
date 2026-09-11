@@ -27,6 +27,14 @@ export const usageSchema = z.object({
   duration_ms: z.number(),
   created_at: z.iso.datetime({ offset: true }),
 });
+export const usageDetailSchema = z.object({
+  item: usageSchema.extend({
+    input_data: z.string().nullable(),
+    output_data: z.string().nullable(),
+    input_truncated: z.boolean(),
+    output_truncated: z.boolean(),
+  }),
+});
 export const pageSchema = <T extends z.ZodType>(item: T) =>
   z.object({ items: z.array(item), next_cursor: z.string() });
 export const resultSchema = z.object({ user: userSchema });
@@ -66,6 +74,8 @@ const messages: Record<string, string> = {
   invalid_credentials: '用户名或密码不正确，请重新输入。',
   invalid_request: '提交内容不符合要求，请检查后重试。',
   invalid_settlement: '结算策略无效：检查 JSON、业务码路径或正则。',
+  invalid_icon:
+    '图标无效，请使用 HTTPS 图片或不超过 64 KiB 的 PNG、JPEG、WebP、安全 SVG。',
   invalid_settlement_script: '结算脚本语法有误，请修正后再保存。',
   forbidden: '没有权限执行此操作。',
   forbidden_origin: '请求来源未通过验证，请从本站重新打开页面。',
@@ -82,7 +92,7 @@ export class ApiError extends Error {
     super(messages[code] ?? '暂时无法完成请求，请检查连接后重试。');
   }
 }
-export async function fetchResponse(
+async function fetchOnce(
   path: string,
   init: RequestInit = {},
 ): Promise<Response> {
@@ -110,6 +120,38 @@ export async function fetchResponse(
   } catch (error) {
     if (error instanceof ApiError) throw error;
     throw new ApiError(0, 'unknown');
+  }
+}
+let refreshInFlight: Promise<void> | undefined;
+let refreshGeneration = 0;
+export async function fetchResponse(
+  path: string,
+  init: RequestInit = {},
+): Promise<Response> {
+  const generation = refreshGeneration;
+  try {
+    return await fetchOnce(path, init);
+  } catch (error) {
+    if (
+      !(error instanceof ApiError) ||
+      error.status !== 401 ||
+      error.code !== 'unauthorized' ||
+      path.startsWith('/auth/') ||
+      init.signal?.aborted
+    )
+      throw error;
+    if (generation === refreshGeneration) {
+      refreshInFlight ??= fetchOnce('/auth/refresh', { method: 'POST' })
+        .then(() => {
+          refreshGeneration++;
+        })
+        .finally(() => {
+          refreshInFlight = undefined;
+        });
+      await refreshInFlight;
+    }
+    if (init.signal?.aborted) throw new ApiError(0, 'unknown');
+    return fetchOnce(path, init);
   }
 }
 export async function request<T>(
@@ -159,6 +201,19 @@ export const accountQuery = queryOptions({
   queryFn: ({ signal }) => request('/account/me', accountSchema, { signal }),
   retry: false,
   staleTime: 30_000,
+});
+export const publicSessionQuery = queryOptions({
+  queryKey: ['public-session'],
+  queryFn: async ({ signal }) => {
+    try {
+      return await request('/account/me', accountSchema, { signal });
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) return null;
+      throw error;
+    }
+  },
+  retry: false,
+  staleTime: 0,
 });
 export const listOptions = <T extends z.ZodType>(
   path: string,

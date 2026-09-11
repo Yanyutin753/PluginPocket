@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Pagination } from '@/components/Pagination';
+import { SidePanel } from '@/components/SidePanel';
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -42,89 +43,97 @@ function Adjustment({ user, close }: { user: User; close: () => void }) {
     },
   });
   return (
-    <section
-      className="adjustment-panel"
-      aria-label={t('调整 {value1} 的余额', { value1: user.username })}
+    <SidePanel
+      title={t('调整 {value1} 的余额', { value1: user.username })}
+      onClose={close}
+      locked={adjust.isPending}
     >
-      <h2>{t('调整 {value1} 的余额', { value1: user.username })}</h2>
-      {adjust.isSuccess ? (
-        <>
-          <p role="status">
-            {t('余额已调整，当前额度 {credits}。', {
-              credits: number(adjust.data.user.balance, locale),
-            })}
-          </p>
-          <Button variant="outline" onClick={close}>
-            {t('完成')}
-          </Button>
-        </>
-      ) : (
-        <form
-          className="form-stack"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const next = operation ?? {
-              delta: Number(delta),
-              note,
-              idempotency_key: crypto.randomUUID(),
-            };
-            setOperation(next);
-            adjust.mutate(next);
-          }}
-        >
-          <p>{t('正数增加额度，负数扣减额度。每次调整都会保留备注。')}</p>
-          <FieldGroup className="min-w-0 flex-1">
-            <Field className="field">
-              <FieldLabel htmlFor="delta">{t('调整额度')}</FieldLabel>
-              <Input
-                id="delta"
-                type="number"
-                step="1"
-                required
-                value={delta}
-                disabled={Boolean(operation)}
-                onChange={(event) => setDelta(event.target.value)}
-              />
-            </Field>
-            <Field className="field">
-              <FieldLabel htmlFor="note">{t('备注')}</FieldLabel>
-              <Input
-                id="note"
-                required
-                maxLength={500}
-                value={note}
-                disabled={Boolean(operation)}
-                onChange={(event) => setNote(event.target.value)}
-              />
-            </Field>
-          </FieldGroup>
-          <ErrorNotice error={adjust.error} />
-          {operation && adjust.isError && (
-            <p>{t('请求结果未确认。重试将沿用本次操作编号，避免重复调账。')}</p>
-          )}
-          <div className="action-row">
-            <Button
-              type="submit"
-              disabled={
-                adjust.isPending ||
-                Number(delta) === 0 ||
-                !Number.isSafeInteger(Number(delta))
-              }
-            >
-              {adjust.isPending ? t('正在调账…') : t('确认调账')}
+      <section
+        className="adjustment-panel"
+        aria-label={t('调整 {value1} 的余额', { value1: user.username })}
+      >
+        <h2>{t('调整 {value1} 的余额', { value1: user.username })}</h2>
+        {adjust.isSuccess ? (
+          <>
+            <p role="status">
+              {t('余额已调整，当前额度 {credits}。', {
+                credits: number(adjust.data.user.balance, locale),
+              })}
+            </p>
+            <Button variant="outline" onClick={close}>
+              {t('完成')}
             </Button>
-            <Button
-              variant="outline"
-              type="button"
-              disabled={adjust.isPending}
-              onClick={close}
-            >
-              {t('关闭')}
-            </Button>
-          </div>
-        </form>
-      )}
-    </section>
+          </>
+        ) : (
+          <form
+            className="form-stack"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const next = operation ?? {
+                delta: Number(delta),
+                note,
+                idempotency_key: crypto.randomUUID(),
+              };
+              setOperation(next);
+              adjust.mutate(next);
+            }}
+          >
+            <p>{t('正数增加额度，负数扣减额度。每次调整都会保留备注。')}</p>
+            <FieldGroup className="min-w-0 flex-1">
+              <Field className="field">
+                <FieldLabel htmlFor="delta">{t('调整额度')}</FieldLabel>
+                <Input
+                  id="delta"
+                  type="number"
+                  step="1"
+                  required
+                  value={delta}
+                  disabled={Boolean(operation)}
+                  onChange={(event) => setDelta(event.target.value)}
+                />
+              </Field>
+              <Field className="field">
+                <FieldLabel htmlFor="note">{t('备注')}</FieldLabel>
+                <Input
+                  id="note"
+                  required
+                  maxLength={500}
+                  value={note}
+                  disabled={Boolean(operation)}
+                  onChange={(event) => setNote(event.target.value)}
+                />
+              </Field>
+            </FieldGroup>
+            <ErrorNotice error={adjust.error} />
+            {operation && adjust.isError && (
+              <p>
+                {t('请求结果未确认。重试将沿用本次操作编号，避免重复调账。')}
+              </p>
+            )}
+            <div className="action-row">
+              <Button
+                type="submit"
+                disabled={
+                  adjust.isPending ||
+                  Number(delta) === 0 ||
+                  !Number.isSafeInteger(Number(delta))
+                }
+              >
+                {adjust.isPending ? t('正在调账…') : t('确认调账')}
+              </Button>
+              <Button
+                variant="outline"
+                type="button"
+                disabled={adjust.isPending}
+                onClick={close}
+              >
+                {t('关闭')}
+              </Button>
+            </div>
+          </form>
+        )}
+      </section>
+    </SidePanel>
   );
 }
 export default function AdminPage() {

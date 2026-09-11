@@ -3,13 +3,15 @@
 GOLANGCI_VERSION := 2.13.2
 GOLANGCI_DIR := $(CURDIR)/build/tools/golangci-lint-$(GOLANGCI_VERSION)
 GOLANGCI_LINT := $(GOLANGCI_DIR)/golangci-lint
+AIR_VERSION := 1.67.4
+AIR := $(CURDIR)/build/tools/air-$(AIR_VERSION)/air
 
 .PHONY: help setup dev dev-server up start down stop restart status logs ready test test-all test-web test-server test-cli test-desktop lint-desktop build-desktop-ui build-desktop test-process test-dev lint format build build-web build-server build-cli integration check skills-check docker-up docker-down docker-logs
 
 help: ## 显示可用命令（默认）
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z_-]+:.*## / {printf "  make %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-setup: $(GOLANGCI_LINT) ## 按锁文件安装开发依赖
+setup: $(GOLANGCI_LINT) $(AIR) ## 按锁文件安装开发依赖
 	pnpm install --frozen-lockfile
 	cargo fetch --manifest-path cli/Cargo.toml --locked
 	cargo fetch --manifest-path desktop/Cargo.toml --locked
@@ -18,10 +20,14 @@ setup: $(GOLANGCI_LINT) ## 按锁文件安装开发依赖
 dev: ## 前台启动 Go + Vite，Ctrl+C 关闭
 	pnpm dev
 
-dev-server: build-server ## 单独前台启动 Go
-	./build/loadout-server
+dev-server: $(AIR) ## 前台启动 Go，源码变更自动编译重启
+	$(AIR) -c .air.toml
 
-up: ## 后台启动 Go + Vite，等待就绪（重复执行不重启）
+$(AIR):
+	mkdir -p "$(dir $(AIR))"
+	GOBIN="$(dir $(AIR))" go install github.com/air-verse/air@v$(AIR_VERSION)
+
+up: $(AIR) ## 后台启动 Go + Vite，等待就绪（重复执行不重启）
 	@node --env-file-if-exists=.env scripts/dev.mjs up
 
 start: up ## up 的别名
@@ -58,11 +64,11 @@ test-server:
 test-cli:
 	cargo test --manifest-path cli/Cargo.toml --locked
 
-test-process: build-server ## 验证前台进程退出与清理
+test-process: build-server $(AIR) ## 验证前台进程退出与清理
 	node --test tests/process.test.mjs
 
-test-dev: ## 验证后台启动、停止、重复启动和失败清理
-	node --test tests/dev.test.mjs
+test-dev: $(AIR) ## 验证后台启动、停止、重载、重复启动和失败清理
+	node --test tests/dev.test.mjs tests/reload.test.mjs
 
 $(GOLANGCI_LINT):
 	mkdir -p "$(GOLANGCI_DIR)"
@@ -110,6 +116,7 @@ skills-check:
 	test -x .agents/skills/impeccable/scripts/impeccable
 
 check: ## 完整 harness，任一步失败即停止
+	node --test tests/release-preflight.test.mjs
 	$(MAKE) database-check
 	$(MAKE) redis-check
 	$(MAKE) skills-check
