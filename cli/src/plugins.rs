@@ -199,6 +199,42 @@ fn heal_polluted_block(text: &str, begin: &str, end: &str) -> String {
 fn file_names(files: &std::collections::BTreeMap<String, DecodedFile>) -> Vec<String> {
     files.keys().cloned().collect()
 }
+
+fn skill_directory_files(root: &std::path::Path, prefix: &str) -> Result<Vec<String>> {
+    let mut files = Vec::new();
+    for entry in std::fs::read_dir(root).map_err(|_| "could not inspect skill directory")? {
+        let entry = entry.map_err(|_| "could not inspect skill directory")?;
+        let name = format!("{prefix}{}", entry.file_name().to_string_lossy());
+        let kind = entry
+            .file_type()
+            .map_err(|_| "could not inspect skill file")?;
+        if kind.is_file() {
+            files.push(name);
+        } else if kind.is_dir() {
+            let nested = skill_directory_files(&entry.path(), &format!("{name}/"))?;
+            if nested.is_empty() {
+                // Empty directories are not in a file manifest; preserve foreign additions.
+                files.push(format!("{name}/"));
+            }
+            files.extend(nested);
+        } else {
+            return Err("skill directory contains a link or unsupported file");
+        }
+    }
+    files.sort();
+    Ok(files)
+}
+
+fn check_skill_directory(root: &std::path::Path, recorded: &[String]) -> Result<()> {
+    let mut expected = recorded.to_vec();
+    expected.sort();
+    if skill_directory_files(root, "")? != expected {
+        return Err(
+            "skill directory contains files PluginPocket did not install; remove them first",
+        );
+    }
+    Ok(())
+}
 pub fn validate_slug(slug: &str) -> Result<()> {
     if slug.is_empty()
         || slug.len() > 64
@@ -438,15 +474,17 @@ impl LocalClient {
         {
             let root = self.skill_root(client, slug)?;
             config::safe_path(&root)?;
-            if root.exists()
-                && !owns(
-                    &manifest,
-                    &format!("skill:{}:{slug}", client.name()),
-                    &serde_json::json!(file_names(&files)),
-                )
-            {
-                return Err("existing skill directory is unmanaged; resolve it manually");
-            }
+            let recorded: Vec<String> = if root.exists() {
+                let record = manifest
+                    .get(&format!("skill:{}:{slug}", client.name()))
+                    .ok_or("existing skill directory is unmanaged; resolve it manually")?;
+                let recorded: Vec<String> = serde_json::from_value(record.clone())
+                    .map_err(|_| "invalid skill management record")?;
+                check_skill_directory(&root, &recorded)?;
+                recorded
+            } else {
+                Vec::new()
+            };
             for name in files.keys() {
                 let path = root.join(name);
                 config::safe_path(&path)?;
@@ -454,9 +492,9 @@ impl LocalClient {
                     return Err("skill file destination is a directory");
                 }
             }
-            destinations.push((client, root));
+            destinations.push((client, root, recorded));
         }
-        for (client, root) in destinations {
+        for (client, root, recorded) in destinations {
             for (name, content) in &files {
                 let path = root.join(name);
                 config::atomic_write(&path, &content.bytes)?;
@@ -472,6 +510,21 @@ impl LocalClient {
                         }),
                     )
                     .map_err(|_| "could not set skill file permissions")?;
+                }
+            }
+            for name in recorded.iter().filter(|name| !files.contains_key(*name)) {
+                let path = root.join(name);
+                config::safe_path(&path)?;
+                std::fs::remove_file(&path).map_err(|_| "could not remove obsolete skill file")?;
+                let mut parent = path.parent();
+                while let Some(dir) = parent.filter(|dir| *dir != root) {
+                    match std::fs::remove_dir(dir) {
+                        Ok(()) => parent = dir.parent(),
+                        Err(error) if error.kind() == std::io::ErrorKind::DirectoryNotEmpty => {
+                            break;
+                        }
+                        Err(_) => return Err("could not remove obsolete skill directory"),
+                    }
                 }
             }
             manifest.insert(
@@ -519,19 +572,7 @@ impl LocalClient {
             let root = self.skill_root(client, slug)?;
             config::safe_path(&root)?;
             if root.exists() {
-                let mut actual: Vec<String> = std::fs::read_dir(&root)
-                    .map_err(|_| "could not inspect skill directory")?
-                    .filter_map(|entry| entry.ok())
-                    .map(|entry| entry.file_name().to_string_lossy().into_owned())
-                    .collect();
-                actual.sort();
-                let mut expected = recorded;
-                expected.sort();
-                if actual != expected {
-                    return Err(
-                        "skill directory contains files PluginPocket did not install; remove them first",
-                    );
-                }
+                check_skill_directory(&root, &recorded)?;
                 std::fs::remove_dir_all(&root).map_err(|_| "could not remove skill directory")?;
             }
             manifest.remove(&manifest_key);

@@ -136,6 +136,103 @@ fn market_command_lists_items_and_cli_installs_from_endpoint() {
 fn market_body(items: &serde_json::Value) -> String {
     serde_json::json!({"items": items}).to_string()
 }
+
+fn skill_fixture(
+    local: &pluginpocket::LocalClient,
+    files: serde_json::Value,
+) -> std::thread::JoinHandle<String> {
+    let items = serde_json::json!([{
+        "slug":"lifecycle", "name":"Lifecycle", "kind":"skill",
+        "spec":{"source":"inline", "files":files}
+    }]);
+    let (server, request) = fixture("200 OK", &market_body(&items));
+    credentials(local, &server, "ppt_test");
+    request
+}
+
+#[test]
+fn skill_lifecycle_uninstalls_nested_files_but_preserves_foreign_content() {
+    let dir = tempfile::tempdir().unwrap();
+    let local = local(&dir);
+    let files = serde_json::json!({"SKILL.md":"skill", "references/guide.md":"guide"});
+    let request = skill_fixture(&local, files.clone());
+    local.install("lifecycle", None, &[Codex]).unwrap();
+    request.join().unwrap();
+    let root = dir.path().join(".codex/skills/lifecycle");
+    let foreign = root.join("references/personal.md");
+    fs::write(&foreign, "keep").unwrap();
+    let request = skill_fixture(&local, files.clone());
+    assert!(local.uninstall("lifecycle", &[Codex]).is_err());
+    request.join().unwrap();
+    assert_eq!(fs::read_to_string(&foreign).unwrap(), "keep");
+    fs::remove_file(foreign).unwrap();
+    let extra_dir = root.join("references/personal");
+    fs::create_dir(&extra_dir).unwrap();
+    let request = skill_fixture(&local, files.clone());
+    assert!(local.uninstall("lifecycle", &[Codex]).is_err());
+    request.join().unwrap();
+    assert!(extra_dir.is_dir());
+    fs::remove_dir(extra_dir).unwrap();
+    #[cfg(unix)]
+    {
+        let outside = tempfile::tempdir().unwrap();
+        fs::write(outside.path().join("keep.md"), "keep").unwrap();
+        let link = root.join("references/link");
+        std::os::unix::fs::symlink(outside.path(), &link).unwrap();
+        let request = skill_fixture(&local, files.clone());
+        assert!(local.uninstall("lifecycle", &[Codex]).is_err());
+        request.join().unwrap();
+        assert_eq!(
+            fs::read_to_string(outside.path().join("keep.md")).unwrap(),
+            "keep"
+        );
+        fs::remove_file(link).unwrap();
+    }
+    let request = skill_fixture(&local, files);
+    local.uninstall("lifecycle", &[Codex]).unwrap();
+    request.join().unwrap();
+    assert!(!root.exists());
+}
+
+#[test]
+fn skill_lifecycle_update_accepts_changed_file_manifest_and_removes_obsolete_files() {
+    let dir = tempfile::tempdir().unwrap();
+    let local = local(&dir);
+    let request = skill_fixture(
+        &local,
+        serde_json::json!({
+            "SKILL.md":"old", "references/old.md":"old guide"
+        }),
+    );
+    local.install("lifecycle", None, &[Codex]).unwrap();
+    request.join().unwrap();
+    let new_files = serde_json::json!({
+        "SKILL.md":"new", "scripts/new.sh":"new script"
+    });
+    let root = dir.path().join(".codex/skills/lifecycle");
+    let foreign = root.join("references/personal.md");
+    fs::write(&foreign, "keep").unwrap();
+    let request = skill_fixture(&local, new_files.clone());
+    assert!(local.update(&[Codex]).is_err());
+    request.join().unwrap();
+    assert_eq!(fs::read_to_string(&foreign).unwrap(), "keep");
+    assert_eq!(fs::read_to_string(root.join("SKILL.md")).unwrap(), "old");
+    fs::remove_file(foreign).unwrap();
+    let request = skill_fixture(&local, new_files.clone());
+    assert_eq!(local.update(&[Codex]).unwrap(), ["lifecycle"]);
+    request.join().unwrap();
+    let root = dir.path().join(".codex/skills/lifecycle");
+    assert_eq!(fs::read_to_string(root.join("SKILL.md")).unwrap(), "new");
+    assert_eq!(
+        fs::read_to_string(root.join("scripts/new.sh")).unwrap(),
+        "new script"
+    );
+    assert!(!root.join("references").exists());
+    let request = skill_fixture(&local, new_files);
+    local.uninstall("lifecycle", &[Codex]).unwrap();
+    request.join().unwrap();
+    assert!(!root.exists());
+}
 #[test]
 fn skill_install_writes_managed_directories_and_uninstall_refuses_foreign_files() {
     let dir = tempfile::tempdir().unwrap();
