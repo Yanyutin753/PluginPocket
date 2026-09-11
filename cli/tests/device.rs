@@ -30,6 +30,8 @@ fn fixture(
             loop {
                 match listener.accept() {
                     Ok((mut stream, _)) => {
+                        // Windows 上 accept 出的连接继承监听 socket 的非阻塞模式。
+                        stream.set_nonblocking(false).unwrap();
                         stream
                             .set_read_timeout(Some(Duration::from_secs(2)))
                             .unwrap();

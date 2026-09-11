@@ -66,12 +66,34 @@ fn install_with_delay(
                     Err(e) => panic!("{e}"),
                 }
             };
+            // Windows 上 accept 出的连接继承监听 socket 的非阻塞模式，必须切回阻塞；
+            // 大请求体（~11MB base64 附件）必须完整读取后再写响应，否则客户端仍在
+            // 发送时收到响应与关闭会被 RST，导致读响应失败（macOS CI 实测）。
+            stream.set_nonblocking(false).unwrap();
             stream
-                .set_read_timeout(Some(Duration::from_secs(2)))
+                .set_read_timeout(Some(Duration::from_secs(10)))
                 .unwrap();
+            let mut bytes = Vec::new();
             let mut buf = [0; 8192];
-            let n = stream.read(&mut buf).unwrap();
-            requests.push(String::from_utf8_lossy(&buf[..n]).into_owned());
+            loop {
+                let n = stream.read(&mut buf).unwrap();
+                assert!(n > 0);
+                bytes.extend_from_slice(&buf[..n]);
+                if let Some(i) = bytes.windows(4).position(|w| w == b"\r\n\r\n") {
+                    let headers = String::from_utf8_lossy(&bytes[..i]).to_ascii_lowercase();
+                    let length = headers
+                        .lines()
+                        .find_map(|l| {
+                            l.strip_prefix("content-length: ")
+                                .and_then(|v| v.parse::<usize>().ok())
+                        })
+                        .unwrap_or(0);
+                    if bytes.len() >= i + 4 + length {
+                        break;
+                    }
+                }
+            }
+            requests.push(String::from_utf8_lossy(&bytes).into_owned());
             if requests.len() == 2 {
                 thread::sleep(delay);
             }
