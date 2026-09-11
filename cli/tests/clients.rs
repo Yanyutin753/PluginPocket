@@ -268,6 +268,59 @@ fn modified_codex_managed_block_is_never_overwritten_or_removed() {
 }
 
 #[test]
+fn codex_marketplace_sections_inside_managed_block_are_healed_not_rejected() {
+    let dir = tempfile::tempdir().unwrap();
+    let local = local(&dir);
+    credentials(&local, "https://example.com", "ppt_secret");
+    local.apply(&[Codex], false).unwrap();
+    let path = dir.path().join(".codex/config.toml");
+    // 复现实测污染：`codex plugin marketplace add` / `codex plugin add` 把
+    // [marketplaces.*]/[plugins.*] 段追加进托管块内部（块位于文件末尾时必然发生）。
+    let polluted = fs::read_to_string(&path).unwrap().replace(
+        "# --- pluginpocket end ---\n",
+        "[marketplaces.pluginpocket]\nsource_type = \"git\"\nsource = \"http://127.0.0.1:8787/marketplace.git\"\n\n[plugins.\"demo-mcp@pluginpocket\"]\nenabled = true\n# --- pluginpocket end ---\n",
+    );
+    fs::write(&path, &polluted).unwrap();
+
+    let states = local.apply(&[Codex], false).unwrap();
+    assert!(states[0].configured, "polluted block must stay owned");
+    let healed = fs::read_to_string(&path).unwrap();
+    let block_start = healed.find("# --- pluginpocket begin ---").unwrap();
+    let block_end = healed.find("# --- pluginpocket end ---").unwrap();
+    let block = &healed[block_start..block_end];
+    assert!(
+        !block.contains("[marketplaces."),
+        "foreign tables must move out of the managed block"
+    );
+    assert!(!block.contains("[plugins."));
+    assert!(
+        healed.contains("[marketplaces.pluginpocket]"),
+        "foreign content must be preserved"
+    );
+    assert!(healed.contains("[plugins.\"demo-mcp@pluginpocket\"]"));
+    let doc = healed.parse::<toml_edit::DocumentMut>().unwrap();
+    assert_eq!(
+        doc["mcp_servers"]["pluginpocket"]["args"][0].as_str(),
+        Some("bridge")
+    );
+    assert_eq!(
+        doc["plugins"]["demo-mcp@pluginpocket"]["enabled"].as_bool(),
+        Some(true)
+    );
+
+    local.apply(&[Codex], false).unwrap();
+    assert_eq!(fs::read_to_string(&path).unwrap(), healed, "idempotent");
+
+    local.remove(&[Codex]).unwrap();
+    let removed = fs::read_to_string(&path).unwrap();
+    assert!(!removed.contains("pluginpocket begin"));
+    assert!(
+        removed.contains("[marketplaces.pluginpocket]"),
+        "remove must keep foreign tables"
+    );
+}
+
+#[test]
 fn partially_written_clients_remain_owned_and_removable_after_later_io_failure() {
     let dir = tempfile::tempdir().unwrap();
     seed(&dir);

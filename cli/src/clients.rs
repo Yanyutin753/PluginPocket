@@ -1,4 +1,4 @@
-use crate::{ClientKind, ClientState, LocalClient, Result, config};
+use crate::{ClientKind, ClientState, LocalClient, Result, config, plugins::heal_polluted_block};
 use serde_json::{Map, Value, json};
 use std::{collections::HashSet, path::PathBuf};
 use toml_edit::{DocumentMut, Item, Table, value};
@@ -52,7 +52,8 @@ impl LocalClient {
                         if client == ClientKind::Codex {
                             let text = std::str::from_utf8(&bytes)
                                 .map_err(|_| "invalid client configuration encoding")?;
-                            let (_, managed) = toml_without_managed(text)?;
+                            let text = heal_polluted_block(text, BEGIN, END);
+                            let (_, managed) = toml_without_managed(&text)?;
                             managed.is_some_and(|block| {
                                 owns(&manifest, client.name(), &Value::String(block))
                             })
@@ -112,9 +113,10 @@ impl LocalClient {
                 Value::Null
             };
             let new = if client == ClientKind::Codex {
-                let text = std::str::from_utf8(old.as_deref().unwrap_or_default())
+                let raw = std::str::from_utf8(old.as_deref().unwrap_or_default())
                     .map_err(|_| "invalid client configuration encoding")?;
-                let (remaining, existing) = toml_without_managed(text)?;
+                let text = heal_polluted_block(raw, BEGIN, END);
+                let (remaining, existing) = toml_without_managed(&text)?;
                 if existing
                     .is_some_and(|block| !owns(&manifest, client.name(), &Value::String(block)))
                 {

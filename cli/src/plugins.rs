@@ -154,7 +154,7 @@ fn decode_skill_files(
 /// heal_polluted_block 修复"外部 TOML 段被写进托管块中间"的污染（实测 codex plugin add
 /// 会如此插入 [plugins.*]/[marketplaces.*]）：把块内不属于本条目的段搬到 end 标记之后，
 /// 内容零丢失；块完好时原样返回。
-fn heal_polluted_block(text: &str, begin: &str, end: &str) -> String {
+pub(crate) fn heal_polluted_block(text: &str, begin: &str, end: &str) -> String {
     let (Some(b), Some(e)) = (text.find(begin), text.find(end)) else {
         return text.to_owned();
     };
