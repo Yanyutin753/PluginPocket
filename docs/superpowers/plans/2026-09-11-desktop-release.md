@@ -33,3 +33,10 @@ Configuration and generated icons are verified through real Tauri builds and wor
 ## Remaining platform acceptance
 
 Windows/macOS/Linux ARM64 workflows are configured but have not run remotely. No Windows local Rust toolchain or macOS host is available in this session. Windows MSI extraction and macOS bundle-seal checks remain unexecuted here. RPM package generated and signature verified, but RPM installation not exercised. No actual GUI/tray interaction, Gatekeeper/SmartScreen or clean-machine installation was claimed. No Apple notarization or Windows Authenticode certificate was created. User authorized remote build-only validation. Public publishing remains unauthorized.
+
+
+## Authorized remote build attempt
+
+User explicitly authorized committing/pushing only packaging changes and running remote builds, with no public release. Commit `7575d299f3e85ebd1f910c05fca5c3c23656a652` was pushed to `codex/desktop-packaging-20260911` using an isolated Git index; main, the user's index and unrelated concurrent changes were preserved. The manual workflow path only builds/uploads Actions artifacts and verifies signatures; it skips release creation, CLI release uploads, container publishing and final public release.
+
+`gh workflow run release.yml --ref codex/desktop-packaging-20260911 -f release_tag=v0.1.0` created run https://github.com/Yanyutin753/loadout/actions/runs/34600119871 . GitHub refused to start preflight (zero steps executed), check-run `103265090406` annotation: “The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings”. Every downstream platform job was skipped. This is an account/billing block, not evidence about Windows/macOS compilation. No charges, billing settings or public release were changed. Owner must resolve the account restriction before rerunning this build.
