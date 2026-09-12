@@ -13,9 +13,57 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  harness:
+  # 各 job 并行覆盖 `make check` 的全部检查；新增 make check 步骤时同步补进对应 job。
+  lint:
+    name: Lint & static analysis
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 25
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7.0.1
+      - name: Set up Node
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: .node-version
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6.1.0
+      - name: Set up Go
+        uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: server/go.mod
+          cache: false
+      - name: Activate pinned Rust toolchain
+        run: rustup show active-toolchain
+      - name: Install desktop build dependencies
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Verify bundled skills
+        run: make skills-check
+      - name: Lint web, server and CLI
+        run: make lint
+      - name: Lint desktop
+        run: make lint-desktop
+
+  sqlite-track:
+    name: SQL migrations dual-dialect (SQLite track)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7.0.1
+      - name: Set up Go
+        uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: server/go.mod
+          cache: false
+      - name: Run SQLite migration-track tests
+        run: cd server && go test -race -count=1 -run TestSQLite ./internal/store
+
+  server:
+    name: Server tests (PostgreSQL + Redis, -race)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     services:
       redis:
         image: redis:8.10.1-alpine
@@ -37,47 +85,149 @@ jobs:
       PLUGINPOCKET_TEST_REDIS_URL: redis://127.0.0.1:6379/0
       PLUGINPOCKET_TEST_DATABASE_URL: postgres://pluginpocket:ci-only-isolated-test-password@127.0.0.1:5432/pluginpocket_test?sslmode=disable
     steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: actions/setup-node@v7.0.0
-        with:
-          node-version-file: .node-version
-      - uses: pnpm/action-setup@v6.1.0
-      - uses: actions/setup-go@v7.0.0
+      - name: Check out repository
+        uses: actions/checkout@v7.0.1
+      - name: Set up Go
+        uses: actions/setup-go@v7.0.0
         with:
           go-version-file: server/go.mod
           cache: false
-      - name: Install pinned Rust toolchain
+      - name: Run server test suite
+        run: cd server && go test -race -count=1 ./...
+
+  web:
+    name: Web component tests (Vitest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7.0.1
+      - name: Set up Node
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: .node-version
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6.1.0
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run web test suite
+        run: pnpm --dir web test
+
+  desktop:
+    name: Desktop tests (Linux native bridge)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7.0.1
+      - name: Set up Node
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: .node-version
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6.1.0
+      - name: Activate pinned Rust toolchain
         run: rustup show active-toolchain
-      - name: Install native desktop build dependencies
+      - name: Install desktop build dependencies
         run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
-      - run: pnpm install --frozen-lockfile
-      - name: Run full harness
-        shell: bash
-        run: make check 2>&1 | tee harness.log
-      - name: Build container
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run desktop test suite
+        run: make test-desktop
+
+  cli-portability:
+    name: CLI cross-platform (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7.0.1
+      - name: Activate pinned Rust toolchain
+        run: rustup show active-toolchain
+      - name: Check formatting
+        run: cargo fmt --manifest-path cli/Cargo.toml --all -- --check
+      - name: Lint with Clippy
+        run: cargo clippy --manifest-path cli/Cargo.toml --locked --all-targets -- -D warnings
+      - name: Run CLI test suite
+        run: cargo test --manifest-path cli/Cargo.toml --locked
+      - name: Build release binary
+        run: cargo build --manifest-path cli/Cargo.toml --locked --release
+
+  container:
+    name: Container image build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7.0.1
+      - name: Build server container image
         run: docker build -t pluginpocket:ci .
+
+  e2e:
+    name: End-to-end product journey
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      redis:
+        image: redis:8.10.1-alpine
+        ports: [6379:6379]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+      postgres:
+        image: postgres:18.6-alpine
+        env:
+          POSTGRES_DB: pluginpocket_test
+          POSTGRES_USER: pluginpocket
+          POSTGRES_PASSWORD: ci-only-isolated-test-password
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U pluginpocket -d pluginpocket_test"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      PLUGINPOCKET_TEST_REDIS_URL: redis://127.0.0.1:6379/0
+      PLUGINPOCKET_TEST_DATABASE_URL: postgres://pluginpocket:ci-only-isolated-test-password@127.0.0.1:5432/pluginpocket_test?sslmode=disable
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7.0.1
+      - name: Set up Node
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: .node-version
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6.1.0
+      - name: Set up Go
+        uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: server/go.mod
+          cache: false
+      - name: Activate pinned Rust toolchain
+        run: rustup show active-toolchain
+      - name: Install desktop build dependencies
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run release preflight tests
+        run: node --test tests/release-preflight.test.mjs
+      - name: Run end-to-end product journey
+        run: make test-e2e 2>&1 | tee e2e-journey.log
+      - name: Run process lifecycle tests
+        run: make test-process
+      - name: Run dev supervisor tests
+        run: make test-dev
+      - name: Run HTTP integration tests
+        run: make integration
       - name: Upload test evidence
         if: always()
         uses: actions/upload-artifact@v7.0.1
         with:
-          name: harness-results
+          name: e2e-evidence
           path: |
-            harness.log
+            e2e-journey.log
             desktop/target/release/bundle/deb/*.deb
           retention-days: 7
           if-no-files-found: ignore
-
-  cli-portability:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v7.0.1
-      - run: rustup show active-toolchain
-      - run: cargo fmt --manifest-path cli/Cargo.toml --all -- --check
-      - run: cargo clippy --manifest-path cli/Cargo.toml --locked --all-targets -- -D warnings
-      - run: cargo test --manifest-path cli/Cargo.toml --locked
-      - run: cargo build --manifest-path cli/Cargo.toml --locked --release

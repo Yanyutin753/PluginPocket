@@ -59,7 +59,7 @@ Web Vitest最多4个工作进程，避免与Go race或并行开发任务争抢CP
 - 单元/组件失败：先复现聚焦测试；网络下载失败不能解释成代码断言失败。
 - 集成失败：查看 Node 内置测试运行器的断言和进程日志；聚焦运行 `node --test tests/integration.test.mjs` 或 `tests/process.test.mjs`（先构建）。
 - 前端使用 Vitest + Testing Library + user-event，在 DOM 中检查状态、错误恢复和键盘操作；不引入浏览器自动化验证。桌面/移动视觉效果由人工检查，组件和 HTTP 测试不证明实际排版或无溢出。
-- CI 上传 `harness.log`（完整检查日志）。Windows/macOS 执行 Rust CLI 测试与构建；Linux 跑完整 harness，进程组测试仅在 Linux 验证。
+- CI（`ci.yml`）按检测类别并行拆分：Lint（Biome/TS/golangci-lint/rustfmt+clippy，含桌面）、SQL 双方言迁移轨道（SQLite track，纯 Go 零外部依赖）、Server（真实 PostgreSQL+Redis，-race 全量）、Web 组件测试、Desktop（Linux 原生 bridge）、CLI 三平台矩阵（Linux/macOS/Windows fmt+clippy+test+build）、容器镜像构建、端到端产品旅程（release 预检 + `make test-e2e`/test-process/test-dev/integration，仅 Linux，上传 `e2e-evidence` 产物含旅程日志与 deb）。各 job 合计覆盖 `make check` 的全部步骤；`make check` 新增检查时同步补进对应 job。
 - CI 可证明当前代码状态，无法证明 RED 先于实现。任务记录和 PR 模板保留真实开发顺序；禁止编造 RED 记录。
 
 ## 产品与数据库测试
