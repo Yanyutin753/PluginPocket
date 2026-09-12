@@ -54,6 +54,7 @@
 - run 34671051168：Web 修复生效，但 `Desktop tests (windows-latest)` 41s 失败：`ERR_PNPM_VERIFY_DEPS_BEFORE_RUN × Cannot check whether dependencies are outdated`。同一命令上一轮 Windows 绿——pnpm 状态文件（`node_modules/.pnpm-workspace-state-v1.json`）在 Windows 偶发不可读，叠加仓库 `verifyDepsBeforeRun: error` 策略成为误杀。
 - 根因复现（本地，确定性）：移除该状态文件 → `pnpm --dir web run typecheck` 报同样错误。逐项验证覆盖通道：`npm_config_verify_deps_before_run` env（无效）、`--config.verifyDepsBeforeRun`（无效）、`.npmrc` 追加（无效，workspace yaml 优先）、`--config.verify-deps-before-run=false`（有效）、`--config.verify-deps-before-run=install`（有效且自愈——自动补装 235ms 并重建状态文件，exit 0）。
 - 修复 2：ci.yml（web/desktop job）与 release.yml（desktop job 的 UI 测试与 tauri build）直接调用 pnpm 脚本处统一加 `--config.verify-deps-before-run=install`；CI 内 frozen install 刚完成、策略为 install 仅在状态不可读时补装，不削弱本地 error 策略；make 内部调用的 pnpm 无法加参数，但相关 job 均为 ubuntu，未观察到该偶发。
+- 并行会话曾以 `44c5f9f` 在 `.npmrc` 加 `verify-deps-before-run=false` 修同一问题；本地复测证明 `.npmrc` 无法覆盖 `pnpm-workspace.yaml`（该行为 no-op），且若未来 pnpm 调整优先级会静默关闭本地保护，故删除该行，保留上述按命令生效的 install 自愈方案。
 
 ## 未验证范围（如实说明）
 
