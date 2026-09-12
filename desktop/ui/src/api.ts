@@ -37,6 +37,44 @@ const logs = z.array(
     message: z.string(),
   }),
 );
+const usage = z.object({
+  items: z.array(
+    z.object({
+      id: z.number().int(),
+      tool: z.string(),
+      cost: z.number().int().nonnegative(),
+      status: z.enum(['pending', 'ok', 'error', 'denied', 'recovered']),
+      duration_ms: z.number().int().nonnegative(),
+      created_at: z.iso.datetime({ offset: true }),
+      billing_role: z.string(),
+      multiplier_bp: z.number().int().nonnegative(),
+    }),
+  ),
+  next_cursor: z.string(),
+});
+const ledger = z.object({
+  items: z.array(
+    z.object({
+      id: z.number().int(),
+      delta: z.number().int(),
+      kind: z.enum([
+        'registration',
+        'adjustment',
+        'redemption',
+        'team_transfer',
+        'reservation',
+        'refund',
+        'recovery',
+      ]),
+      note: z.string(),
+      created_at: z.iso.datetime({ offset: true }),
+      balance_after: z.number().int(),
+    }),
+  ),
+  next_cursor: z.string(),
+});
+export type UsagePage = z.infer<typeof usage>;
+export type LedgerPage = z.infer<typeof ledger>;
 const diagnostics = z.object({
   checks: z.array(
     z.object({
@@ -59,6 +97,8 @@ const command = (command: Record<string, unknown>) =>
 export const api = {
   installed: async () =>
     installed.parse(await command({ action: 'installed' })),
+  usage: async () => usage.parse(await command({ action: 'usage' })),
+  ledger: async () => ledger.parse(await command({ action: 'ledger' })),
   logs: async () => logs.parse(await command({ action: 'logs' })),
   exportLogs: async (entries: LogEntry[]) =>
     z

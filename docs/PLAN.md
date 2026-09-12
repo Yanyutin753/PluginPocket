@@ -1,5 +1,7 @@
 # PluginPocket —— 产品与技术总体方案
 
+2026-09-12 桌面额度账单同步与图标修复：个人用量/账变端点开放 Bearer `ppt_` 双轨鉴权（`/account/usage`、`/account/ledger`，管理员端点仍仅会话），共享 CLI 新增 `LocalClient::usage/ledger` 与桌面 `local_command` 变体；桌面运行日志页新增用量明细与账变记录页签（服务端实时读取，不落本地操作日志）。同轮将图标源图 `web/public/icon-512.png` 裁除透明边距至内容占画布约 88% 并重新派生全平台 PNG/ICO/ICNS，修复任务栏/启动器图标视觉过小。执行记录见 `superpowers/plans/2026-09-12-desktop-billing-sync.md`。
+
 2026-09-12 桌面自动更新：内置 Tauri 官方 updater 插件（Minisign 验签）与 process 重启，更新端点为 GitHub Releases 静态 `latest.json`，由 Release workflow 在五平台安装包验签通过后生成并上传、发布前完成校验，签名复用发布密钥体系。客户端启动静默检查、手动「检查更新」、下载进度与失败重试；浏览器预览不展示模拟更新。方案见 `superpowers/specs/2026-09-12-desktop-auto-update-design.md`，验收以执行记录为准。
 
 2026-09-12 桌面装备管理台首期实施：概览、我的装备、运行日志与连接诊断侧栏；共享 CLI 读取本地托管清单并按实际客户端更新/卸载，持久化有界安全操作日志和 bridge 失败，诊断分项展示服务/凭证/配置/可执行文件。浏览器实时预览明确不具备原生能力，不返回模拟成功；版本及装备组来源未记录时不推断。范围见 `superpowers/specs/2026-09-12-desktop-workbench.md`，验收以执行记录为准。
@@ -330,7 +332,8 @@ Codex(用户按 F5 调用 time_now)
 | POST | `/api/v1/auth/register` | `{username, password}` → `{user}` + session cookie，送配置的初始额度；用户名格式不符 400 `invalid_username`，密码长度不符 400 `invalid_password` |
 | POST | `/api/v1/auth/login` | `{username, password}` → `{user}` + session cookie |
 | GET | `/api/v1/account/me` | 用户信息 + 今日/累计用量摘要 |
-| GET | `/api/v1/account/usage?limit=50` | 本人调用明细 |
+| GET | `/api/v1/account/usage?limit=50` | 本人调用明细（会话 Cookie 或 Bearer `ppt_` 令牌均可，2026-09-12 起桌面工作台经 Bearer 同步） |
+| GET | `/api/v1/account/ledger?kind=` | 本人账变流水（预留/退款/恢复/充值等，鉴权同上） |
 
 ### 8.2 网关令牌（网页会话）
 
@@ -345,6 +348,8 @@ Codex(用户按 F5 调用 time_now)
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | GET | `/api/v1/account/verify` | `pluginpocket login` 用：返回 `{username, balance, tools:[...]}` 供展示 |
+| GET | `/api/v1/account/usage?limit=100` | CLI/桌面工作台拉取本人用量明细（Bearer；个人端点同时保留会话 Cookie 鉴权） |
+| GET | `/api/v1/account/ledger` | CLI/桌面工作台拉取本人账变流水（Bearer；个人端点同时保留会话 Cookie 鉴权） |
 
 ### 8.4 管理后台（网页会话 + role=admin）
 

@@ -15,11 +15,12 @@ import workshopMark from '../../../web/public/images/workshop-mark.webp';
 import { Select } from '../../../web/src/components/ui/select';
 import { DiagnosticsPage } from './DiagnosticsPage';
 import { EquipmentPage } from './EquipmentPage';
+import { I18nProvider, useI18n } from './i18n';
 import { LogsPage } from './LogsPage';
 import { Overview } from './Overview';
 import { updater } from './updater';
 
-const pages = [
+const pageDefinitions = [
   {
     id: 'overview',
     label: '概览',
@@ -45,9 +46,22 @@ const pages = [
     description: '找到连接问题，知道下一步怎么做',
   },
 ] as const;
-type Page = (typeof pages)[number]['id'];
+type Page = (typeof pageDefinitions)[number]['id'];
 
 export function App() {
+  return (
+    <I18nProvider>
+      <Workbench />
+    </I18nProvider>
+  );
+}
+function Workbench() {
+  const { t, language, setLanguage } = useI18n();
+  const pages = pageDefinitions.map((page) => ({
+    ...page,
+    label: t(page.label),
+    description: t(page.description),
+  }));
   const native = isTauri();
   const [page, setPage] = useState<Page>('overview');
   const [theme, setTheme] = useState('system');
@@ -73,19 +87,29 @@ export function App() {
     <div className="workbench">
       <header className="workbench-topbar">
         <span className="workspace-location">
-          <Monitor size={16} aria-hidden="true" /> 本机工作台{' '}
+          <Monitor size={16} aria-hidden="true" /> {t('本机工作台')}{' '}
           <span aria-hidden="true">/</span> <strong>{selected.label}</strong>
         </span>
         <div className="theme-control">
           <Select
             icon={<SunMoon />}
-            aria-label="外观"
+            aria-label={t('外观')}
             value={theme}
             onValueChange={setTheme}
             options={[
-              { value: 'light', label: '浅色' },
-              { value: 'dark', label: '深色' },
-              { value: 'system', label: '跟随系统' },
+              { value: 'light', label: t('浅色') },
+              { value: 'dark', label: t('深色') },
+              { value: 'system', label: t('跟随系统') },
+            ]}
+          />
+          <Select
+            icon={<Monitor />}
+            aria-label={t('语言')}
+            value={language}
+            onValueChange={(value) => setLanguage(value as 'zh' | 'en')}
+            options={[
+              { value: 'zh', label: t('中文') },
+              { value: 'en', label: t('英文') },
             ]}
           />
         </div>
@@ -95,10 +119,10 @@ export function App() {
           <img src={workshopMark} alt="" width="44" height="44" />
           <span>
             <span className="brand-wordmark">PluginPocket</span>
-            <small>插件口袋 · AI 装备工坊</small>
+            <small>{t('插件口袋 · AI 装备工坊')}</small>
           </span>
         </div>
-        <nav aria-label="工作台">
+        <nav aria-label={t('工作台')}>
           {pages.map(({ id, label, icon: Icon }) => (
             <button
               type="button"
@@ -117,13 +141,13 @@ export function App() {
         </nav>
         <div className="sidebar-note">
           <ShieldCheck size={20} aria-hidden="true" />
-          <strong>工具随身，密钥留在本机</strong>
-          <p>一个入口，连接你的 AI 客户端。</p>
+          <strong>{t('工具随身，密钥留在本机')}</strong>
+          <p>{t('一个入口，连接你的 AI 客户端。')}</p>
         </div>
         <div className="sidebar-foot">
           <span className="runtime-mark">
             <Monitor size={15} aria-hidden="true" />{' '}
-            {native ? '桌面应用' : '浏览器预览'}
+            {native ? t('桌面应用') : t('浏览器预览')}
           </span>
           <span>v{appVersion}</span>
         </div>
@@ -139,9 +163,11 @@ export function App() {
           <div className="preview-notice">
             <Monitor size={20} aria-hidden="true" />
             <p>
-              <strong>界面实时预览</strong>
+              <strong>{t('界面实时预览')}</strong>
               <span>
-                可切换页面与外观。本机日志、装备和诊断需在桌面应用中读取。
+                {t(
+                  '可切换页面与外观。本机日志、装备和诊断需在桌面应用中读取。',
+                )}
               </span>
             </p>
             <ArrowUpRight size={18} aria-hidden="true" />

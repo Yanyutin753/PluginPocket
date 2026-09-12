@@ -5,6 +5,7 @@ import workshopDesktop from '../../../web/public/images/workshop-desktop.webp';
 import { api, type ClientKind } from './api';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
+import { useI18n } from './i18n';
 import { UpdatePanel } from './UpdatePanel';
 
 const labels: Record<ClientKind, string> = {
@@ -26,6 +27,7 @@ function LoadingPlaceholder() {
   );
 }
 export function Overview({ native }: { native: boolean }) {
+  const { t } = useI18n();
   const cache = useQueryClient();
   const status = useQuery({
     queryKey: ['status'],
@@ -56,10 +58,10 @@ export function Overview({ native }: { native: boolean }) {
     onSuccess: async (account) => {
       await cache.cancelQueries({ queryKey: ['status'] });
       cache.setQueryData(['status'], { account, clients: clients.data ?? [] });
-      setMessage('已登录 选择客户端完成接入');
+      setMessage(t('已登录 选择客户端完成接入'));
       setError('');
     },
-    onError: () => setError('登录失败，请检查服务地址和令牌后重试'),
+    onError: () => setError(t('登录失败，请检查服务地址和令牌后重试')),
     onSettled: () => setToken(''),
   });
   const logout = useMutation({
@@ -70,10 +72,10 @@ export function Overview({ native }: { native: boolean }) {
       cache.setQueryData(['status'], null);
       login.reset();
       setToken('');
-      setMessage('已退出登录 已配置客户端的 bridge 将停止使用凭证');
+      setMessage(t('已退出登录 已配置客户端的 bridge 将停止使用凭证'));
       setError('');
     },
-    onError: () => setError('退出登录失败，请重试'),
+    onError: () => setError(t('退出登录失败，请重试')),
   });
   const configure = useMutation({
     onMutate: clearFeedback,
@@ -83,14 +85,14 @@ export function Overview({ native }: { native: boolean }) {
       await cache.invalidateQueries({ queryKey: ['clients'] });
       setMessage(
         remove
-          ? '已移除所选客户端的 PluginPocket 配置'
-          : '配置已写入 重启客户端后即可使用',
+          ? t('已移除所选客户端的 PluginPocket 配置')
+          : t('配置已写入 重启客户端后即可使用'),
       );
       setError('');
     },
     onError: () =>
       setError(
-        '配置未完成 请检查客户端配置是否有手写冲突或无效内容，处理后重试',
+        t('配置未完成 请检查客户端配置是否有手写冲突或无效内容，处理后重试'),
       ),
   });
   const doctor = useMutation({
@@ -98,11 +100,14 @@ export function Overview({ native }: { native: boolean }) {
     mutationFn: () => api.doctor(server || null),
     onSuccess: (result) => {
       setMessage(
-        result.authenticated ? '服务可达 · 凭证有效' : '服务可达 · 尚未登录',
+        result.authenticated
+          ? t('服务可达 · 凭证有效')
+          : t('服务可达 · 尚未登录'),
       );
       setError('');
     },
-    onError: () => setError('连接检查失败，请检查服务地址、网络和凭证后重试'),
+    onError: () =>
+      setError(t('连接检查失败，请检查服务地址、网络和凭证后重试')),
   });
   const pending =
     login.isPending ||
@@ -122,7 +127,7 @@ export function Overview({ native }: { native: boolean }) {
   return (
     <div className="overview">
       <div className="overview-toolbar">
-        <p className="muted">账号、工具与这台电脑的接入状态</p>
+        <p className="muted">{t('账号、工具与这台电脑的接入状态')}</p>
         <Button
           variant="outline"
           onClick={refresh}
@@ -136,7 +141,7 @@ export function Overview({ native }: { native: boolean }) {
       </div>
       <div className="desktop-intro">
         <div>
-          <h2>一处接入，随时开工。</h2>
+          <h2>{t('一处接入，随时开工。')}</h2>
           <p>
             把常用工具带进 Codex、Claude Code 和 Cursor。
             <br />
@@ -145,14 +150,44 @@ export function Overview({ native }: { native: boolean }) {
         </div>
         <img src={workshopDesktop} alt="" width="900" height="600" />
       </div>
+      {account && (
+        <section className="overview-summary" aria-label={t('概况信息')}>
+          <article className="summary-card summary-balance">
+            <span>{t('当前余额')}</span>
+            <strong>{account.balance.toLocaleString()}</strong>
+            <small>{t('credits · 服务端实时额度')}</small>
+          </article>
+          <article className="summary-card summary-tools">
+            <span>{t('可用工具')}</span>
+            <strong>{account.tools.length}</strong>
+            <small>{t('账号当前可用')}</small>
+          </article>
+          <article className="summary-card summary-client">
+            <span>{t('客户端接入')}</span>
+            <strong>
+              {(clients.data ?? []).filter((item) => item.configured).length}/
+              {clients.data?.length ?? 0}
+            </strong>
+            <small>{t('已配置 bridge')}</small>
+          </article>
+        </section>
+      )}
       <div className="desktop-grid">
         {native && status.isPending && (
-          <span className="sr-only" role="status" aria-label="正在读取本地状态">
+          <span
+            className="sr-only"
+            role="status"
+            aria-label={t('正在读取本地状态')}
+          >
             正在读取本地状态…
           </span>
         )}
         {native && clients.isPending && (
-          <span className="sr-only" role="status" aria-label="正在检测客户端">
+          <span
+            className="sr-only"
+            role="status"
+            aria-label={t('正在检测客户端')}
+          >
             正在检测客户端…
           </span>
         )}
@@ -161,19 +196,19 @@ export function Overview({ native }: { native: boolean }) {
           aria-labelledby="account-title"
           aria-busy={native && status.isPending}
         >
-          <h2 id="account-title">账号与连接</h2>
+          <h2 id="account-title">{t('账号与连接')}</h2>
           {!native ? (
             <div className="account-content">
               <p className="muted">
                 在桌面应用中连接你的 PluginPocket 服务，即可查看真实账号与额度。
               </p>
-              <label htmlFor="preview-server">服务地址</label>
+              <label htmlFor="preview-server">{t('服务地址')}</label>
               <Input
                 id="preview-server"
                 placeholder="https://api.example.com"
                 disabled
               />
-              <Button disabled>请在桌面应用中登录</Button>
+              <Button disabled>{t('请在桌面应用中登录')}</Button>
               <p className="small muted">
                 凭证仅由本机保存，客户端配置不写入密钥。
               </p>
@@ -187,7 +222,7 @@ export function Overview({ native }: { native: boolean }) {
                 <strong>{account.username}</strong>
               </div>
               <p className="balance">{account.balance} credits</p>
-              <p>{account.tools.length} 个可用工具</p>
+              <p>{t('{account.tools.length} 个可用工具')}</p>
               <div className="action-row">
                 <Button
                   variant="outline"
@@ -217,11 +252,15 @@ export function Overview({ native }: { native: boolean }) {
               }}
               className="login-form"
             >
-              <p className="muted">从网页控制台创建令牌，然后在这里登录</p>
+              <p className="muted">
+                {t('从网页控制台创建令牌，然后在这里登录')}
+              </p>
               {status.isError && (
-                <p className="muted">尚未登录或凭证不可用，请登录或刷新重试</p>
+                <p className="muted">
+                  {t('尚未登录或凭证不可用，请登录或刷新重试')}
+                </p>
               )}
-              <label htmlFor="server">服务地址</label>
+              <label htmlFor="server">{t('服务地址')}</label>
               <Input
                 id="server"
                 type="url"
@@ -232,7 +271,7 @@ export function Overview({ native }: { native: boolean }) {
                 disabled={pending}
                 autoComplete="url"
               />
-              <label htmlFor="token">PluginPocket 令牌</label>
+              <label htmlFor="token">{t('PluginPocket 令牌')}</label>
               <Input
                 id="token"
                 type="password"
@@ -249,7 +288,7 @@ export function Overview({ native }: { native: boolean }) {
               </p>
               <div className="action-row">
                 <Button type="submit" disabled={pending}>
-                  {login.isPending ? '登录中…' : '登录'}
+                  {login.isPending ? t('登录中…') : t('登录')}
                 </Button>
                 <Button
                   type="button"
@@ -268,7 +307,7 @@ export function Overview({ native }: { native: boolean }) {
           aria-labelledby="clients-title"
           aria-busy={native && clients.isPending}
         >
-          <h2 id="clients-title">这台电脑的客户端</h2>
+          <h2 id="clients-title">{t('这台电脑的客户端')}</h2>
           <p className="muted">
             勾选要接入的客户端；也可以为尚未启动过的客户端创建配置
           </p>
@@ -278,7 +317,7 @@ export function Overview({ native }: { native: boolean }) {
               {Object.values(labels).map((label) => (
                 <div className="preview-client" key={label}>
                   <strong>{label}</strong>
-                  <span className="muted small">等待本机检测</span>
+                  <span className="muted small">{t('等待本机检测')}</span>
                 </div>
               ))}
             </div>
@@ -292,7 +331,7 @@ export function Overview({ native }: { native: boolean }) {
             disabled={pending || clientsUnavailable}
             className="client-list"
           >
-            <legend className="sr-only">选择客户端</legend>
+            <legend className="sr-only">{t('选择客户端')}</legend>
             {clients.data?.map((client) => (
               <label key={client.client} className="client-option">
                 <input
@@ -310,10 +349,10 @@ export function Overview({ native }: { native: boolean }) {
                   <strong>{labels[client.client]}</strong>
                   <small>
                     {client.configured
-                      ? '已配置 PluginPocket'
+                      ? t('已配置 PluginPocket')
                       : client.detected
-                        ? '已检测到 · 尚未配置'
-                        : '未检测到 · 可创建配置'}
+                        ? t('已检测到 · 尚未配置')
+                        : t('未检测到 · 可创建配置')}
                   </small>
                 </span>
                 {client.configured && <Check aria-hidden="true" />}

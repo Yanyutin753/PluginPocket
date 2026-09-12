@@ -13,6 +13,7 @@ import { api, clientLabels, type InstalledItem } from './api';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { GatewayEquipment } from './GatewayEquipment';
+import { useI18n } from './i18n';
 
 export function EquipmentPage({
   native,
@@ -21,6 +22,7 @@ export function EquipmentPage({
   native: boolean;
   onManageConnection: () => void;
 }) {
+  const { t } = useI18n();
   const cache = useQueryClient();
   const items = useQuery({
     queryKey: ['installed'],
@@ -42,13 +44,17 @@ export function EquipmentPage({
     },
     onSuccess: (_data, { item, remove }) => {
       setConfirmation(null);
-      setMessage(`${remove ? '已卸载' : '已更新'} ${item.slug}`);
+      setMessage(`${remove ? t('已卸载') : t('已更新')} ${item.slug}`);
     },
     onError: (_error, { remove }) =>
       setError(
         remove
-          ? '卸载未完成，请检查本地文件是否有手动改动，然后重试。详情见运行日志。'
-          : '更新未完成，请检查连接、凭证与文件冲突，然后重试。详情见运行日志。',
+          ? t(
+              '卸载未完成，请检查本地文件是否有手动改动，然后重试。详情见运行日志。',
+            )
+          : t(
+              '更新未完成，请检查连接、凭证与文件冲突，然后重试。详情见运行日志。',
+            ),
       ),
     onSettled: async () => {
       await Promise.all(
@@ -74,8 +80,8 @@ export function EquipmentPage({
           <Input
             id="equipment-search"
             type="search"
-            aria-label="搜索已安装装备"
-            placeholder="搜索装备名称…"
+            aria-label={t('搜索已安装装备')}
+            placeholder={t('搜索装备名称…')}
             value={search}
             onChange={(event) => {
               setSearch(event.target.value);
@@ -84,16 +90,16 @@ export function EquipmentPage({
           />
         </label>
         <label className="filter-select">
-          <span className="sr-only">安装目标</span>
+          <span className="sr-only">{t('安装目标')}</span>
           <select
-            aria-label="安装目标"
+            aria-label={t('安装目标')}
             value={client}
             onChange={(event) => {
               setClient(event.target.value);
               setConfirmation(null);
             }}
           >
-            <option value="all">全部客户端</option>
+            <option value="all">{t('全部客户端')}</option>
             {Object.entries(clientLabels).map(([id, label]) => (
               <option key={id} value={id}>
                 {label}
@@ -115,10 +121,10 @@ export function EquipmentPage({
       </div>
       <div className="list-section-heading">
         <fieldset className="filter-tabs">
-          <legend className="sr-only">装备类型</legend>
+          <legend className="sr-only">{t('装备类型')}</legend>
           {[
-            { id: 'all', label: '全部装备' },
-            { id: 'mcp', label: 'MCP 插件' },
+            { id: 'all', label: t('全部装备') },
+            { id: 'mcp', label: t('MCP 插件') },
             { id: 'skill', label: 'Skills' },
           ].map((tab) => (
             <button
@@ -137,7 +143,7 @@ export function EquipmentPage({
         <span className="small muted">
           {native && items.isSuccess
             ? `${visible.length} 项本地安装`
-            : '本地托管清单'}
+            : t('本地托管清单')}
         </span>
       </div>
       <GatewayEquipment
@@ -154,7 +160,7 @@ export function EquipmentPage({
       )}
       {native && items.isError && (
         <div className="page-error" role="alert">
-          <p>无法读取已安装装备，请检查本地清单后重试</p>
+          <p>{t('无法读取已安装装备，请检查本地清单后重试')}</p>
           <Button variant="outline" onClick={() => void items.refetch()}>
             重试读取装备
           </Button>
@@ -165,21 +171,23 @@ export function EquipmentPage({
           <Package size={34} aria-hidden="true" />
           <h2>
             {!native
-              ? '你的装备，在本机就位'
+              ? t('你的装备，在本机就位')
               : all.length
-                ? '没有匹配的装备'
-                : '还没有本地安装的装备'}
+                ? t('没有匹配的装备')
+                : t('还没有本地安装的装备')}
           </h2>
           <p>
             {!native
-              ? '在桌面应用中查看已安装的 MCP 和 Skills，以及它们接入的客户端。'
+              ? t(
+                  '在桌面应用中查看已安装的 MCP 和 Skills，以及它们接入的客户端。',
+                )
               : all.length
-                ? '试试其他关键词或清除筛选。'
-                : '通过 PluginPocket CLI 安装后，装备会出现在这里。'}
+                ? t('试试其他关键词或清除筛选。')
+                : t('通过 PluginPocket CLI 安装后，装备会出现在这里。')}
           </p>
           <div className="empty-detail">
             <ArrowDownToLine size={16} aria-hidden="true" />
-            <span>支持查看安装目标、更新与安全卸载</span>
+            <span>{t('支持查看安装目标、更新与安全卸载')}</span>
           </div>
         </div>
       )}
@@ -205,7 +213,9 @@ export function EquipmentPage({
                       {item.kind === 'skill' ? 'Skill' : 'MCP'}
                     </span>
                   </div>
-                  <p className="muted small">{item.version ?? '版本未记录'}</p>
+                  <p className="muted small">
+                    {item.version ?? t('版本未记录')}
+                  </p>
                   <div className="client-tags">
                     {item.clients.map((target) => (
                       <span key={target}>{clientLabels[target]}</span>
@@ -224,8 +234,8 @@ export function EquipmentPage({
                     operation.variables?.item.slug === item.slug &&
                     operation.variables.item.kind === item.kind &&
                     !operation.variables.remove
-                      ? '更新中…'
-                      : '更新'}
+                      ? t('更新中…')
+                      : t('更新')}
                   </Button>
                   <Button
                     variant="ghost"
@@ -247,8 +257,10 @@ export function EquipmentPage({
                       .join('、')}{' '}
                     移除 {item.slug}。
                     {item.kind === 'skill'
-                      ? '卸载会删除已安装的技能文件，包括你对这些文件内容的修改。请先备份需要保留的内容；发现新增文件或路径冲突时将停止。'
-                      : '配置条目有手动改动时会停止并保留配置。'}
+                      ? t(
+                          '卸载会删除已安装的技能文件，包括你对这些文件内容的修改。请先备份需要保留的内容；发现新增文件或路径冲突时将停止。',
+                        )
+                      : t('配置条目有手动改动时会停止并保留配置。')}
                   </p>
                   <div className="action-row">
                     <Button
@@ -257,7 +269,7 @@ export function EquipmentPage({
                       aria-label={`确认卸载 ${item.slug} · ${item.kind === 'skill' ? 'Skill' : 'MCP'}`}
                       onClick={() => operation.mutate({ item, remove: true })}
                     >
-                      {operation.isPending ? '卸载中…' : '确认卸载'}
+                      {operation.isPending ? t('卸载中…') : t('确认卸载')}
                     </Button>
                     <Button
                       variant="outline"

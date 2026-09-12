@@ -76,11 +76,11 @@ Tauri 自动签名 AppImage 更新包；CI 额外签名 deb、rpm、DMG 等首�
 
 客户端配置中的可执行文件是当前桌面程序的绝对路径，参数固定为 `bridge`。这种模式在 GUI 初始化之前启动共享 MCP bridge，桌面窗口不需要保持打开。删除/移动应用后应重新配置客户端；退出登录会移除本地凭证，客户端配置保留以便下一次登录继续使用。
 
-原生应用与托盘图标直接复用 Web 的 `web/public/icon-512.png` 薄荷绿工具箱角色，PNG、ICO、ICNS 使用官方 Tauri icon 命令派生，不维护另一套字标。生成命令为 `pnpm --dir desktop/ui tauri icon ../web/public/icon-512.png --output /tmp/pluginpocket-icons`；只更新配置引用的32/128/256px PNG、ICO和ICNS（256px来自128x128@2x.png），不引入未使用的平台资源。
+原生应用与托盘图标直接复用 Web 的 `web/public/icon-512.png` 薄荷绿工具箱角色，PNG、ICO、ICNS 使用官方 Tauri icon 命令派生，不维护另一套字标。源图可见内容须占满画布约 88%（2026-09-12 起裁除了原透明边距，修复任务栏/启动器图标视觉过小）。生成命令为 `pnpm --dir desktop/ui tauri icon ../web/public/icon-512.png --output /tmp/pluginpocket-icons`；只更新配置引用的32/128/256px PNG、ICO和ICNS（256px来自128x128@2x.png），不引入未使用的平台资源。
 
 ## 工坊界面
 
-桌面操作页与 Web 使用一致的 iOS 风格中性浅深色、黄色主操作和清晰输入边界，优先使用系统字体，Manrope 为本地后备。卡片圆角 16px、按钮圆角 12px，以轻柔阴影区分层次。顶部“外观”复用共享 Select，默认跟随系统，可通过键盘选择浅色/深色；手动选择只保留在当前窗口生命周期内，不写入本地配置。工作台侧栏宽 244px，1100px 以下缩为 216px 并将概览改为单栏；760px 以下导航移到顶部四列。主内容最大 1440px，页面标题 28px、窄窗口 24px，列表动作与筛选按可用宽度换行。
+桌面操作页与 Web 使用一致的 iOS 风格中性浅深色、黄色主操作和清晰输入边界，优先使用系统字体，Manrope 为本地后备。卡片圆角 16px、按钮圆角 12px，以轻柔阴影区分层次。顶部“外观”复用共享 Select，默认跟随系统，可通过键盘选择浅色/深色；旁置“语言”Select 提供窗口级中英切换（默认跟随 navigator.language，全部页面文案接入字典）。两者手动选择均只保留在当前窗口生命周期内，不写入本地配置。工作台侧栏宽 244px，1100px 以下缩为 216px 并将概览改为单栏；760px 以下导航移到顶部四列。主内容最大 1440px，页面标题 28px、窄窗口 24px，列表动作与筛选按可用宽度换行。
 
 品牌标记和概览插画从 `web/public/images/workshop-mark.webp`、`workshop-desktop.webp` 导入，字体从 `web/public/fonts/` 引用，由 Vite 打包为本地资源；不复制界面插画；原生应用/托盘图标复用 Web 工具箱图标。插画仅装饰，不承载操作文字。
 
@@ -92,6 +92,14 @@ Tauri 自动签名 AppImage 更新包；CI 额外签名 deb、rpm、DMG 等首�
 - `pnpm exec biome check desktop/ui/src/App.tsx desktop/ui/src/App.test.tsx desktop/ui/src/styles.css` 检查格式与静态规则；不用于证明 TDD 顺序或视觉验收。
 
 启动 Vite 后可在 `http://127.0.0.1:1420/` 实时预览并接收 HMR。普通浏览器明确显示“浏览器预览”及原生能力不可用说明；可以切换页面、筛选和外观，不读取本地装备/日志，不提供模拟账号、数据或配置成功。当前工作台验证见 [执行记录](../docs/superpowers/plans/2026-09-12-desktop-workbench.md)。按项目约定不使用浏览器自动化；本次文档同步未进行实际宽窄窗口、浅深主题或原生 GUI 视觉验收，组件测试和构建不能替代这些检查。
+
+### 2026-09-12 额度账单、主题与多语言
+
+- 运行日志增加“本地操作 / 用量明细 / 账变记录”页签；后两项通过受校验的原生命令实时读取服务端数据，带加载、错误和重试状态。
+- 顶部增加窗口级中文/英文切换，概览、装备、日志与诊断全部页面文案接入字典（语言名保留原文）；外观继续支持跟随系统、浅色、深色，账单表格、代码区域和边框使用主题变量。
+- 概览增加余额、可用工具和客户端接入信息卡，数据复用 `api.status`。窄窗口账单表保留横向可读性，页签和控件支持键盘操作。
+- RED：`pnpm --dir desktop/ui test`（新增账单页签测试）先因页签缺失失败；GREEN：同命令 35 项通过。
+- `pnpm --dir desktop/ui build` 通过（含 TypeScript 检查）。未验证：宽窄窗口、浅深主题的原生 GUI 视觉验收。
 
 ### iOS 细节与首次加载
 

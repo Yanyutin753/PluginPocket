@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { api } from './api';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
+import { useI18n } from './i18n';
 
 const pendingChecks = [
   { id: 'network', label: '服务连接', detail: '检查服务是否可达' },
@@ -37,6 +38,7 @@ const pendingChecks = [
   },
 ];
 export function DiagnosticsPage({ native }: { native: boolean }) {
+  const { t } = useI18n();
   const [server, setServer] = useState('');
   const cache = useQueryClient();
   const diagnosis = useMutation({
@@ -60,11 +62,11 @@ export function DiagnosticsPage({ native }: { native: boolean }) {
           <Activity size={26} aria-hidden="true" />
         </div>
         <div className="diagnostic-input">
-          <label htmlFor="diagnostic-server">检查服务地址</label>
+          <label htmlFor="diagnostic-server">{t('检查服务地址')}</label>
           <Input
             type="url"
             id="diagnostic-server"
-            placeholder="留空使用本机已保存的服务"
+            placeholder={t('留空使用本机已保存的服务')}
             value={server}
             onChange={(event) => {
               setServer(event.target.value);
@@ -82,7 +84,7 @@ export function DiagnosticsPage({ native }: { native: boolean }) {
         </Button>
       </form>
       <div className="list-section-heading">
-        <h2>检查项目</h2>
+        <h2>{t('检查项目')}</h2>
         <span className="muted small">
           {diagnosis.isPending
             ? '正在检查，请稍候'
@@ -98,7 +100,7 @@ export function DiagnosticsPage({ native }: { native: boolean }) {
       )}
       {diagnosis.isError && (
         <div className="page-error" role="alert">
-          <p>诊断未完成，请检查本机环境后重新运行</p>
+          <p>{t('诊断未完成，请检查本机环境后重新运行')}</p>
           <Button variant="outline" onClick={() => diagnosis.mutate()}>
             重新诊断
           </Button>

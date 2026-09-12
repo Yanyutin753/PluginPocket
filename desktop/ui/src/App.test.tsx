@@ -288,3 +288,18 @@ it('announces initial loading placeholders independently and replaces them with 
     screen.getByRole('region', { name: '这台电脑的客户端' }),
   ).toHaveAttribute('aria-busy', 'false');
 });
+
+it('switches interface language immediately without a native command', async () => {
+  const user = userEvent.setup();
+  mount();
+  await screen.findByRole('combobox', { name: '语言' });
+  await user.click(screen.getByRole('combobox', { name: '语言' }));
+  await user.click(screen.getByRole('option', { name: '英文' }));
+  expect(screen.getByRole('button', { name: 'Overview' })).toBeInTheDocument();
+  expect(
+    screen.getByRole('combobox', { name: 'Appearance' }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', { name: '概览' }),
+  ).not.toBeInTheDocument();
+});

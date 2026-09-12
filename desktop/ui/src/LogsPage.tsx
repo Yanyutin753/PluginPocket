@@ -7,10 +7,13 @@ import {
   Search,
   ShieldCheck,
 } from 'lucide-react';
+import { Tabs } from 'radix-ui';
 import { useState } from 'react';
 import { api } from './api';
+import { BillingPanel } from './BillingPanel';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
+import { useI18n } from './i18n';
 
 const actions: Record<string, string> = {
   login: '账号登录',
@@ -26,7 +29,8 @@ const actions: Record<string, string> = {
   doctor: '连接检查',
   bridge: 'Bridge',
 };
-export function LogsPage({ native }: { native: boolean }) {
+function LocalOperations({ native }: { native: boolean }) {
+  const { t } = useI18n();
   const logs = useQuery({
     queryKey: ['logs'],
     queryFn: api.logs,
@@ -51,14 +55,14 @@ export function LogsPage({ native }: { native: boolean }) {
     },
     onError: () => {
       setFailed(true);
-      setFeedback('导出失败，请刷新日志后重试，或复制日志');
+      setFeedback(t('导出失败，请刷新日志后重试，或复制日志'));
     },
   });
   const visible = (logs.isError ? [] : (logs.data ?? []))
     .filter(
       (item) =>
         (level === 'all' || item.level === level) &&
-        `${item.message} ${actions[item.action] ?? item.action}`
+        `${item.message} ${t(actions[item.action] ?? item.action)}`
           .toLowerCase()
           .includes(search.trim().toLowerCase()),
     )
@@ -79,7 +83,7 @@ export function LogsPage({ native }: { native: boolean }) {
       setFeedback(`已复制 ${visible.length} 条日志`);
     } catch {
       setFailed(true);
-      setFeedback('复制失败，请重试或导出日志');
+      setFeedback(t('复制失败，请重试或导出日志'));
     } finally {
       setCopying(false);
     }
@@ -92,8 +96,8 @@ export function LogsPage({ native }: { native: boolean }) {
           <Input
             id="logs-search"
             type="search"
-            aria-label="搜索日志"
-            placeholder="搜索操作或日志内容…"
+            aria-label={t('搜索日志')}
+            placeholder={t('搜索操作或日志内容…')}
             value={search}
             onChange={(event) => {
               setSearch(event.target.value);
@@ -102,18 +106,18 @@ export function LogsPage({ native }: { native: boolean }) {
           />
         </label>
         <label className="filter-select">
-          <span className="sr-only">日志级别</span>
+          <span className="sr-only">{t('日志级别')}</span>
           <select
-            aria-label="日志级别"
+            aria-label={t('日志级别')}
             value={level}
             onChange={(event) => {
               setLevel(event.target.value);
               setFeedback('');
             }}
           >
-            <option value="all">全部级别</option>
-            <option value="info">信息</option>
-            <option value="error">错误</option>
+            <option value="all">{t('全部级别')}</option>
+            <option value="info">{t('信息')}</option>
+            <option value="error">{t('错误')}</option>
           </select>
         </label>
         <Button
@@ -128,11 +132,11 @@ export function LogsPage({ native }: { native: boolean }) {
       <div className="log-panel">
         <div className="log-panel-heading">
           <div>
-            <strong>本机运行记录</strong>
+            <strong>{t('本机运行记录')}</strong>
             <span className="small muted">
               {native && logs.isSuccess
                 ? `${visible.length} 条 · 最新在前`
-                : '登录 · 配置 · 装备 · Bridge'}
+                : t('登录 · 配置 · 装备 · Bridge')}
             </span>
           </div>
           <div className="log-actions">
@@ -150,7 +154,7 @@ export function LogsPage({ native }: { native: boolean }) {
               disabled={visible.length === 0 || exportLogs.isPending}
             >
               <Download aria-hidden="true" />
-              {exportLogs.isPending ? '导出中…' : '导出日志'}
+              {exportLogs.isPending ? t('导出中…') : t('导出日志')}
             </Button>
           </div>
         </div>
@@ -161,7 +165,7 @@ export function LogsPage({ native }: { native: boolean }) {
         )}
         {native && logs.isError && (
           <div className="page-error" role="alert">
-            <p>无法读取运行日志，请重试</p>
+            <p>{t('无法读取运行日志，请重试')}</p>
             <Button variant="outline" onClick={() => void logs.refetch()}>
               重试读取日志
             </Button>
@@ -172,30 +176,32 @@ export function LogsPage({ native }: { native: boolean }) {
             <BookOpen size={34} aria-hidden="true" />
             <h2>
               {!native
-                ? '运行记录，随时可查'
+                ? t('运行记录，随时可查')
                 : logs.data?.length
-                  ? '没有匹配的日志'
-                  : '还没有运行日志'}
+                  ? t('没有匹配的日志')
+                  : t('还没有运行日志')}
             </h2>
             <p>
               {!native
-                ? '在桌面应用中读取这台电脑的真实操作记录。关闭窗口或重启后，记录依然保留。'
+                ? t(
+                    '在桌面应用中读取这台电脑的真实操作记录。关闭窗口或重启后，记录依然保留。',
+                  )
                 : logs.data?.length
-                  ? '更换关键词或日志级别，再试一次。'
-                  : '登录、配置或管理装备后，可以在这里查看结果。'}
+                  ? t('更换关键词或日志级别，再试一次。')
+                  : t('登录、配置或管理装备后，可以在这里查看结果。')}
             </p>
           </div>
         )}
         {visible.length > 0 && (
           <div className="log-table-wrap">
             <table className="log-table">
-              <caption className="sr-only">筛选后的本机运行日志</caption>
+              <caption className="sr-only">{t('筛选后的本机运行日志')}</caption>
               <thead>
                 <tr>
-                  <th>时间</th>
-                  <th>级别</th>
-                  <th>操作</th>
-                  <th>记录</th>
+                  <th>{t('时间')}</th>
+                  <th>{t('级别')}</th>
+                  <th>{t('操作')}</th>
+                  <th>{t('记录')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -216,10 +222,10 @@ export function LogsPage({ native }: { native: boolean }) {
                     </td>
                     <td>
                       <span className={`log-level ${item.level}`}>
-                        {item.level === 'error' ? '错误' : '信息'}
+                        {item.level === 'error' ? t('错误') : t('信息')}
                       </span>
                     </td>
-                    <td>{actions[item.action] ?? item.action}</td>
+                    <td>{t(actions[item.action] ?? item.action)}</td>
                     <td>{item.message}</td>
                   </tr>
                 ))}
@@ -248,5 +254,28 @@ export function LogsPage({ native }: { native: boolean }) {
         仅记录安全的操作摘要，不保存令牌或工具输入输出。复制与导出遵循当前筛选。
       </p>
     </div>
+  );
+}
+
+export function LogsPage({ native }: { native: boolean }) {
+  const { t } = useI18n();
+  const [tab, setTab] = useState('local');
+  return (
+    <Tabs.Root value={tab} onValueChange={setTab} activationMode="manual">
+      <Tabs.List className="billing-tabs" aria-label={t('运行记录分类')}>
+        <Tabs.Trigger value="local">{t('本地操作')}</Tabs.Trigger>
+        <Tabs.Trigger value="usage">{t('用量明细')}</Tabs.Trigger>
+        <Tabs.Trigger value="ledger">{t('账变记录')}</Tabs.Trigger>
+      </Tabs.List>
+      <Tabs.Content value="local" forceMount hidden={tab !== 'local'}>
+        <LocalOperations native={native} />
+      </Tabs.Content>
+      <Tabs.Content value="usage">
+        <BillingPanel native={native} kind="usage" />
+      </Tabs.Content>
+      <Tabs.Content value="ledger">
+        <BillingPanel native={native} kind="ledger" />
+      </Tabs.Content>
+    </Tabs.Root>
   );
 }
