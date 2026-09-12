@@ -243,6 +243,8 @@ jobs:
           pnpm --config.verify-deps-before-run=install --dir desktop/ui test
           cargo test --manifest-path desktop/Cargo.toml --locked --target ${{ matrix.target }}
       - name: Build signed bundles
+        # pwsh 会把 --bundles msi,nsis 的逗号拆成数组参数，必须用 bash 保持字面值
+        shell: bash
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
@@ -270,6 +272,7 @@ jobs:
         shell: pwsh
         run: |
           $msi = Get-ChildItem "desktop/target/${{ matrix.target }}/release/bundle/msi/*.msi" | Select-Object -First 1
+          if (!$msi) { throw 'MSI bundle not found; the bundle build step must have failed' }
           $destination = Join-Path $env:RUNNER_TEMP 'pluginpocket-installed'
           $process = Start-Process msiexec.exe -ArgumentList "/a `"$($msi.FullName)`" /qn TARGETDIR=`"$destination`"" -WindowStyle Hidden -Wait -PassThru
           if ($process.ExitCode -notin @(0, 3010)) { throw "MSI extraction failed: $($process.ExitCode)" }
