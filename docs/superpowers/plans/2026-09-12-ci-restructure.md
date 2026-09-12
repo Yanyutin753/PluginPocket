@@ -14,7 +14,7 @@
 | `sqlite-track`（SQL migrations dual-dialect） | `test-server` 中的 SQLite 轨道（`go test -race -run TestSQLite ./internal/store`） | 无，纯 Go |
 | `server`（Server tests, PostgreSQL + Redis, -race） | `test-server` 全量 | PG 18.6 + Redis 8.10.1 services |
 | `web`（Web component tests） | `test-web` | 无 |
-| `desktop`（Desktop tests, Linux native bridge） | `test-desktop` | 无（GTK apt 依赖） |
+| `desktop`（Desktop tests, 三平台矩阵） | `test-desktop`（Linux 走 `make test-desktop` 同款底层命令展开，因 Windows runner 无 make；mac/win 与 release.yml 已验证命令集一致） | 无（仅 Linux 需 GTK apt 依赖） |
 | `cli-portability`（CLI cross-platform, 矩阵含 os） | `test-cli`（Linux 腿并入矩阵）+ fmt/clippy/build | 无 |
 | `container`（Container image build） | 原 harness 的 `docker build` 步骤 | Docker |
 | `e2e`（End-to-end product journey） | release 预检 node 测试、`test-e2e`、`test-process`、`test-dev`、`integration`；上传 `e2e-evidence`（旅程日志 + deb） | PG + Redis services |
