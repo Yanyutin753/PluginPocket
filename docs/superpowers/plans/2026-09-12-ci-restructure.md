@@ -47,6 +47,14 @@
 | `pnpm --dir web test` | 34 文件 234 用例全过（22.67s） |
 | `make lint-desktop` | desktop/ui 构建成功、cargo fmt 干净、clippy `-D warnings` 通过 |
 
+## 远端首跑证据
+
+- run 34670426804（desktop 三平台矩阵版）：11 job 中 10 绿——三平台 Desktop（mac 5m25s / linux 3m40s / win 7m33s）、E2E 10m13s、Server 7m13s、Lint 5m2s、CLI 三平台、SQLite 轨道 1m23s、容器 1m10s 全过；唯一失败为 Web job 的 `PluginProxy.test.ts` teardown `ENOTEMPTY`（Vite 冷缓存依赖优化器与递归 rm 的 TOCTOU 竞态，与断言无关，旧 harness 同样可能偶发）。
+- 修复 1：rm 增加 Node 内置 `maxRetries/retryDelay`（ENOTEMPTY 为官方覆盖重试码），本地全量 234 用例过；commit `c55632f`。
+- run 34671051168：Web 修复生效，但 `Desktop tests (windows-latest)` 41s 失败：`ERR_PNPM_VERIFY_DEPS_BEFORE_RUN × Cannot check whether dependencies are outdated`。同一命令上一轮 Windows 绿——pnpm 状态文件（`node_modules/.pnpm-workspace-state-v1.json`）在 Windows 偶发不可读，叠加仓库 `verifyDepsBeforeRun: error` 策略成为误杀。
+- 根因复现（本地，确定性）：移除该状态文件 → `pnpm --dir web run typecheck` 报同样错误。逐项验证覆盖通道：`npm_config_verify_deps_before_run` env（无效）、`--config.verifyDepsBeforeRun`（无效）、`.npmrc` 追加（无效，workspace yaml 优先）、`--config.verify-deps-before-run=false`（有效）、`--config.verify-deps-before-run=install`（有效且自愈——自动补装 235ms 并重建状态文件，exit 0）。
+- 修复 2：ci.yml（web/desktop job）与 release.yml（desktop job 的 UI 测试与 tauri build）直接调用 pnpm 脚本处统一加 `--config.verify-deps-before-run=install`；CI 内 frozen install 刚完成、策略为 install 仅在状态不可读时补装，不削弱本地 error 策略；make 内部调用的 pnpm 无法加参数，但相关 job 均为 ubuntu，未观察到该偶发。
+
 ## 未验证范围（如实说明）
 
 - 新工作流未在 GitHub runner 上实际执行过：远端 CI 首跑是最终证明。各 job 命令与原 `make check`/旧工作流步骤逐字相同或为其直接子集，风险集中在 job 环境拼装（已按旧 harness 的 services/apt/工具链步骤镜像）。

@@ -111,7 +111,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Run web test suite
-        run: pnpm --dir web test
+        # verify-deps=install：pnpm 状态文件在 Windows 上偶发不可读时自动补装而非误杀（本地仍保持 error 策略）
+        run: pnpm --config.verify-deps-before-run=install --dir web test
 
   desktop:
     name: Desktop tests (${{ matrix.os }})
@@ -138,11 +139,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       # 等价于 `make test-desktop`；Windows runner 无 make，故直接展开底层命令
+      # verify-deps=install：pnpm 状态文件在 Windows 上偶发不可读时自动补装而非误杀
       - name: Run desktop test suite
         shell: bash
         run: |
-          pnpm --dir desktop/ui build
-          pnpm --dir desktop/ui test
+          pnpm --config.verify-deps-before-run=install --dir desktop/ui build
+          pnpm --config.verify-deps-before-run=install --dir desktop/ui test
           cargo test --manifest-path desktop/Cargo.toml --locked --no-default-features
           cargo test --manifest-path desktop/Cargo.toml --locked
 

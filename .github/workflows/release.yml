@@ -239,15 +239,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          pnpm --dir desktop/ui build
-          pnpm --dir desktop/ui test
+          pnpm --config.verify-deps-before-run=install --dir desktop/ui build
+          pnpm --config.verify-deps-before-run=install --dir desktop/ui test
           cargo test --manifest-path desktop/Cargo.toml --locked --target ${{ matrix.target }}
       - name: Build signed bundles
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           APPIMAGE_EXTRACT_AND_RUN: '1'
-        run: pnpm --dir desktop/ui tauri build --ci --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --config tauri.release.conf.json -- --locked
+        run: pnpm --config.verify-deps-before-run=install --dir desktop/ui tauri build --ci --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --config tauri.release.conf.json -- --locked
       - name: Verify installed Linux bridge
         if: runner.os == 'Linux'
         shell: bash
