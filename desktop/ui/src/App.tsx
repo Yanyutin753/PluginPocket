@@ -17,6 +17,7 @@ import { DiagnosticsPage } from './DiagnosticsPage';
 import { EquipmentPage } from './EquipmentPage';
 import { LogsPage } from './LogsPage';
 import { Overview } from './Overview';
+import { updater } from './updater';
 
 const pages = [
   {
@@ -50,6 +51,7 @@ export function App() {
   const native = isTauri();
   const [page, setPage] = useState<Page>('overview');
   const [theme, setTheme] = useState('system');
+  const [appVersion, setAppVersion] = useState('…');
   const busy = useIsMutating() > 0;
   const heading = useRef<HTMLHeadingElement>(null);
   const selected = pages.find((item) => item.id === page) ?? pages[0];
@@ -57,6 +59,12 @@ export function App() {
     document.documentElement.style.colorScheme =
       theme === 'system' ? 'light dark' : theme;
   }, [theme]);
+  useEffect(() => {
+    updater
+      .currentVersion()
+      .then(setAppVersion)
+      .catch(() => {});
+  }, []);
   function navigate(next: Page) {
     setPage(next);
     requestAnimationFrame(() => heading.current?.focus());
@@ -117,7 +125,7 @@ export function App() {
             <Monitor size={15} aria-hidden="true" />{' '}
             {native ? '桌面应用' : '浏览器预览'}
           </span>
-          <span>v0.1.0</span>
+          <span>v{appVersion}</span>
         </div>
       </aside>
       <main className="workbench-content" id="main-content">

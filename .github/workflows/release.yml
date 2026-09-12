@@ -347,7 +347,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node -e 'const fs=require("fs"); const c=JSON.parse(fs.readFileSync("desktop/tauri.release.conf.json")); fs.writeFileSync("release-public.key", Buffer.from(c.plugins.updater.pubkey,"base64"))'
+          node -e 'const fs=require("fs"); const c=JSON.parse(fs.readFileSync("desktop/tauri.conf.json")); fs.writeFileSync("release-public.key", Buffer.from(c.plugins.updater.pubkey,"base64"))'
           public_key="$PWD/release-public.key"
           cd release-assets
           for manifest in *-SHA256SUMS; do sha256sum --check "$manifest"; done
@@ -358,10 +358,33 @@ jobs:
             minisign -Vm "$file" -p "$public_key" -x "$RUNNER_TEMP/release-signature"
           done
 
+  updater-manifest:
+    name: Build updater manifest (latest.json)
+    needs: [desktop, verify-signatures]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7.0.1
+      - name: Download verified installers
+        uses: actions/download-artifact@v8.0.1
+        with:
+          pattern: desktop-*
+          merge-multiple: true
+          path: release-assets
+      - name: Generate and validate latest.json
+        run: node scripts/build-updater-manifest.mjs --assets release-assets --tag "$RELEASE_TAG" --repo "${{ github.repository }}" --out latest.json
+      - name: Show manifest for the release log
+        run: cat latest.json
+      - name: Upload manifest to draft
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$RELEASE_TAG" latest.json --clobber
+
   publish:
     name: Publish release
     if: github.event_name == 'push'
-    needs: [cli, desktop, docker, verify-signatures]
+    needs: [cli, desktop, docker, verify-signatures, updater-manifest]
     runs-on: ubuntu-latest
     steps:
       - name: Publish only after every platform succeeds

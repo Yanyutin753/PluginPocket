@@ -231,6 +231,45 @@
 .overview footer {
   margin-top: 1rem;
 }
+.update-panel {
+  margin-top: 1rem;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.update-panel h2 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+.update-panel .update-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.update-panel .update-available {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.update-panel .update-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.update-panel .update-downloading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.update-panel progress {
+  width: 100%;
+  height: 0.5rem;
+  accent-color: var(--mint-ink, currentColor);
+}
 .preview-clients {
   margin-top: 1rem;
 }

@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "PluginPocket HTTP API",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "description": "实际Go app/identity/运维路由。网页会话与ppt_网关令牌分离；业务写请求校验Origin；外部支付目前不可用。Body总大小app默认16KiB、技能发布50MiB（另验32文件/单文件8MiB/共32MiB）、identity4KiB；字符串长度限制以Go UTF-8字节校验为准，JSON Schema maxLength仅作客户端提示。"
   },
   "servers": [

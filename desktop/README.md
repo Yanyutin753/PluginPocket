@@ -55,9 +55,9 @@ pnpm --dir desktop/ui tauri build --bundles deb
 
 手机端不在本次范围。Windows ARM 目前只有 x64 兼容运行路径，未提供原生 ARM 包；不把它算作已验证架构。Linux 包在 Ubuntu 24.04 构建，目标系统仍需相容的 glibc/GTK/WebKit，AppImage 不代表所有 Linux 发行版均兼容。
 
-发行使用独立 PluginPocket Minisign 密钥，公钥在 `tauri.release.conf.json`。所有安装包有同密钥生成的 `.sig` 和 SHA256SUMS；CI 将全部平台产物下载至独立任务，校验哈希并用 Minisign 验签，失败不发布。Tauri 的公私钥不匹配警告不能代替这个门禁。签名文件是 Tauri 使用的 Base64 编码 Minisign 格式，验签前先解码；公钥亦先从 JSON 的 `plugins.updater.pubkey` 解码。
+发行使用独立 PluginPocket Minisign 密钥，公钥在 `desktop/tauri.conf.json`（`plugins.updater.pubkey`，单一来源）。所有安装包有同密钥生成的 `.sig` 和 SHA256SUMS；CI 将全部平台产物下载至独立任务，校验哈希并用 Minisign 验签，失败不发布。Tauri 的公私钥不匹配警告不能代替这个门禁。签名文件是 Tauri 使用的 Base64 编码 Minisign 格式，验签前先解码；公钥亦先从 JSON 的 `plugins.updater.pubkey` 解码。
 
-发布配置启用签名归档，但应用未增加自动更新功能。macOS 使用 ad-hoc 应用封印并执行 `codesign --verify --deep --strict`，没有 Apple Developer ID 公证；Windows 未配置 Authenticode。发布签名保证文件来源和完整性，不消除 Gatekeeper/SmartScreen 提示。需要免提示发行时，必须使用相应受信任平台证书。
+应用内置自动更新（Tauri 官方 updater 插件）：端点为 GitHub Releases 的 `latest.json`，由 Release workflow 在验签通过后从五平台产物生成并上传草稿，`publish` 等待清单生成后才公开。客户端启动静默检查并支持手动「检查更新」，下载安装包后先以内置公钥 Minisign 验签再安装重启（Windows 由 NSIS passive 安装器完成重启）。验签失败拒绝安装，下载失败保留原版本可重试。macOS 使用 ad-hoc 应用封印并执行 `codesign --verify --deep --strict`，没有 Apple Developer ID 公证；Windows 未配置 Authenticode。发布签名保证文件来源和完整性，不消除 Gatekeeper/SmartScreen 提示。需要免提示发行时，必须使用相应受信任平台证书。
 
 GitHub Actions Secret `TAURI_SIGNING_PRIVATE_KEY` 已配置独立私钥，`TAURI_SIGNING_PRIVATE_KEY_PASSWORD` 对当前无密码密钥可不设置。私钥备份由所有者保管，目录应为 0700、文件为 0600，禁止提交或随包上传；仓库更名不移动本机私钥。下面的文件路径须替换为实际备份位置，GitHub Secret 无法读回。更换密钥必须同步公钥，不要每次构建重新生成。
 
@@ -72,7 +72,7 @@ pnpm --dir desktop/ui tauri build --ci --bundles deb,rpm,appimage \
 
 Tauri 自动签名 AppImage 更新包；CI 额外签名 deb、rpm、DMG 等首装文件。普通 `make build-desktop` 不需要发行私钥。构建钩子总是重新构建 UI，避免把旧前端打入新包。
 
-发行 tag 必须为 `vMAJOR.MINOR.PATCH`，且与 CLI Cargo、desktop Cargo、desktop UI 和 Tauri 版本一致。手动触发可选择打包分支，并填写与 manifests 一致的 `release_tag`（如 `v0.1.0`）；仅生成 Actions 安装包产物并验签，不创建 Release、tag 或推送镜像。只有 tag push 发行流程先创建草稿，CLI/desktop/container 和验签全部成功后才公开。平台安装包包含 bridge 验证门禁，图形窗口/托盘与目标机器首次安装仍须实际验收。真实命令和限制见 [执行记录](../docs/superpowers/plans/2026-09-11-desktop-release.md)。
+发行 tag 必须为 `vMAJOR.MINOR.PATCH`，且与 CLI Cargo、desktop Cargo、desktop UI 和 Tauri 版本一致。手动触发可选择打包分支，并填写与 manifests 一致的 `release_tag`（如 `v0.3.0`）；仅生成 Actions 安装包产物并验签，不创建 Release、tag 或推送镜像。只有 tag push 发行流程先创建草稿，CLI/desktop/container、验签和 updater 清单全部成功后才公开。平台安装包包含 bridge 验证门禁，图形窗口/托盘与目标机器首次安装仍须实际验收。真实命令和限制见 [执行记录](../docs/superpowers/plans/2026-09-11-desktop-release.md)。
 
 客户端配置中的可执行文件是当前桌面程序的绝对路径，参数固定为 `bridge`。这种模式在 GUI 初始化之前启动共享 MCP bridge，桌面窗口不需要保持打开。删除/移动应用后应重新配置客户端；退出登录会移除本地凭证，客户端配置保留以便下一次登录继续使用。
 

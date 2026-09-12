@@ -1,6 +1,6 @@
 [package]
 name = "pluginpocket-desktop"
-version = "0.1.0"
+version = "0.3.0"
 edition = "2024"
 rust-version = "1.98"
 license = "MIT"
@@ -8,7 +8,7 @@ publish = false
 
 [features]
 default = ["native"]
-native = ["dep:tauri", "dep:tauri-build"]
+native = ["dep:tauri", "dep:tauri-build", "dep:tauri-plugin-updater", "dep:tauri-plugin-process"]
 
 [dependencies]
 pluginpocket = { path = "../cli" }
@@ -16,6 +16,8 @@ serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = "=1.0.151"
 tokio = { version = "=1.53.1", features = ["rt-multi-thread", "macros", "process"] }
 tauri = { version = "=2.11.5", features = ["tray-icon"], optional = true }
+tauri-plugin-updater = { version = "=2.11.0", optional = true }
+tauri-plugin-process = { version = "=2.3.1", optional = true }
 
 [build-dependencies]
 tauri-build = { version = "=2.6.3", optional = true , features = [] }

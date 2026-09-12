@@ -190,6 +190,9 @@ fn cli_exposes_only_implemented_commands() {
         assert!(help.contains(command));
     }
     let output = cli(&["--version"]);
-    assert!(String::from_utf8_lossy(&output.stdout).contains("pluginpocket 0.1.0"));
+    assert!(
+        String::from_utf8_lossy(&output.stdout)
+            .contains(concat!("pluginpocket ", env!("CARGO_PKG_VERSION")))
+    );
     assert!(!cli(&["login"]).status.success());
 }

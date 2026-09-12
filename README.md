@@ -108,7 +108,7 @@ codex plugin marketplace add https://pluginpocket.example.com/marketplace.git
 
 ## 项目状态
 
-账号与团队、网关与额度账本、插件市场、技能文件工作区、管理后台、CLI 与桌面端均已实现；当前运行依赖 PostgreSQL，SQLite 独立轨道推进中，暂不能作为替代数据库。GitHub 登录与邮件需自行配置，外部支付尚未接入；桌面发行范围以[桌面发行说明](desktop/README.md#桌面发行)为准。完整进度与验证证据见[产品计划](docs/PLAN.md)与[开发 Harness](docs/HARNESS.md)。
+账号与团队、网关与额度账本、插件市场、技能文件工作区、管理后台、CLI 与桌面端均已实现；桌面端 v0.3.0 起内置自动更新（Minisign 验签后一键安装重启）。当前运行依赖 PostgreSQL，SQLite 独立轨道推进中，暂不能作为替代数据库。GitHub 登录与邮件需自行配置，外部支付尚未接入；桌面发行范围以[桌面发行说明](desktop/README.md#桌面发行)为准。完整进度与验证证据见[产品计划](docs/PLAN.md)与[开发 Harness](docs/HARNESS.md)。
 
 ## 文档与贡献
 

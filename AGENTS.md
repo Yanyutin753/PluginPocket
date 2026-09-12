@@ -19,7 +19,7 @@
 | 市场 | `server/internal/marketplace` | GitHub 同步 + 技能代取 + **服务端即 Codex 插件市场源**（`/marketplace.git` 哑 HTTP git 实时渲染，gateway 独享组件→bridge 条目；`/plugins` 公共 React 目录页；`pluginpocket-export` 离线导出） |
 | 存储 | `server/internal/store` | pgx + 事务账本（append-only 触发器）；**SQLite 迁移轨道** `migrations_sqlite/`（ADR 0002 阶段 2 地基，已验证） |
 | CLI | `cli/src` | login/apply/bridge + market/install/uninstall（按 kind 分发；托管标记 + 备份 + 清单） |
-| 桌面发行 | `desktop` + `.github/workflows/release.yml` | 概览/装备/持久日志/分项诊断工作台，装备分列服务端 MCP 网关目录与本地直连/Skill 清单，复用共享 CLI 与受限原生命令；Windows x64、macOS/Linux 双架构；独立发布密钥，安装包 bridge 验证 + Minisign 验签后公开；平台受信任证书与 GUI 验收另计 |
+| 桌面发行 | `desktop` + `.github/workflows/release.yml` | 概览/装备/持久日志/分项诊断工作台，装备分列服务端 MCP 网关目录与本地直连/Skill 清单，复用共享 CLI 与受限原生命令；Windows x64、macOS/Linux 双架构；独立发布密钥，安装包 bridge 验证 + Minisign 验签后公开；v0.3.0 起内置官方 updater 自动更新（GitHub Releases `latest.json` 由 CI 验签后生成）；平台受信任证书与 GUI 验收另计 |
 | Web 控制台 | `web/src` | TanStack Query + Zod + shadcn/ui；市场面板、技能文件工作区（目录/标签、CodeMirror、安全预览与全屏）、覆盖编辑器、结算策略编辑（前端语法预检）；错误文案按码双语映射 `i18n/errors.ts`（对齐后端契约 `i18n/error-codes.json`，覆盖测试锁定） |
 | 压测设施 | `server/cmd/pluginpocket-server/load_test.go`（build tag `load`） | QPS / 慢上游 / 内存安全三件套，`make load-test` |
 

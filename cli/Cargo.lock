@@ -870,24 +870,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47d9d19d1d6efa0109d2f65ff4c85cddd50bd572e5a00127ab10987290bcefae"
 
 [[package]]
-name = "pluginpocket"
-version = "0.1.0"
-dependencies = [
- "axum",
- "base64 0.23.1",
- "clap",
- "reqwest",
- "ring",
- "rmcp",
- "rpassword",
- "serde",
- "serde_json",
- "tempfile",
- "tokio",
- "toml_edit",
-]
-
-[[package]]
 name = "log"
 version = "0.4.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -990,6 +972,24 @@ name = "pkg-config"
 version = "0.3.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f6b464fbc74e149a392436b17d523f769e057cb6877f6a5c4618bc6f11800548"
+
+[[package]]
+name = "pluginpocket"
+version = "0.3.0"
+dependencies = [
+ "axum",
+ "base64 0.23.1",
+ "clap",
+ "reqwest",
+ "ring",
+ "rmcp",
+ "rpassword",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "toml_edit",
+]
 
 [[package]]
 name = "potential_utf"

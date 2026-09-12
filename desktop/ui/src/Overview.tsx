@@ -5,6 +5,7 @@ import workshopDesktop from '../../../web/public/images/workshop-desktop.webp';
 import { api, type ClientKind } from './api';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
+import { UpdatePanel } from './UpdatePanel';
 
 const labels: Record<ClientKind, string> = {
   codex: 'Codex',
@@ -341,6 +342,7 @@ export function Overview({ native }: { native: boolean }) {
           </p>
         </section>
       </div>
+      {native && <UpdatePanel />}
       <div className="feedback" aria-live="polite">
         {message && <p role="status">{message}</p>}
         {error && (

@@ -20,6 +20,8 @@ async fn local_command(
 fn start() -> Result<(), Box<dyn std::error::Error>> {
     let local = Arc::new(LocalClient::from_env()?);
     tauri::Builder::default()
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(local)
         .invoke_handler(tauri::generate_handler![local_command])
         .setup(|app| {
