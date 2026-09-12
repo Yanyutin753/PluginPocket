@@ -357,6 +357,11 @@ func (g *Gateway) call(parent context.Context, p store.Principal, binding toolBi
 		g.recordDenied(ctx, p, binding.definition.Name, key, callData(args, result))
 		return result
 	}
+	if errors.Is(err, store.ErrRoleNotAllowed) {
+		result := toolError("当前计费角色无权使用该工具")
+		g.recordDenied(ctx, p, binding.definition.Name, key, callData(args, result))
+		return result
+	}
 	if errors.Is(err, store.ErrInsufficientBalance) {
 		result := toolError("额度不足，请充值后重试")
 		_ = g.store.FinishWithData(ctx, call.ID, false, 0, callData(args, result))
@@ -381,7 +386,9 @@ func (g *Gateway) call(parent context.Context, p store.Principal, binding toolBi
 }
 
 func (g *Gateway) recordDenied(ctx context.Context, p store.Principal, name, key string, data *store.CallData) {
-	_, _ = g.store.Pool.Exec(ctx, "INSERT INTO usage_logs(user_id,token_id,wallet_id,tool,cost,status,request_key,finished_at,input_data,output_data,input_truncated,output_truncated) VALUES ($1,$2,$3,$4,0,'denied',$5,now(),$6,$7,$8,$9)", p.UserID, p.TokenID, p.WalletID, name, key, data.InputData, data.OutputData, data.InputTruncated, data.OutputTruncated)
+	roleName, roleBP := "default", int64(10000)
+	_ = g.store.Pool.QueryRow(ctx, "SELECT r.name,r.multiplier_bp FROM billing_roles r JOIN users u ON u.billing_role=r.name WHERE u.id=$1", p.UserID).Scan(&roleName, &roleBP)
+	_, _ = g.store.Pool.Exec(ctx, "INSERT INTO usage_logs(user_id,token_id,wallet_id,tool,cost,status,request_key,billing_role,multiplier_bp,finished_at,input_data,output_data,input_truncated,output_truncated) VALUES ($1,$2,$3,$4,0,'denied',$5,$6,$7,now(),$8,$9,$10,$11)", p.UserID, p.TokenID, p.WalletID, name, key, roleName, roleBP, data.InputData, data.OutputData, data.InputTruncated, data.OutputTruncated)
 }
 func (g *Gateway) execute(ctx context.Context, p store.Principal, b toolBinding, args json.RawMessage) *mcp.CallToolResult {
 	if b.row.Kind == "builtin" {

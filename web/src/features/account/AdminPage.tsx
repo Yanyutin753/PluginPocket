@@ -5,9 +5,12 @@ import { SidePanel } from '@/components/SidePanel';
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { useI18n } from '@/i18n';
 import {
   accountQuery,
+  billingRolesQuery,
+  multiplierText,
   number,
   request,
   resultSchema,
@@ -141,6 +144,17 @@ export default function AdminPage() {
   const account = useQuery(accountQuery);
   const permitted = account.data?.user.role === 'admin';
   const users = usePagedList('/admin/users', userSchema, permitted);
+  const roles = useQuery({ ...billingRolesQuery, enabled: permitted });
+  const assignRole = useMutation({
+    mutationFn: (input: { id: number; role: string }) =>
+      request(`/admin/users/${input.id}`, resultSchema, {
+        method: 'PATCH',
+        body: JSON.stringify({ billing_role: input.role }),
+      }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['/admin/users'] });
+    },
+  });
   const [selected, setSelected] = useState<User | null>(null);
   const client = useQueryClient();
   const [confirmUser, setConfirmUser] = useState<User | null>(null);
@@ -169,6 +183,7 @@ export default function AdminPage() {
       <ErrorNotice error={users.error} retry={() => void users.retry()} />
       {users.isPending && <Loading />}
       <ErrorNotice error={toggleUser.error} />
+      <ErrorNotice error={assignRole.error} />
       {confirmUser && (
         <section className="editor-panel">
           <h2>
@@ -219,6 +234,7 @@ export default function AdminPage() {
                 <tr>
                   <th scope="col">{t('用户')}</th>
                   <th scope="col">{t('角色')}</th>
+                  <th scope="col">{t('计费角色')}</th>
                   <th scope="col">{t('状态')}</th>
                   <th scope="col" className="numeric">
                     {t('可用额度')}
@@ -234,6 +250,22 @@ export default function AdminPage() {
                     </td>
                     <td data-label={t('角色')}>
                       {user.role === 'admin' ? t('管理员') : t('用户')}
+                    </td>
+                    <td data-label={t('计费角色')}>
+                      <Select
+                        aria-label={t('设置 {value1} 的计费角色', {
+                          value1: user.username,
+                        })}
+                        value={user.billing_role ?? 'default'}
+                        disabled={assignRole.isPending}
+                        options={(roles.data?.items ?? []).map((role) => ({
+                          value: role.name,
+                          label: `${role.name} ${multiplierText(role.multiplier_bp)}`,
+                        }))}
+                        onValueChange={(value) =>
+                          assignRole.mutate({ id: user.id, role: value })
+                        }
+                      />
                     </td>
                     <td data-label={t('状态')}>
                       <span

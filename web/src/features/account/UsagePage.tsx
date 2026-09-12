@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { useI18n } from '@/i18n';
 import { UsageSummary } from '../operations/UsageSummary';
-import { date, number, requestCSV, usageSchema } from './api';
+import { date, multiplierText, number, requestCSV, usageSchema } from './api';
 import { ErrorNotice, Heading, Loading } from './shared';
 import { UsageDetail } from './UsageDetail';
 import { usePagedList } from './usePagedList';
@@ -195,6 +195,7 @@ export default function UsagePage({
                   <th scope="col" className="numeric">
                     {t('额度')}
                   </th>
+                  <th scope="col">{t('计费角色')}</th>
                   <th scope="col">{t('详情')}</th>
                 </tr>
               </thead>
@@ -230,6 +231,16 @@ export default function UsagePage({
                     </td>
                     <td data-label={t('额度')} className="numeric">
                       {number(item.cost, locale)}
+                    </td>
+                    <td data-label={t('计费角色')}>
+                      {item.billing_role && item.multiplier_bp !== undefined ? (
+                        <span className="status-badge" data-tone="neutral">
+                          {item.billing_role}{' '}
+                          {multiplierText(item.multiplier_bp)}
+                        </span>
+                      ) : (
+                        '—'
+                      )}
                     </td>
                     <td data-label={t('详情')}>
                       <Button

@@ -18,11 +18,12 @@ import (
 )
 
 type User struct {
-	ID       int64  `json:"id"`
-	Username string `json:"username"`
-	Role     string `json:"role"`
-	Balance  int64  `json:"balance"`
-	Enabled  bool   `json:"enabled"`
+	ID          int64  `json:"id"`
+	Username    string `json:"username"`
+	Role        string `json:"role"`
+	BillingRole string `json:"billing_role"`
+	Balance     int64  `json:"balance"`
+	Enabled     bool   `json:"enabled"`
 }
 type Token struct {
 	ID         int64      `json:"id"`
@@ -478,7 +479,7 @@ func (a *application) users(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	rows, e := a.s.Pool.Query(r.Context(), "SELECT u.id,u.username,u.role,w.balance,u.enabled FROM users u JOIN wallets w ON w.user_id=u.id WHERE ($1::bigint=0 OR u.id<$1) ORDER BY u.id DESC LIMIT $2", cursor, limit+1)
+	rows, e := a.s.Pool.Query(r.Context(), "SELECT u.id,u.username,u.role,u.billing_role,w.balance,u.enabled FROM users u JOIN wallets w ON w.user_id=u.id WHERE ($1::bigint=0 OR u.id<$1) ORDER BY u.id DESC LIMIT $2", cursor, limit+1)
 	if e != nil {
 		fail(w, 500, "internal_error")
 		return
@@ -487,7 +488,7 @@ func (a *application) users(w http.ResponseWriter, r *http.Request) {
 	items := []User{}
 	for rows.Next() {
 		var u User
-		if e = rows.Scan(&u.ID, &u.Username, &u.Role, &u.Balance, &u.Enabled); e != nil {
+		if e = rows.Scan(&u.ID, &u.Username, &u.Role, &u.BillingRole, &u.Balance, &u.Enabled); e != nil {
 			fail(w, 500, "internal_error")
 			return
 		}

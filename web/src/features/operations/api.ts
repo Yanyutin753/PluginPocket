@@ -26,6 +26,7 @@ export const toolSchema = z.object({
   kind: z.enum(['builtin', 'http', 'stdio']),
   enabled: z.boolean(),
   units_per_call: z.number().int(),
+  allowed_roles: z.array(z.string()).optional(),
   input_schema: z.record(z.string(), z.unknown()),
   settlement: z.record(z.string(), z.unknown()).optional(),
   configured: z.boolean().optional(),

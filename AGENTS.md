@@ -14,7 +14,7 @@
 
 | 区域 | 位置 | 要点 |
 |---|---|---|
-| HTTP API / 运营后台 | `server/internal/app` + `internal/httpapi` | 账号/令牌/团队/账单/市场/元数据覆盖；HttpOnly AT/RT 会话 + Bearer 双鉴权（期限由共享PG系统配置热更新）；用量详情按本人/团队/管理员范围读取网关输入输出；**错误码注册表** `httpapi/codes.go` 为 wire 契约唯一事实源（源扫描+契约金样测试防漂移） |
+| HTTP API / 运营后台 | `server/internal/app` + `internal/httpapi` | 账号/令牌/团队/账单/市场/元数据覆盖、计费角色（倍率折算+工具角色门槛）；HttpOnly AT/RT 会话 + Bearer 双鉴权（期限由共享PG系统配置热更新）；用量详情按本人/团队/管理员范围读取网关输入输出；**错误码注册表** `httpapi/codes.go` 为 wire 契约唯一事实源（源扫描+契约金样测试防漂移） |
 | MCP 网关 | `server/internal/gateway` | `/mcp` 无状态；目录 5s 缓存；预留→执行→**结算中间件**（`tools.settlement`：content path/pattern 或 goja 沙箱 script）→失败退款 |
 | 市场 | `server/internal/marketplace` | GitHub 同步 + 技能代取 + **服务端即 Codex 插件市场源**（`/marketplace.git` 哑 HTTP git 实时渲染，gateway 独享组件→bridge 条目；`/plugins` 公共 React 目录页；`pluginpocket-export` 离线导出） |
 | 存储 | `server/internal/store` | pgx + 事务账本（append-only 触发器）；**SQLite 迁移轨道** `migrations_sqlite/`（ADR 0002 阶段 2 地基，已验证） |

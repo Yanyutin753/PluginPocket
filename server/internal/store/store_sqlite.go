@@ -3,8 +3,10 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -115,8 +117,9 @@ func (s *SQLiteStore) reserve(ctx context.Context, userID, tokenID, walletID int
 	if err != nil {
 		return Call{}, err
 	}
+	var allowedRolesRaw []byte
 	if toolID != 0 {
-		err = tx.QueryRowContext(ctx, "SELECT cost FROM tools WHERE id=?1 AND enabled", toolID).Scan(&cost)
+		err = tx.QueryRowContext(ctx, "SELECT cost,allowed_roles FROM tools WHERE id=?1 AND enabled", toolID).Scan(&cost, &allowedRolesRaw)
 		if errors.Is(err, sql.ErrNoRows) {
 			return Call{}, ErrNotFound
 		}
@@ -138,6 +141,22 @@ func (s *SQLiteStore) reserve(ctx context.Context, userID, tokenID, walletID int
 	if err = checkAuthorization(); err != nil {
 		return Call{}, err
 	}
+	// 与 PG 版一致：授权通过后折算计费角色倍率，失败关闭。
+	var roleName string
+	var roleBP int64
+	if err = tx.QueryRowContext(ctx, "SELECT r.name,r.multiplier_bp FROM billing_roles r JOIN users u ON u.billing_role=r.name WHERE u.id=?1", userID).Scan(&roleName, &roleBP); err != nil {
+		return Call{}, err
+	}
+	if len(allowedRolesRaw) > 0 {
+		var allowedRoles []string
+		if err = json.Unmarshal(allowedRolesRaw, &allowedRoles); err != nil {
+			return Call{}, err
+		}
+		if len(allowedRoles) > 0 && !slices.Contains(allowedRoles, roleName) {
+			return Call{}, ErrRoleNotAllowed
+		}
+	}
+	cost = applyMultiplierBP(cost, roleBP)
 
 	var c Call
 	var requestedCost int64
@@ -162,7 +181,7 @@ func (s *SQLiteStore) reserve(ctx context.Context, userID, tokenID, walletID int
 	if balance < cost {
 		status = "denied"
 	}
-	err = tx.QueryRowContext(ctx, "INSERT INTO usage_logs(user_id,token_id,wallet_id,tool,requested_cost,status,request_key) VALUES(?1,?2,?3,?4,?5,?6,?7) RETURNING id,user_id,token_id,wallet_id,tool,cost,status,duration_ms,created_at", userID, tokenID, walletID, tool, cost, status, requestKey).Scan(&c.ID, &c.UserID, &c.TokenID, &c.WalletID, &c.Tool, &c.Cost, &c.Status, &c.DurationMS, &createdAt)
+	err = tx.QueryRowContext(ctx, "INSERT INTO usage_logs(user_id,token_id,wallet_id,tool,requested_cost,status,request_key,billing_role,multiplier_bp) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9) RETURNING id,user_id,token_id,wallet_id,tool,cost,status,duration_ms,created_at", userID, tokenID, walletID, tool, cost, status, requestKey, roleName, roleBP).Scan(&c.ID, &c.UserID, &c.TokenID, &c.WalletID, &c.Tool, &c.Cost, &c.Status, &c.DurationMS, &createdAt)
 	if err != nil {
 		return Call{}, err
 	}

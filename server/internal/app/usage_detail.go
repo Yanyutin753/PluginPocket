@@ -38,7 +38,7 @@ func (a *application) usageDetail(w http.ResponseWriter, r *http.Request) {
 		store.Call
 		store.CallData
 	}
-	err = a.s.Pool.QueryRow(r.Context(), `SELECT id,user_id,token_id,wallet_id,tool,cost,status,duration_ms,created_at,input_data,output_data,input_truncated,output_truncated FROM usage_logs WHERE id=$1 AND ($2::bigint=0 OR user_id=$2) AND ($3::bigint=0 OR wallet_id=$3)`, id, userID, walletID).Scan(&item.ID, &item.UserID, &item.TokenID, &item.WalletID, &item.Tool, &item.Cost, &item.Status, &item.DurationMS, &item.CreatedAt, &item.InputData, &item.OutputData, &item.InputTruncated, &item.OutputTruncated)
+	err = a.s.Pool.QueryRow(r.Context(), `SELECT id,user_id,token_id,wallet_id,tool,cost,status,duration_ms,created_at,billing_role,multiplier_bp,input_data,output_data,input_truncated,output_truncated FROM usage_logs WHERE id=$1 AND ($2::bigint=0 OR user_id=$2) AND ($3::bigint=0 OR wallet_id=$3)`, id, userID, walletID).Scan(&item.ID, &item.UserID, &item.TokenID, &item.WalletID, &item.Tool, &item.Cost, &item.Status, &item.DurationMS, &item.CreatedAt, &item.BillingRole, &item.MultiplierBP, &item.InputData, &item.OutputData, &item.InputTruncated, &item.OutputTruncated)
 	if errors.Is(err, pgx.ErrNoRows) {
 		fail(w, 404, "not_found")
 		return

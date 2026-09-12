@@ -18,17 +18,18 @@ import (
 )
 
 type Tool struct {
-	ID          int64           `json:"id"`
-	Key         string          `json:"key"`
-	Name        string          `json:"name"`
-	Description string          `json:"description"`
-	Icon        string          `json:"icon"`
-	Kind        string          `json:"kind"`
-	Enabled     bool            `json:"enabled"`
-	Units       int64           `json:"units_per_call"`
-	Schema      json.RawMessage `json:"input_schema"`
-	Settlement  json.RawMessage `json:"settlement,omitempty"`
-	Configured  *bool           `json:"configured,omitempty"`
+	ID           int64           `json:"id"`
+	Key          string          `json:"key"`
+	Name         string          `json:"name"`
+	Description  string          `json:"description"`
+	Icon         string          `json:"icon"`
+	Kind         string          `json:"kind"`
+	Enabled      bool            `json:"enabled"`
+	Units        int64           `json:"units_per_call"`
+	AllowedRoles []string        `json:"allowed_roles"`
+	Schema       json.RawMessage `json:"input_schema"`
+	Settlement   json.RawMessage `json:"settlement,omitempty"`
+	Configured   *bool           `json:"configured,omitempty"`
 }
 
 // validSettlement：空（默认）或 {"content":{"path","equals"}} / {"content":{"pattern"}}。
@@ -95,16 +96,28 @@ func (a *application) setUserEnabled(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var in struct {
-		Enabled *bool `json:"enabled"`
+		Enabled     *bool   `json:"enabled"`
+		BillingRole *string `json:"billing_role"`
 	}
 	if !decode(w, r, &in) {
 		return
 	}
-	if in.Enabled == nil {
+	if in.Enabled == nil && in.BillingRole == nil {
 		fail(w, 400, "invalid_request")
 		return
 	}
-	if id == actor.ID && !*in.Enabled {
+	if in.BillingRole != nil {
+		var exists bool
+		if e := a.s.Pool.QueryRow(r.Context(), "SELECT EXISTS(SELECT 1 FROM billing_roles WHERE name=$1)", *in.BillingRole).Scan(&exists); e != nil {
+			fail(w, 500, "internal_error")
+			return
+		}
+		if !exists {
+			fail(w, 400, "invalid_request")
+			return
+		}
+	}
+	if in.Enabled != nil && id == actor.ID && !*in.Enabled {
 		fail(w, 409, "cannot_disable_self")
 		return
 	}
@@ -119,7 +132,7 @@ func (a *application) setUserEnabled(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var u User
-	e = tx.QueryRow(r.Context(), "SELECT u.id,u.username,u.role,w.balance,u.enabled FROM users u JOIN wallets w ON w.user_id=u.id WHERE u.id=$1 FOR UPDATE OF u", id).Scan(&u.ID, &u.Username, &u.Role, &u.Balance, &u.Enabled)
+	e = tx.QueryRow(r.Context(), "SELECT u.id,u.username,u.role,u.billing_role,w.balance,u.enabled FROM users u JOIN wallets w ON w.user_id=u.id WHERE u.id=$1 FOR UPDATE OF u", id).Scan(&u.ID, &u.Username, &u.Role, &u.BillingRole, &u.Balance, &u.Enabled)
 	if errors.Is(e, pgx.ErrNoRows) {
 		fail(w, 404, "not_found")
 		return
@@ -131,7 +144,7 @@ func (a *application) setUserEnabled(w http.ResponseWriter, r *http.Request) {
 	if _, ok := currentUserQuery(w, r, true, tx); !ok {
 		return
 	}
-	if !*in.Enabled && u.Role == "admin" {
+	if in.Enabled != nil && !*in.Enabled && u.Role == "admin" {
 		var others int
 		e = tx.QueryRow(r.Context(), "SELECT count(*) FROM users WHERE role='admin' AND enabled AND id<>$1", id).Scan(&others)
 		if e != nil {
@@ -143,7 +156,7 @@ func (a *application) setUserEnabled(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if _, e = tx.Exec(r.Context(), "UPDATE users SET enabled=$1 WHERE id=$2", *in.Enabled, id); e != nil {
+	if _, e = tx.Exec(r.Context(), "UPDATE users SET enabled=COALESCE($1,enabled), billing_role=COALESCE($2,billing_role) WHERE id=$3", in.Enabled, in.BillingRole, id); e != nil {
 		fail(w, 500, "internal_error")
 		return
 	}
@@ -154,7 +167,12 @@ func (a *application) setUserEnabled(w http.ResponseWriter, r *http.Request) {
 		fail(w, 500, "internal_error")
 		return
 	}
-	u.Enabled = *in.Enabled
+	if in.Enabled != nil {
+		u.Enabled = *in.Enabled
+	}
+	if in.BillingRole != nil {
+		u.BillingRole = *in.BillingRole
+	}
 	respond(w, 200, map[string]any{"user": u})
 }
 func (a *application) listTools(w http.ResponseWriter, r *http.Request) {
@@ -166,7 +184,7 @@ func (a *application) listTools(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	rows, e := a.s.Pool.Query(r.Context(), "SELECT id,key,name,description,kind,enabled,cost,input_schema,settlement,icon,config<>'{}'::jsonb FROM tools WHERE ($1::boolean OR enabled) AND ($2::bigint=0 OR id<$2) ORDER BY id DESC LIMIT $3", admin, cursor, limit+1)
+	rows, e := a.s.Pool.Query(r.Context(), "SELECT id,key,name,description,kind,enabled,cost,input_schema,settlement,icon,config<>'{}'::jsonb,allowed_roles FROM tools WHERE ($1::boolean OR enabled) AND ($2::bigint=0 OR id<$2) ORDER BY id DESC LIMIT $3", admin, cursor, limit+1)
 	if e != nil {
 		fail(w, 500, "internal_error")
 		return
@@ -176,7 +194,12 @@ func (a *application) listTools(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var item Tool
 		var configured bool
-		if e = rows.Scan(&item.ID, &item.Key, &item.Name, &item.Description, &item.Kind, &item.Enabled, &item.Units, &item.Schema, &item.Settlement, &item.Icon, &configured); e != nil {
+		var allowedRaw []byte
+		if e = rows.Scan(&item.ID, &item.Key, &item.Name, &item.Description, &item.Kind, &item.Enabled, &item.Units, &item.Schema, &item.Settlement, &item.Icon, &configured, &allowedRaw); e != nil {
+			fail(w, 500, "internal_error")
+			return
+		}
+		if len(allowedRaw) > 0 && json.Unmarshal(allowedRaw, &item.AllowedRoles) != nil {
 			fail(w, 500, "internal_error")
 			return
 		}
@@ -201,16 +224,17 @@ func (a *application) saveTool(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var in struct {
-		Key         string          `json:"key"`
-		Name        string          `json:"name"`
-		Description string          `json:"description"`
-		Icon        *string         `json:"icon"`
-		Kind        string          `json:"kind"`
-		Enabled     bool            `json:"enabled"`
-		Units       int64           `json:"units_per_call"`
-		Schema      json.RawMessage `json:"input_schema"`
-		Config      json.RawMessage `json:"config"`
-		Settlement  json.RawMessage `json:"settlement"`
+		Key          string          `json:"key"`
+		Name         string          `json:"name"`
+		Description  string          `json:"description"`
+		Icon         *string         `json:"icon"`
+		Kind         string          `json:"kind"`
+		Enabled      bool            `json:"enabled"`
+		Units        int64           `json:"units_per_call"`
+		Schema       json.RawMessage `json:"input_schema"`
+		Config       json.RawMessage `json:"config"`
+		Settlement   json.RawMessage `json:"settlement"`
+		AllowedRoles *[]string       `json:"allowed_roles"`
 	}
 	if !decodeLimit(w, r, &in, 512<<10) {
 		return
@@ -231,13 +255,14 @@ func (a *application) saveTool(w http.ResponseWriter, r *http.Request) {
 	var config []byte
 	var icon string
 	var previousSettlement json.RawMessage
+	var previousAllowed []byte
 	if r.Method == http.MethodPatch {
 		var ok bool
 		id, ok = pathID(w, r)
 		if !ok {
 			return
 		}
-		e := tx.QueryRow(r.Context(), "SELECT kind,config,icon,settlement FROM tools WHERE id=$1 FOR UPDATE", id).Scan(&previousKind, &config, &icon, &previousSettlement)
+		e := tx.QueryRow(r.Context(), "SELECT kind,config,icon,settlement,allowed_roles FROM tools WHERE id=$1 FOR UPDATE", id).Scan(&previousKind, &config, &icon, &previousSettlement, &previousAllowed)
 		if errors.Is(e, pgx.ErrNoRows) {
 			fail(w, 404, "not_found")
 			return
@@ -260,6 +285,38 @@ func (a *application) saveTool(w http.ResponseWriter, r *http.Request) {
 	if !validSettlement(in.Settlement) {
 		fail(w, 400, "invalid_settlement")
 		return
+	}
+	allowed := []byte("[]")
+	if in.AllowedRoles != nil {
+		if len(*in.AllowedRoles) > 8 {
+			fail(w, 400, "invalid_request")
+			return
+		}
+		seen := map[string]bool{}
+		for _, name := range *in.AllowedRoles {
+			if seen[name] || len(name) == 0 || len(name) > 40 {
+				fail(w, 400, "invalid_request")
+				return
+			}
+			seen[name] = true
+			var exists bool
+			if e := tx.QueryRow(r.Context(), "SELECT EXISTS(SELECT 1 FROM billing_roles WHERE name=$1)", name).Scan(&exists); e != nil {
+				fail(w, 500, "internal_error")
+				return
+			}
+			if !exists {
+				fail(w, 400, "invalid_request")
+				return
+			}
+		}
+		raw, e := json.Marshal(*in.AllowedRoles)
+		if e != nil {
+			fail(w, 500, "internal_error")
+			return
+		}
+		allowed = raw
+	} else if len(previousAllowed) > 0 {
+		allowed = previousAllowed
 	}
 	switch in.Kind {
 	case "builtin":
@@ -301,9 +358,9 @@ func (a *application) saveTool(w http.ResponseWriter, r *http.Request) {
 		settlement = []byte("{}")
 	}
 	if id == 0 {
-		e = tx.QueryRow(r.Context(), "INSERT INTO tools(key,name,description,kind,enabled,cost,input_schema,config,settlement,icon) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id", in.Key, in.Name, in.Description, in.Kind, in.Enabled, in.Units, []byte(in.Schema), config, settlement, icon).Scan(&id)
+		e = tx.QueryRow(r.Context(), "INSERT INTO tools(key,name,description,kind,enabled,cost,input_schema,config,settlement,icon,allowed_roles) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id", in.Key, in.Name, in.Description, in.Kind, in.Enabled, in.Units, []byte(in.Schema), config, settlement, icon, allowed).Scan(&id)
 	} else {
-		_, e = tx.Exec(r.Context(), "UPDATE tools SET key=$1,name=$2,description=$3,kind=$4,enabled=$5,cost=$6,input_schema=$7,config=$8,settlement=$9,icon=$10,updated_at=now() WHERE id=$11", in.Key, in.Name, in.Description, in.Kind, in.Enabled, in.Units, []byte(in.Schema), config, settlement, icon, id)
+		_, e = tx.Exec(r.Context(), "UPDATE tools SET key=$1,name=$2,description=$3,kind=$4,enabled=$5,cost=$6,input_schema=$7,config=$8,settlement=$9,icon=$10,allowed_roles=$11,updated_at=now() WHERE id=$12", in.Key, in.Name, in.Description, in.Kind, in.Enabled, in.Units, []byte(in.Schema), config, settlement, icon, allowed, id)
 	}
 	if e != nil {
 		var pe *pgconn.PgError
@@ -322,7 +379,9 @@ func (a *application) saveTool(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	configured := in.Kind != "builtin"
-	item = Tool{ID: id, Key: in.Key, Name: in.Name, Description: in.Description, Icon: icon, Kind: in.Kind, Enabled: in.Enabled, Units: in.Units, Schema: in.Schema, Settlement: settlement, Configured: &configured}
+	var allowedRoles []string
+	_ = json.Unmarshal(allowed, &allowedRoles)
+	item = Tool{ID: id, Key: in.Key, Name: in.Name, Description: in.Description, Icon: icon, Kind: in.Kind, Enabled: in.Enabled, Units: in.Units, AllowedRoles: allowedRoles, Schema: in.Schema, Settlement: settlement, Configured: &configured}
 	if a.options.Gateway != nil {
 		a.options.Gateway.Invalidate()
 	}
@@ -362,7 +421,7 @@ func (a *application) usagePage(w http.ResponseWriter, r *http.Request, userID, 
 		fail(w, 400, "invalid_request")
 		return
 	}
-	rows, e := a.s.Pool.Query(r.Context(), "SELECT id,user_id,token_id,wallet_id,tool,cost,status,duration_ms,created_at FROM usage_logs WHERE ($1::bigint=0 OR user_id=$1) AND ($2::bigint=0 OR wallet_id=$2) AND ($3::bigint=0 OR id<$3) AND ($4='' OR status=$4) AND ($5='' OR tool=$5) ORDER BY id DESC LIMIT $6", userID, walletID, cursor, status, tool, limit+1)
+	rows, e := a.s.Pool.Query(r.Context(), "SELECT id,user_id,token_id,wallet_id,tool,cost,status,duration_ms,created_at,billing_role,multiplier_bp FROM usage_logs WHERE ($1::bigint=0 OR user_id=$1) AND ($2::bigint=0 OR wallet_id=$2) AND ($3::bigint=0 OR id<$3) AND ($4='' OR status=$4) AND ($5='' OR tool=$5) ORDER BY id DESC LIMIT $6", userID, walletID, cursor, status, tool, limit+1)
 	if e != nil {
 		fail(w, 500, "internal_error")
 		return
@@ -371,7 +430,7 @@ func (a *application) usagePage(w http.ResponseWriter, r *http.Request, userID, 
 	items := []store.Call{}
 	for rows.Next() {
 		var c store.Call
-		if e = rows.Scan(&c.ID, &c.UserID, &c.TokenID, &c.WalletID, &c.Tool, &c.Cost, &c.Status, &c.DurationMS, &c.CreatedAt); e != nil {
+		if e = rows.Scan(&c.ID, &c.UserID, &c.TokenID, &c.WalletID, &c.Tool, &c.Cost, &c.Status, &c.DurationMS, &c.CreatedAt, &c.BillingRole, &c.MultiplierBP); e != nil {
 			fail(w, 500, "internal_error")
 			return
 		}
@@ -391,9 +450,9 @@ func (a *application) usagePage(w http.ResponseWriter, r *http.Request, userID, 
 		w.Header().Set("Content-Disposition", `attachment; filename="pluginpocket-usage.csv"`)
 		w.Header().Set("X-Next-Cursor", next)
 		writer := csv.NewWriter(w)
-		_ = writer.Write([]string{"id", "user_id", "tool", "cost", "status", "duration_ms", "created_at"})
+		_ = writer.Write([]string{"id", "user_id", "tool", "cost", "status", "duration_ms", "created_at", "billing_role", "multiplier_bp"})
 		for _, c := range items {
-			_ = writer.Write([]string{strconv.FormatInt(c.ID, 10), strconv.FormatInt(c.UserID, 10), safeCSV(c.Tool), strconv.FormatInt(c.Cost, 10), c.Status, strconv.FormatInt(c.DurationMS, 10), c.CreatedAt.Format(time.RFC3339)})
+			_ = writer.Write([]string{strconv.FormatInt(c.ID, 10), strconv.FormatInt(c.UserID, 10), safeCSV(c.Tool), strconv.FormatInt(c.Cost, 10), c.Status, strconv.FormatInt(c.DurationMS, 10), c.CreatedAt.Format(time.RFC3339), c.BillingRole, strconv.FormatInt(c.MultiplierBP, 10)})
 		}
 		writer.Flush()
 		return

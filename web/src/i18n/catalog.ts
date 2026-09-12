@@ -1,4 +1,16 @@
 export const en: Record<string, string> = {
+  计费角色: 'Billing role',
+  '设置 {value1} 的计费角色': 'Set billing role for {value1}',
+  '{value1} 倍率（×）': '{value1} multiplier (×)',
+  '{value1} 描述': '{value1} description',
+  '保存 {value1}': 'Save {value1}',
+  保存: 'Save',
+  '不同角色按倍率消耗额度；倍率在下一次调用生效，向上取整。':
+    'Each billing role consumes credits at its own multiplier. Changes apply from the next call; amounts are rounded up.',
+  允许计费角色: 'Allowed billing roles',
+  '不勾选即对所有计费角色开放；勾选后仅列出的角色可调用。':
+    'Leave everything unchecked to allow all billing roles. When checked, only the listed roles may call this tool.',
+  '限 {value1}': '{value1} only',
   浏览器登录有效期: 'Browser session lifetimes',
   'AT 有效期（秒）': 'AT lifetime (seconds)',
   'RT 有效期（秒）': 'RT lifetime (seconds)',

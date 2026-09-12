@@ -1,5 +1,7 @@
 # PluginPocket —— 产品与技术总体方案
 
+2026-09-12 计费角色机制：`billing_roles`（name/multiplier_bp/description，种子 default 1.0× / member 0.8× / vip 0.5×）+ `users.billing_role`；倍率在 store 预留事务内按基点折算（`ceil(cost×bp/10000)`，10000bp 即原价），`usage_logs` 记录每笔生效角色与倍率，个人/团队/管理员用量与用户管理全链路展示；工具可声明 `allowed_roles` 角色门槛（空=全开放，非空仅列出的角色可调用，对标 new-api 分组开放）。管理员 `GET/PATCH /api/v1/admin/billing-roles` 调倍率、admin 用户 PATCH 指派角色、工具编辑器配置门槛。方案见 `superpowers/plans/2026-09-12-billing-roles.md`。
+
 2026-09-12 CLI 技能生命周期修复：更新按本地已保存清单识别托管目录，允许新版增加、删除附件并清理旧文件；卸载递归核对嵌套附件。外来文件、目录与符号链接继续阻止破坏性操作，执行记录见 `superpowers/plans/2026-09-12-cli-skill-lifecycle.md`。
 
 2026-09-12 全站质量检查：通用面板关闭后重新打开恢复普通尺寸；桌面配置操作在状态刷新或客户端检测失败时禁用，恢复后继续使用原选择。沿用现有视觉体系优化窄屏输入与市场筛选，实际证据及未验证范围见 `superpowers/plans/2026-09-12-quality-review.md`。

@@ -57,6 +57,8 @@ func New(s *store.Store, options Options) http.Handler {
 	mux.HandleFunc("PATCH /api/v1/admin/settings", a.saveSettings)
 	mux.HandleFunc("GET /api/v1/admin/users", a.users)
 	mux.HandleFunc("PATCH /api/v1/admin/users/{id}", a.setUserEnabled)
+	mux.HandleFunc("GET /api/v1/admin/billing-roles", a.billingRoles)
+	mux.HandleFunc("PATCH /api/v1/admin/billing-roles/{name}", a.updateBillingRole)
 	mux.HandleFunc("GET /api/v1/tools", a.listTools)
 	mux.HandleFunc("GET /api/v1/admin/tools", a.listTools)
 	mux.HandleFunc("POST /api/v1/admin/tools", a.saveTool)

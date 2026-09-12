@@ -6,6 +6,7 @@ export const userSchema = z.object({
   id: z.number().int(),
   username: z.string(),
   role: z.enum(['user', 'admin']),
+  billing_role: z.string().optional(),
   balance: z.number().int(),
   enabled: z.boolean(),
 });
@@ -27,6 +28,8 @@ export const usageSchema = z.object({
   status: z.enum(['pending', 'ok', 'error', 'recovered', 'denied']),
   duration_ms: z.number(),
   created_at: z.iso.datetime({ offset: true }),
+  billing_role: z.string().optional(),
+  multiplier_bp: z.number().int().optional(),
 });
 export const usageDetailSchema = z.object({
   item: usageSchema.extend({
@@ -159,6 +162,30 @@ export const metaQuery = queryOptions({
   retry: false,
   staleTime: 60_000,
 });
+export const billingRoleSchema = z.object({
+  name: z.string(),
+  multiplier_bp: z.number().int().min(0),
+  description: z.string(),
+});
+export type BillingRole = z.infer<typeof billingRoleSchema>;
+export const billingRolesQuery = queryOptions({
+  queryKey: ['/admin/billing-roles'],
+  queryFn: ({ signal }) =>
+    request(
+      '/admin/billing-roles',
+      z.object({ items: z.array(billingRoleSchema) }),
+      { signal },
+    ),
+  retry: false,
+  staleTime: 30_000,
+});
+// 基点倍率（10000 = ×1）转展示文案，去掉多余的尾零。
+export function multiplierText(bp: number): string {
+  const text = `${(bp / 10000).toFixed(2)}`
+    .replace(/(\.\d*?)0+$/, '$1')
+    .replace(/\.$/, '');
+  return `×${text}`;
+}
 export const accountQuery = queryOptions({
   queryKey: ['account'],
   queryFn: ({ signal }) => request('/account/me', accountSchema, { signal }),

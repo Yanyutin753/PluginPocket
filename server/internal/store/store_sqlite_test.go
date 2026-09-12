@@ -342,3 +342,108 @@ func BenchmarkSQLiteReserveFinish(b *testing.B) {
 		}
 	}
 }
+
+func TestSQLiteBillingRoleMultiplierAppliesAtReserve(t *testing.T) {
+	s := sqliteTestStore(t)
+	u, w, tok := sqliteFixture(t, s)
+	ctx := context.Background()
+	if _, e := s.DB.ExecContext(ctx, "UPDATE users SET billing_role='vip' WHERE id=?", u); e != nil {
+		t.Fatal(e)
+	}
+	var toolID int64
+	if e := s.DB.QueryRowContext(ctx, "INSERT INTO tools(key,name,kind,cost) VALUES('vip_tool','VT','http',5) RETURNING id").Scan(&toolID); e != nil {
+		t.Fatal(e)
+	}
+	call, e := s.ReserveTool(ctx, u, tok, w, toolID, "vip_tool", "role-key")
+	if e != nil {
+		t.Fatal(e)
+	}
+	if e = s.Finish(ctx, call.ID, true, time.Second); e != nil {
+		t.Fatal(e)
+	}
+	var balance, cost, bp int64
+	var role string
+	if e = s.DB.QueryRowContext(ctx, "SELECT balance FROM wallets WHERE id=?", w).Scan(&balance); e != nil {
+		t.Fatal(e)
+	}
+	if balance != 7 {
+		t.Fatalf("vip 0.5x of price 5 must charge 3, balance=%d", balance)
+	}
+	if e = s.DB.QueryRowContext(ctx, "SELECT cost,billing_role,multiplier_bp FROM usage_logs WHERE id=?", call.ID).Scan(&cost, &role, &bp); e != nil {
+		t.Fatal(e)
+	}
+	if cost != 3 || role != "vip" || bp != 5000 {
+		t.Fatalf("usage row cost=%d role=%s bp=%d", cost, role, bp)
+	}
+	if _, e = s.DB.ExecContext(ctx, "UPDATE billing_roles SET multiplier_bp=0 WHERE name='vip'"); e != nil {
+		t.Fatal(e)
+	}
+	free, e := s.ReserveTool(ctx, u, tok, w, toolID, "vip_tool", "free-key")
+	if e != nil {
+		t.Fatal(e)
+	}
+	if e = s.Finish(ctx, free.ID, true, 0); e != nil {
+		t.Fatal(e)
+	}
+	if e = s.DB.QueryRowContext(ctx, "SELECT balance FROM wallets WHERE id=?", w).Scan(&balance); e != nil {
+		t.Fatal(e)
+	}
+	if balance != 7 {
+		t.Fatalf("zero multiplier must be free, balance=%d", balance)
+	}
+	if e = s.DB.QueryRowContext(ctx, "SELECT cost FROM usage_logs WHERE id=?", free.ID).Scan(&cost); e != nil {
+		t.Fatal(e)
+	}
+	if cost != 0 {
+		t.Fatalf("free call cost=%d", cost)
+	}
+}
+
+func TestSQLiteToolRoleGating(t *testing.T) {
+	s := sqliteTestStore(t)
+	u, w, tok := sqliteFixture(t, s)
+	ctx := context.Background()
+	var toolID int64
+	if e := s.DB.QueryRowContext(ctx, "INSERT INTO tools(key,name,kind,cost,allowed_roles) VALUES('gated','G','http',5,'[\"vip\"]') RETURNING id").Scan(&toolID); e != nil {
+		t.Fatal(e)
+	}
+	if _, e := s.ReserveTool(ctx, u, tok, w, toolID, "gated", "denied-key"); e != ErrRoleNotAllowed {
+		t.Fatalf("default role must be gated: %v", e)
+	}
+	if _, e := s.DB.ExecContext(ctx, "UPDATE users SET billing_role='vip' WHERE id=?", u); e != nil {
+		t.Fatal(e)
+	}
+	call, e := s.ReserveTool(ctx, u, tok, w, toolID, "gated", "allowed-key")
+	if e != nil {
+		t.Fatal(e)
+	}
+	if e = s.Finish(ctx, call.ID, true, 0); e != nil {
+		t.Fatal(e)
+	}
+	var balance int64
+	if e = s.DB.QueryRowContext(ctx, "SELECT balance FROM wallets WHERE id=?", w).Scan(&balance); e != nil {
+		t.Fatal(e)
+	}
+	if balance != 7 {
+		t.Fatalf("vip gate+multiplier balance=%d", balance)
+	}
+	if _, e = s.DB.ExecContext(ctx, "UPDATE users SET billing_role='default' WHERE id=?", u); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = s.DB.ExecContext(ctx, "UPDATE tools SET allowed_roles='[]' WHERE id=?", toolID); e != nil {
+		t.Fatal(e)
+	}
+	open, e := s.ReserveTool(ctx, u, tok, w, toolID, "gated", "open-key")
+	if e != nil {
+		t.Fatal(e)
+	}
+	if e = s.Finish(ctx, open.ID, true, 0); e != nil {
+		t.Fatal(e)
+	}
+	if e = s.DB.QueryRowContext(ctx, "SELECT balance FROM wallets WHERE id=?", w).Scan(&balance); e != nil {
+		t.Fatal(e)
+	}
+	if balance != 2 {
+		t.Fatalf("empty allowlist must be open at 1.0x, balance=%d", balance)
+	}
+}

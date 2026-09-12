@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { z } from 'zod';
 import { Pagination } from '@/components/Pagination';
@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { useI18n } from '@/i18n';
-import { number, request } from '../account/api';
+import { billingRolesQuery, number, request } from '../account/api';
 import { ErrorNotice, Heading, Loading } from '../account/shared';
 import { usePagedList } from '../account/usePagedList';
 import { type Plan, planSchema, price } from './api';
@@ -119,6 +119,28 @@ function PlanEditor({ item, close }: { item: Plan | null; close: () => void }) {
 export default function PlansPage() {
   const { t, locale } = useI18n();
   const client = useQueryClient();
+  const roles = useQuery(billingRolesQuery);
+  const saveRole = useMutation({
+    mutationFn: (input: {
+      name: string;
+      multiplier_bp: number;
+      description: string;
+    }) =>
+      request(
+        `/admin/billing-roles/${input.name}`,
+        z.object({ item: z.unknown() }),
+        {
+          method: 'PATCH',
+          body: JSON.stringify({
+            multiplier_bp: input.multiplier_bp,
+            description: input.description,
+          }),
+        },
+      ),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['/admin/billing-roles'] });
+    },
+  });
   const plans = usePagedList('/admin/plans', planSchema);
   const [editing, setEditing] = useState<Plan | null | undefined>();
   const toggle = useMutation({
@@ -187,6 +209,72 @@ export default function PlansPage() {
           </li>
         ))}
       </ul>
+      <section className="editor-panel" aria-label={t('计费角色')}>
+        <h2>{t('计费角色')}</h2>
+        <p className="text-sm text-muted-foreground">
+          {t('不同角色按倍率消耗额度；倍率在下一次调用生效，向上取整。')}
+        </p>
+        <ErrorNotice error={roles.error} />
+        <ErrorNotice error={saveRole.error} />
+        <ul className="record-list">
+          {roles.data?.items.map((role) => (
+            <li key={role.name}>
+              <form
+                className="record-main"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const data = new FormData(event.currentTarget);
+                  saveRole.mutate({
+                    name: role.name,
+                    multiplier_bp: Math.round(
+                      Number(data.get('multiplier')) * 10000,
+                    ),
+                    description: String(data.get('description') ?? ''),
+                  });
+                }}
+              >
+                <h2>{role.name}</h2>
+                <div className="action-row">
+                  <Field>
+                    <FieldLabel htmlFor={`role-${role.name}-multiplier`}>
+                      {t('{value1} 倍率（×）', { value1: role.name })}
+                    </FieldLabel>
+                    <Input
+                      id={`role-${role.name}-multiplier`}
+                      name="multiplier"
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      required
+                      defaultValue={role.multiplier_bp / 10000}
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor={`role-${role.name}-description`}>
+                      {t('{value1} 描述', { value1: role.name })}
+                    </FieldLabel>
+                    <Input
+                      id={`role-${role.name}-description`}
+                      name="description"
+                      maxLength={200}
+                      required
+                      defaultValue={role.description}
+                    />
+                  </Field>
+                  <Button
+                    type="submit"
+                    aria-label={t('保存 {value1}', { value1: role.name })}
+                    disabled={saveRole.isPending}
+                  >
+                    {t('保存')}
+                  </Button>
+                </div>
+              </form>
+            </li>
+          ))}
+        </ul>
+      </section>
       <Pagination label={t('套餐')} {...plans.pagination} />
     </>
   );

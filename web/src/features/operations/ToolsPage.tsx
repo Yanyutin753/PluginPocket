@@ -115,6 +115,13 @@ export default function ToolsPage({ admin = false }: { admin?: boolean }) {
                 <code>{item.key}</code>
                 <span>{t(kindLabels[item.kind])}</span>
                 <span>{t(ruleLabels[ruleDraft(item.settlement).mode])}</span>
+                {item.allowed_roles?.length ? (
+                  <span>
+                    {t('限 {value1}', {
+                      value1: item.allowed_roles.join(' / '),
+                    })}
+                  </span>
+                ) : null}
               </div>
             </div>
             <div className="tool-list-cost">

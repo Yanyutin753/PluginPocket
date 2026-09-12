@@ -4226,6 +4226,104 @@
           }
         }
       }
+    },
+    "/api/v1/admin/billing-roles": {
+      "get": {
+        "operationId": "get_api_v1_admin_plans",
+        "summary": "List billing roles (name, multiplier_bp, description)",
+        "tags": ["admin"],
+        "description": "管理套餐列表 仅管理员，角色由服务端验证。",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          }
+        ]
+      },
+      "patch": {
+        "tags": ["admin"],
+        "summary": "Update a billing role multiplier/description",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "multiplier_bp": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000000
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 200
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/billing-roles/{name}": {
+      "patch": {
+        "tags": ["admin"],
+        "summary": "Update a billing role multiplier/description",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "multiplier_bp": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000000
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 200
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4368,6 +4466,9 @@
           },
           "enabled": {
             "type": "boolean"
+          },
+          "billing_role": {
+            "type": "string"
           }
         },
         "required": ["id", "username", "role", "balance", "enabled"]
@@ -4581,6 +4682,12 @@
           "created_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "billing_role": {
+            "type": "string"
+          },
+          "multiplier_bp": {
+            "type": "integer"
           }
         },
         "required": [
@@ -4661,6 +4768,12 @@
             "type": ["object", "null"],
             "additionalProperties": true,
             "description": "{} 或 null 使用默认 isError 判定；支持 content:{path,equals}、content:{pattern} 或 script（最多8192字节，200ms沙箱）。PATCH省略时保留。"
+          },
+          "allowed_roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [

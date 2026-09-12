@@ -1,7 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { SidePanel } from '@/components/SidePanel';
 import { useI18n } from '@/i18n';
-import { date, number, request, usageDetailSchema } from './api';
+import {
+  date,
+  multiplierText,
+  number,
+  request,
+  usageDetailSchema,
+} from './api';
 import { ErrorNotice, Loading } from './shared';
 
 export function UsageDetail({
@@ -30,6 +36,9 @@ export function UsageDetail({
               {date(item.created_at, locale)} ·{' '}
               {number(item.duration_ms, locale)} ms · {t('额度')}{' '}
               {number(item.cost, locale)}
+              {item.billing_role && item.multiplier_bp !== undefined
+                ? ` · ${item.billing_role} ${multiplierText(item.multiplier_bp)}`
+                : ''}
             </p>
           </div>
           {(

@@ -135,9 +135,9 @@
 | 方法与路径 | 请求 | 成功响应 |
 |---|---|---|
 | `GET /tools` | 登录；`limit,cursor` | 公共工具元数据页 |
-| `GET /admin/tools` | 管理员；`limit,cursor` | 管理元数据页，增加 `configured` |
+| `GET /admin/tools` | 管理员；`limit,cursor` | 管理元数据页，增加 `configured`、`allowed_roles: string[]`（空=对所有计费角色开放；非空时仅列出的角色可调用，被拒调用按 denied 记录） |
 | `POST /admin/tools` | 完整工具定义 | `201 {item}` |
-| `PATCH /admin/tools/:id` | 完整工具定义（省略 config/icon/settlement 保留） | `200 {item}` |
+| `PATCH /admin/tools/:id` | 完整工具定义（省略 config/icon/settlement/allowed_roles 保留；allowed_roles 名单须存在于 billing_roles） | `200 {item}` |
 | `POST /admin/tools/settlement-preview` | 管理员；`{settlement,text,is_error}` | `200 {charge:boolean}` |
 
 公共字段：`{id,key,name,description,icon,kind,enabled,units_per_call,input_schema,settlement}`。`kind` 为 `builtin/http/stdio`；不返回 `config`、`headers`、`env` 或秘密。
@@ -153,7 +153,7 @@
 
 | 方法与路径 | 范围与筛选 |
 |---|---|
-| `GET /account/usage` | 当前用户；`limit,cursor,tool,status` |
+| `GET /account/usage` | 当前用户；`limit,cursor,tool,status`；每项含 `billing_role`、`multiplier_bp`（该笔调用生效的角色与倍率） |
 | `GET /admin/usage` | 全局，管理员；增加 `user_id` |
 | `GET /account/teams/:id/usage` | 团队钱包，当前成员；增加 `user_id` |
 | `GET /admin/usage/export` | 全局 CSV，与明细相同筛选和游标 |
@@ -171,6 +171,8 @@ CSV 响应为 `text/csv; charset=utf-8`，`Content-Disposition: attachment; file
 
 | 方法与路径 | 请求/筛选 | 成功响应 |
 |---|---|---|
+| `GET /admin/billing-roles` | 管理员 | `200 {items:[{name,multiplier_bp,description}]}`；multiplier_bp 为基点倍率（10000=×1） |
+| `PATCH /admin/billing-roles/:name` | 管理员；`{multiplier_bp?,description?}` | `200 {item}`；倍率 0..1000000，从下一次调用生效 |
 | `GET /admin/users` | `limit,cursor` | `{items:[User],next_cursor}` |
 | `PATCH /admin/users/:id` | `{enabled:boolean}` | `{user}` |
 | `POST /admin/users/:id/balance` | `{delta,note,idempotency_key}` | `{user}` |
@@ -275,3 +277,10 @@ OpenAPI 覆盖实际 app/identity 注册的 51 个方法/路径，并另列健�
 远程工具公开名为 `escaped_key__remote_name`；provider key中每个 `_` 编码为 `_u`，远程原名不变。无下划线provider保留旧名称；含下划线provider需客户端刷新tools/list。例如 `foo/bar__baz` 为 `foo__bar__baz`，`foo__bar/baz` 为 `foo_u_ubar__baz`，不会相互覆盖。目录按ID有界分批读取所有启用上游，每批128行、最多8路并发，整体超时不发布截断目录。
 
 浏览器有效期运行时字段：`access_token_seconds`（60–86400，默认900）、`refresh_token_seconds`（60–31536000，默认604800，且不短于AT）。GET/PATCH `/admin/settings` 返回/接受这两个字段；PATCH 省略保留旧值，0/越界拒绝。各副本每次登录/注册/GitHub回调/刷新读取共享PG配置，无需重启；已有RT期限不变，新AT不超过父RT期限。刷新401表示RT无效，403表示跨源，500/503为可重试服务故障。
+
+
+## 计费角色（2026-09-12）
+
+- 预留事务内按用户 `billing_role` 的 `multiplier_bp` 折算：`charge = ceil(cost × bp / 10000)`，向上取整，`bp=0` 免费；默认角色 `default` 为 10000（原价）。角色判定失败按失败关闭处理。
+- 工具 `allowed_roles` 非空时，角色不在名单的调用在预留阶段拒绝（不扣费），网关按 `denied` 记录并返回工具错误提示；名单为空对所有角色开放。
+- 用量行与详情携带该笔生效的 `billing_role` 与 `multiplier_bp`；CSV 导出增加同名列。

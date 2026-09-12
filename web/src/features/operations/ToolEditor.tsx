@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -8,7 +8,7 @@ import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { useI18n } from '@/i18n';
-import { request } from '../account/api';
+import { billingRolesQuery, multiplierText, request } from '../account/api';
 import { ErrorNotice } from '../account/shared';
 import { type Tool, toolSchema } from './api';
 import SettlementEditor, {
@@ -41,6 +41,7 @@ export default function ToolEditor({
   const [updateConnection, setUpdateConnection] = useState(!item);
   const [connectionMode, setConnectionMode] = useState('fields');
   const [validation, setValidation] = useState('');
+  const roles = useQuery(billingRolesQuery);
   const form = useForm({
     defaultValues: {
       key: item?.key ?? '',
@@ -48,6 +49,7 @@ export default function ToolEditor({
       description: item?.description ?? '',
       kind: item?.kind ?? 'builtin',
       units_per_call: item?.units_per_call ?? 1,
+      allowed_roles: item?.allowed_roles ?? [],
       input_schema: JSON.stringify(
         item?.input_schema ?? { type: 'object', properties: {} },
         null,
@@ -171,6 +173,7 @@ export default function ToolEditor({
         kind,
         enabled: item?.enabled ?? true,
         units_per_call: Number(value.units_per_call),
+        allowed_roles: value.allowed_roles ?? [],
         input_schema,
         ...(icon || item?.icon ? { icon } : {}),
         ...(config ? { config } : {}),
@@ -529,6 +532,25 @@ export default function ToolEditor({
             aria-labelledby="tool-billing-heading"
           >
             <h3 id="tool-billing-heading">{t('额度与结算规则')}</h3>
+            <Field>
+              <FieldLabel>{t('允许计费角色')}</FieldLabel>
+              {roles.data?.items.map((role) => (
+                <label key={role.name} className="checkbox-field">
+                  <input
+                    type="checkbox"
+                    value={role.name}
+                    disabled={save.isPending}
+                    {...form.register('allowed_roles')}
+                  />
+                  <span>
+                    {role.name} {multiplierText(role.multiplier_bp)}
+                  </span>
+                </label>
+              ))}
+              <p className="field-help">
+                {t('不勾选即对所有计费角色开放；勾选后仅列出的角色可调用。')}
+              </p>
+            </Field>
             <Field>
               <FieldLabel htmlFor="tool-cost">{t('每次调用额度')}</FieldLabel>
               <Input

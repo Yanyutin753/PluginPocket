@@ -3,8 +3,10 @@ package store
 import (
 	"context"
 	"embed"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -17,6 +19,7 @@ var ErrInsufficientBalance = errors.New("insufficient_balance")
 var ErrConflict = errors.New("idempotency_conflict")
 var ErrUnauthorized = errors.New("unauthorized")
 var ErrNotFound = errors.New("not_found")
+var ErrRoleNotAllowed = errors.New("role_not_allowed")
 
 type Store struct{ Pool *pgxpool.Pool }
 type Principal struct {
@@ -24,15 +27,17 @@ type Principal struct {
 	Username, Role            string
 }
 type Call struct {
-	ID         int64     `json:"id"`
-	UserID     int64     `json:"user_id"`
-	TokenID    int64     `json:"token_id"`
-	WalletID   int64     `json:"wallet_id"`
-	Tool       string    `json:"tool"`
-	Cost       int64     `json:"cost"`
-	Status     string    `json:"status"`
-	DurationMS int64     `json:"duration_ms"`
-	CreatedAt  time.Time `json:"created_at"`
+	ID           int64     `json:"id"`
+	UserID       int64     `json:"user_id"`
+	TokenID      int64     `json:"token_id"`
+	WalletID     int64     `json:"wallet_id"`
+	Tool         string    `json:"tool"`
+	Cost         int64     `json:"cost"`
+	Status       string    `json:"status"`
+	DurationMS   int64     `json:"duration_ms"`
+	CreatedAt    time.Time `json:"created_at"`
+	BillingRole  string    `json:"billing_role"`
+	MultiplierBP int64     `json:"multiplier_bp"`
 }
 
 type CallData struct {
@@ -117,6 +122,10 @@ func (s *Store) ReserveTool(ctx context.Context, userID, tokenID, walletID, tool
 	return s.reserve(ctx, userID, tokenID, walletID, toolID, tool, 0, requestKey)
 }
 
+// applyMultiplierBP 把工具价按计费角色倍率折算为实际扣费（基点，10000=1.0×），
+// 向上取整保证运营方不欠收；bp=0 即免费。
+func applyMultiplierBP(cost, bp int64) int64 { return (cost*bp + 9999) / 10000 }
+
 func (s *Store) reserve(ctx context.Context, userID, tokenID, walletID, toolID int64, tool string, cost int64, requestKey string) (Call, error) {
 	if cost < 0 || requestKey == "" || len(requestKey) > 200 || tool == "" {
 		return Call{}, errors.New("invalid_request")
@@ -134,8 +143,9 @@ func (s *Store) reserve(ctx context.Context, userID, tokenID, walletID, toolID i
 	if err != nil {
 		return Call{}, err
 	}
+	var allowedRolesRaw []byte
 	if toolID != 0 {
-		err = tx.QueryRow(ctx, "SELECT cost FROM tools WHERE id=$1 AND enabled FOR SHARE", toolID).Scan(&cost)
+		err = tx.QueryRow(ctx, "SELECT cost,allowed_roles FROM tools WHERE id=$1 AND enabled FOR SHARE", toolID).Scan(&cost, &allowedRolesRaw)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return Call{}, ErrNotFound
 		}
@@ -157,6 +167,23 @@ func (s *Store) reserve(ctx context.Context, userID, tokenID, walletID, toolID i
 	if err = checkAuthorization(); err != nil {
 		return Call{}, err
 	}
+	// 计费角色倍率在授权通过后、写入前折算（授权已保证用户存在）；
+	// 读取失败即失败关闭（资金路径不降级为默认价）。
+	var roleName string
+	var roleBP int64
+	if err = tx.QueryRow(ctx, "SELECT r.name,r.multiplier_bp FROM billing_roles r JOIN users u ON u.billing_role=r.name WHERE u.id=$1", userID).Scan(&roleName, &roleBP); err != nil {
+		return Call{}, err
+	}
+	if len(allowedRolesRaw) > 0 {
+		var allowedRoles []string
+		if err = json.Unmarshal(allowedRolesRaw, &allowedRoles); err != nil {
+			return Call{}, err
+		}
+		if len(allowedRoles) > 0 && !slices.Contains(allowedRoles, roleName) {
+			return Call{}, ErrRoleNotAllowed
+		}
+	}
+	cost = applyMultiplierBP(cost, roleBP)
 
 	var c Call
 	var requestedCost int64
@@ -177,7 +204,7 @@ func (s *Store) reserve(ctx context.Context, userID, tokenID, walletID, toolID i
 	if balance < cost {
 		status = "denied"
 	}
-	err = tx.QueryRow(ctx, "INSERT INTO usage_logs(user_id,token_id,wallet_id,tool,requested_cost,status,request_key) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id,user_id,token_id,wallet_id,tool,cost,status,duration_ms,created_at", userID, tokenID, walletID, tool, cost, status, requestKey).Scan(&c.ID, &c.UserID, &c.TokenID, &c.WalletID, &c.Tool, &c.Cost, &c.Status, &c.DurationMS, &c.CreatedAt)
+	err = tx.QueryRow(ctx, "INSERT INTO usage_logs(user_id,token_id,wallet_id,tool,requested_cost,status,request_key,billing_role,multiplier_bp) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id,user_id,token_id,wallet_id,tool,cost,status,duration_ms,created_at", userID, tokenID, walletID, tool, cost, status, requestKey, roleName, roleBP).Scan(&c.ID, &c.UserID, &c.TokenID, &c.WalletID, &c.Tool, &c.Cost, &c.Status, &c.DurationMS, &c.CreatedAt)
 	if err != nil {
 		return Call{}, err
 	}
