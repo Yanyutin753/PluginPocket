@@ -23,6 +23,10 @@
 
 Stop repeating MCP server discovery, upstream key management, and hand-edited configuration in every AI client. PluginPocket gathers tool access into one pocket: administrators maintain a shared tool pool, members connect after login, and teams manage configuration, credits, and usage in one place. MIT across the repository, with no closed-source edition boundary.
 
+<p align="center">
+  <img src="web/public/images/workshop-tools.webp" width="320" alt="The mint-green toolbox mascot waving from an open toolbox beside a plug, a code block, a connector, and a wrench" loading="lazy">
+</p>
+
 - 🔌 **Configure once, connect every client** — a Rust CLI sets up Codex, Claude Code, and Cursor with one `apply`; default bridge mode keeps tokens out of client configuration.
 - 🧰 **A marketplace worth copying** — three kinds of gear: HTTP MCP plugins, Agent Skills, and bundles combining both; GitHub imports and curated sync, with `pluginpocket install` reproducing a complete setup.
 - 📊 **Every call accounted for** — unified authentication and metering; reserve, settle, refund run through a transactional ledger with automatic failure refunds, plus permission-scoped input/output details.
@@ -73,6 +77,10 @@ Restart your clients to use the administrator-enabled tools. The [Tauri desktop 
 
 ### 3. Install from the marketplace
 
+<p align="center">
+  <img src="web/public/images/workshop-marketplace.webp" width="320" alt="The mint toolbox mascot presenting plugin, code, and bundle blocks for the three marketplace categories" loading="lazy">
+</p>
+
 ```bash
 pluginpocket market                # browse the catalog (web view at /plugins)
 pluginpocket install expert-pack   # replace with an actual entry slug
@@ -91,24 +99,8 @@ Daily commands: `make up / down / restart / status / logs` (run `make restart` a
 ## How it fits together
 
 <p align="center">
-  <img src="web/public/images/workshop-connect.webp" width="240" alt="Three colorful tool modules connected to a central hub by yellow cables" loading="lazy">
+  <img src="docs/images/architecture-en.svg" width="800" alt="PluginPocket architecture: AI clients reach a local bridge over stdio, the bridge calls the MCP gateway via Streamable HTTP with Bearer auth, and the gateway talks to a curated MCP upstream pool, a PostgreSQL accounts and ledger store, a degradable Redis metadata cache, and the web console for management and usage" loading="lazy">
 </p>
-
-```mermaid
-flowchart TD
-    clients[Codex · Claude Code · Cursor] -->|stdio| bridge[Local PluginPocket bridge]
-    bridge -->|Streamable HTTP + Bearer| gateway[PluginPocket MCP gateway]
-    console[Web console] -->|Management and usage| gateway
-    gateway --> pool[Configured MCP upstream pool]
-    gateway --> db[(PostgreSQL · Accounts and ledger)]
-    gateway -. Metadata cache .-> redis[(Redis)]
-    classDef mint fill:#d8eee0,stroke:#609575,color:#202124
-    classDef yellow fill:#ffe5a0,stroke:#b88a16,color:#202124
-    classDef neutral fill:#f5f5f7,stroke:#868993,color:#202124
-    class bridge,pool mint
-    class gateway yellow
-    class clients,console,db,redis neutral
-```
 
 - 🔐 **Centralized credentials** — the bridge reads tokens from private local credentials; operators host upstream credentials, and PluginPocket never holds users' private third-party OAuth tokens.
 - 🧾 **Accountable calls** — reservations, settlement, and failure refunds run through transactions with an append-only ledger; truncated content is marked.

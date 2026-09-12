@@ -23,6 +23,10 @@
 
 不必在每个 AI 客户端里重复找 MCP server、管上游密钥、手改配置。PluginPocket 把工具入口集中到一个口袋里：管理员维护预设工具池，成员登录即用，团队在同一个地方管理配置、额度与用量。全仓库 MIT，没有闭源版本边界。
 
+<p align="center">
+  <img src="web/public/images/workshop-tools.webp" width="320" alt="薄荷绿工具箱伙伴在打开的工具箱里挥手，身边是插头、代码积木、连接件与扳手" loading="lazy">
+</p>
+
 - 🔌 **一次配置，接入所有客户端** —— Rust CLI 一条 `apply` 配好 Codex、Claude Code、Cursor；默认 bridge 模式不把令牌写进客户端配置。
 - 🧰 **插件市场，一键复刻** —— 三类装备：HTTP MCP 插件、Agent Skill、装备组（组合前两者）；支持 GitHub 导入与精选同步，`pluginpocket install` 复刻一整套配置。
 - 📊 **每一次调用有据可查** —— 统一鉴权与计量，预留-结算-退款走事务账本、失败自动退款；用量详情按权限展示输入与输出。
@@ -73,6 +77,10 @@ pluginpocket apply --clients codex,claude,cursor
 
 ### 3. 安装市场装备
 
+<p align="center">
+  <img src="web/public/images/workshop-marketplace.webp" width="320" alt="薄荷绿工具箱托起插件、代码与装备组积木，对应市场的三类内容" loading="lazy">
+</p>
+
 ```bash
 pluginpocket market                # 浏览目录（网页在 /plugins）
 pluginpocket install expert-pack   # 换成实际条目的 slug
@@ -91,24 +99,8 @@ codex plugin marketplace add https://pluginpocket.example.com/marketplace.git
 ## 架构一览
 
 <p align="center">
-  <img src="web/public/images/workshop-connect.webp" width="240" alt="三个彩色工具模块通过黄色连接线汇入同一个中心节点" loading="lazy">
+  <img src="docs/images/architecture-zh.svg" width="800" alt="PluginPocket 架构图：AI 客户端经本地 bridge 以 Streamable HTTP 与 Bearer 鉴权接入 MCP 网关，网关对接预设 MCP 上游池、PostgreSQL 账号与事务账本、可降级的 Redis 元数据缓存，以及 Web 控制台的管理与用量" loading="lazy">
 </p>
-
-```mermaid
-flowchart TD
-    clients[Codex · Claude Code · Cursor] -->|stdio| bridge[本地 PluginPocket bridge]
-    bridge -->|Streamable HTTP + Bearer| gateway[PluginPocket MCP 网关]
-    console[Web 控制台] -->|管理与用量| gateway
-    gateway --> pool[预设 MCP 上游池]
-    gateway --> db[(PostgreSQL · 账号与事务账本)]
-    gateway -. 元数据缓存 .-> redis[(Redis)]
-    classDef mint fill:#d8eee0,stroke:#609575,color:#202124
-    classDef yellow fill:#ffe5a0,stroke:#b88a16,color:#202124
-    classDef neutral fill:#f5f5f7,stroke:#868993,color:#202124
-    class bridge,pool mint
-    class gateway yellow
-    class clients,console,db,redis neutral
-```
 
 - 🔐 **密钥集中** —— bridge 从本地私有凭据读取令牌；上游凭证由部署者托管，不接管用户私人第三方 OAuth token。
 - 🧾 **调用有账** —— 预留、结算、失败退款全部走事务，账本只追加；超限内容标注截断。
