@@ -98,8 +98,14 @@ func (a *application) register(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &in) {
 		return
 	}
-	if !usernamePattern.MatchString(in.Username) || len(in.Password) < 12 || len(in.Password) > 1024 {
-		fail(w, 400, "invalid_request")
+	// Specific codes (vs blanket invalid_request) so clients can explain
+	// exactly what to fix; autofilled values skip native browser validation.
+	if !usernamePattern.MatchString(in.Username) {
+		fail(w, 400, "invalid_username")
+		return
+	}
+	if len(in.Password) < 12 || len(in.Password) > 1024 {
+		fail(w, 400, "invalid_password")
 		return
 	}
 	initial := int64(1000)

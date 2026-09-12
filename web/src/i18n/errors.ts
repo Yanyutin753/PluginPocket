@@ -98,6 +98,10 @@ export const errorMessages: Record<string, { zh: string; en: string }> = {
     zh: 'JSON 格式不正确，请检查参数或连接配置后重试',
     en: 'Invalid JSON. Check the parameters or connection configuration and try again.',
   },
+  invalid_password: {
+    zh: '密码长度需在 12 到 1024 个字符之间',
+    en: 'Password must be 12 to 1024 characters long.',
+  },
   invalid_request: {
     zh: '提交内容不符合要求，请检查后重试',
     en: 'Check the submitted information and try again.',
@@ -113,6 +117,10 @@ export const errorMessages: Record<string, { zh: string; en: string }> = {
   invalid_token: {
     zh: '验证链接无效或已过期，请重新发送验证邮件',
     en: 'This verification link is invalid or expired. Request another verification email.',
+  },
+  invalid_username: {
+    zh: '用户名需为 3–32 位字母、数字、下划线或横线',
+    en: 'Username must be 3–32 letters, digits, underscores, or hyphens.',
   },
   invite_expired: {
     zh: '邀请码已过期，请联系团队所有者生成新邀请',

@@ -327,7 +327,7 @@ Codex(用户按 F5 调用 time_now)
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| POST | `/api/v1/auth/register` | `{username, password}` → `{user}` + session cookie，送配置的初始额度 |
+| POST | `/api/v1/auth/register` | `{username, password}` → `{user}` + session cookie，送配置的初始额度；用户名格式不符 400 `invalid_username`，密码长度不符 400 `invalid_password` |
 | POST | `/api/v1/auth/login` | `{username, password}` → `{user}` + session cookie |
 | GET | `/api/v1/account/me` | 用户信息 + 今日/累计用量摘要 |
 | GET | `/api/v1/account/usage?limit=50` | 本人调用明细 |

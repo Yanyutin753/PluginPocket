@@ -35,8 +35,20 @@ CLI E2E 收尾观察的三项遗留全部处理：
 2. **Release CLI 校验**：release.yml CLI 打包步骤同时生成并上传 `<name>-SHA256SUMS`（Linux/macOS tar.gz 与 Windows zip 一致处理，sha256sum 缺失时回退 shasum）；verify-signatures 步骤只下载 desktop-* 产物，不受影响。
 3. **生产测试令牌回收**：`DELETE /api/v1/account/tokens/3` 返回 204，旧 Bearer 复验 401。测试账号 `cli_e2e_test` 保留供复跑（余额 999 测试额度，无有效令牌）。
 
-## 验收与限制（追加轮）
+第二轮验收：`make check` 通过（preflight 5/5、integration 4/4），CI 双 workflow 绿，`main-021d022` 部署 yang 后 healthz/serverInfo 均为 0.3.0。release.yml 的 CLI SHA256SUMS 属 CI 变更，由下次 tag Release 运行证明；未发布新 tag。
 
-- `make check` 完整通过（含新增 version 接线后的 preflight 5/5、integration 4/4）。退出码 0。
-- CI 双 workflow 绿后部署 `main-<sha>` 到 yang，healthz/serverInfo 复验 0.3.0（见部署记录）。
-- release.yml 的 CLI SHA256SUMS 属 CI 变更，本地无法全量验证，由下次 tag Release 运行证明；未发布新 tag。
+## 追加：注册失败的细分错误码与自动填充兜底（同日第三轮）
+
+用户报告生产站"注册不了"。排障证据：openresty 访问日志显示用户浏览器（Edge）18:07:30 的 `POST /api/v1/auth/register` 返回 400 `invalid_request`（此前 18:07:26 登录 401）；数据库无对应行、序列号存在缺口（两次重复用户名回滚）。API 直连 curl 与完整浏览器头模拟均 201，服务端正常。真实浏览器自动化复现：jsdom/自动填充不触发原生 tooShort 校验（dirty flag 机制），短密码会被直接提交并收到笼统的"提交内容不符合要求"。
+
+修复（TDD）：
+
+1. RED：`go test ./internal/app -run TestRegisterValidationReportsSpecificCodes`——期望 `invalid_password`/`invalid_username`，实际 `invalid_request`。
+2. GREEN：account.go 注册校验拆分为两个具体码；`codes.go` 注册（契约金样测试同步 `error-codes.json`）；`i18n/errors.ts` 增加双语文案；PLAN.md API 表同步。
+3. RED：`vitest run src/Product.test.tsx -t 'blocks autofilled invalid register input'`——短密码提交真的发出请求并显示无关错误。
+4. GREEN：AuthPage onSubmit 兜底校验用户名正则与密码长度，经 `ApiError(400, code)` 走既有 ErrorNotice 渲染，不发请求。
+
+## 验收与限制（第三轮）
+
+- 服务端 app/httpapi 全绿（-race，226s/1.1s）；web vitest 34 文件 235 用例全绿；`make check` 通过（首次因 biome 格式失败，--write 修复后复跑）。退出码 0。
+- 部署后真实浏览器复验：短密码提交显示"密码长度需在 12 到 1024 个字符之间"且无请求发出；合格输入注册成功（见部署记录）。

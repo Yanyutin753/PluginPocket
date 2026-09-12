@@ -133,6 +133,12 @@
     ]
   },
   {
+    "code": "invalid_password",
+    "status": [
+      400
+    ]
+  },
+  {
     "code": "invalid_request",
     "status": [
       400
@@ -152,6 +158,12 @@
   },
   {
     "code": "invalid_token",
+    "status": [
+      400
+    ]
+  },
+  {
+    "code": "invalid_username",
     "status": [
       400
     ]

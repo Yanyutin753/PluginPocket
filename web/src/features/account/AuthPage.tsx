@@ -7,12 +7,19 @@ import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { useI18n } from '@/i18n';
-import { metaQuery, publicSessionQuery, request, resultSchema } from './api';
+import {
+  ApiError,
+  metaQuery,
+  publicSessionQuery,
+  request,
+  resultSchema,
+} from './api';
 import { ErrorNotice, Loading } from './shared';
 
 export default function AuthPage({ register = false }: { register?: boolean }) {
   const { t } = useI18n();
   const [showPassword, setShowPassword] = useState(false);
+  const [formError, setFormError] = useState<ApiError | null>(null);
   const client = useQueryClient();
   const location = useLocation();
   const meta = useQuery(metaQuery);
@@ -117,10 +124,23 @@ export default function AuthPage({ register = false }: { register?: boolean }) {
             onSubmit={(event) => {
               event.preventDefault();
               const data = new FormData(event.currentTarget);
-              auth.mutate({
-                username: String(data.get('username')),
-                password: String(data.get('password')),
-              });
+              const username = String(data.get('username'));
+              const password = String(data.get('password'));
+              // Autofilled values skip native tooShort/pattern validation;
+              // enforce the server contract here so users see the exact rule.
+              if (!/^[A-Za-z0-9_-]{3,32}$/.test(username)) {
+                setFormError(new ApiError(400, 'invalid_username'));
+                return;
+              }
+              if (
+                register &&
+                (password.length < 12 || password.length > 1024)
+              ) {
+                setFormError(new ApiError(400, 'invalid_password'));
+                return;
+              }
+              setFormError(null);
+              auth.mutate({ username, password });
             }}
           >
             <FieldGroup className="min-w-0 flex-1">
@@ -186,7 +206,7 @@ export default function AuthPage({ register = false }: { register?: boolean }) {
                 )}
               </Field>
             </FieldGroup>
-            <ErrorNotice error={auth.error} />
+            <ErrorNotice error={formError ?? auth.error} />
             <Button type="submit" disabled={auth.isPending}>
               {t(auth.isPending ? '正在提交…' : register ? '创建账号' : '登录')}
               <ArrowRight aria-hidden="true" />

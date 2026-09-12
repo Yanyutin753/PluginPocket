@@ -71,6 +71,19 @@ func register(t *testing.T, h http.Handler, name string) *http.Cookie {
 	}
 	return cookies[0]
 }
+func TestRegisterValidationReportsSpecificCodes(t *testing.T) {
+	_, h := setup(t)
+	if w := request(h, "POST", "/api/v1/auth/register", `{"username":"valid_name","password":"short"}`, nil); w.Code != 400 || w.Body.String() != "{\"error\":\"invalid_password\"}\n" {
+		t.Fatalf("short password: %d %s", w.Code, w.Body)
+	}
+	if w := request(h, "POST", "/api/v1/auth/register", `{"username":"bad name!","password":"correct horse battery"}`, nil); w.Code != 400 || w.Body.String() != "{\"error\":\"invalid_username\"}\n" {
+		t.Fatalf("invalid username: %d %s", w.Code, w.Body)
+	}
+	if w := request(h, "POST", "/api/v1/auth/register", fmt.Sprintf(`{"username":"valid_name","password":%q}`, strings.Repeat("a", 1025)), nil); w.Code != 400 || w.Body.String() != "{\"error\":\"invalid_password\"}\n" {
+		t.Fatalf("oversized password: %d %s", w.Code, w.Body)
+	}
+}
+
 func TestRegistrationLoginAndRevocableSession(t *testing.T) {
 	_, h := setup(t)
 	cookie := register(t, h, "alice")

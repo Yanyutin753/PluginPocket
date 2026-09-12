@@ -225,6 +225,26 @@ describe('account console', () => {
       await screen.findByRole('heading', { name: '账号概览' }),
     ).toBeVisible();
   });
+  it('blocks autofilled invalid register input before any request', async () => {
+    const mock = network((url) =>
+      url.endsWith('/account/me')
+        ? Response.json({ error: 'unauthorized' }, { status: 401 })
+        : undefined,
+    );
+    mount('/register');
+    const user = userEvent.setup();
+    await user.type(await screen.findByLabelText('用户名'), 'alice');
+    // jsdom skips native constraint validation, matching browser autofill,
+    // which does not dirty-flag the value and therefore bypasses minLength.
+    await user.type(screen.getByLabelText('密码'), 'short');
+    await user.click(screen.getByRole('button', { name: '创建账号' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '密码长度需在 12 到 1024 个字符之间',
+    );
+    expect(
+      mock.mock.calls.some(([url]) => String(url).endsWith('/auth/register')),
+    ).toBe(false);
+  });
   it('recovers from a malformed account response without invented balances', async () => {
     let bad = true;
     network((url) =>
