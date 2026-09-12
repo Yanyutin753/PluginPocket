@@ -22,6 +22,8 @@ pub enum LocalCommand {
     },
     Installed {},
     Logs {},
+    Usage {},
+    Ledger {},
     ExportLogs {
         entries: Vec<pluginpocket::LogEntry>,
     },
@@ -59,6 +61,8 @@ pub fn execute(
         LocalCommand::Remove { clients } => serde_json::to_value(local.remove(&clients)?),
         LocalCommand::Installed {} => serde_json::to_value(local.installed()?),
         LocalCommand::Logs {} => serde_json::to_value(local.logs()?),
+        LocalCommand::Usage {} => serde_json::to_value(local.usage()?),
+        LocalCommand::Ledger {} => serde_json::to_value(local.ledger()?),
         LocalCommand::ExportLogs { entries } => serde_json::to_value(local.export_logs(&entries)?),
         LocalCommand::Diagnostics { server } => {
             serde_json::to_value(local.diagnostics(server.as_deref()))

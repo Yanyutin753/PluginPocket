@@ -111,6 +111,37 @@ pub(crate) fn skill_files(
         .map_err(|_| "server returned an invalid skill files response")?;
     Ok(payload.files)
 }
+pub(crate) fn usage(server: &str, token: &str) -> Result<crate::UsagePage> {
+    let mut url = root_url(server)?;
+    url.set_path("/api/v1/account/usage");
+    url.set_query(Some("limit=100"));
+    let response = http()?
+        .get(url)
+        .bearer_auth(token)
+        .send()
+        .map_err(connection_error)?;
+    if !response.status().is_success() {
+        return Err("usage request failed; check the server and token");
+    }
+    response
+        .json()
+        .map_err(|_| "server returned an invalid usage response")
+}
+pub(crate) fn ledger(server: &str, token: &str) -> Result<crate::LedgerPage> {
+    let mut url = root_url(server)?;
+    url.set_path("/api/v1/account/ledger");
+    let response = http()?
+        .get(url)
+        .bearer_auth(token)
+        .send()
+        .map_err(connection_error)?;
+    if !response.status().is_success() {
+        return Err("ledger request failed; check the server and token");
+    }
+    response
+        .json()
+        .map_err(|_| "server returned an invalid ledger response")
+}
 pub(crate) fn validate_token(token: &str) -> Result<()> {
     if !token.starts_with("ppt_")
         || token.len() <= 4

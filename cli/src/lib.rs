@@ -26,6 +26,38 @@ pub struct Account {
     pub balance: i64,
     pub tools: Vec<serde_json::Value>,
 }
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct UsageCall {
+    pub id: i64,
+    pub tool: String,
+    pub cost: i64,
+    pub status: String,
+    pub duration_ms: i64,
+    pub created_at: String,
+    pub billing_role: String,
+    pub multiplier_bp: i64,
+}
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct UsagePage {
+    pub items: Vec<UsageCall>,
+    #[serde(default)]
+    pub next_cursor: String,
+}
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct LedgerEntry {
+    pub id: i64,
+    pub delta: i64,
+    pub kind: String,
+    pub note: String,
+    pub created_at: String,
+    pub balance_after: i64,
+}
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct LedgerPage {
+    pub items: Vec<LedgerEntry>,
+    #[serde(default)]
+    pub next_cursor: String,
+}
 #[derive(Debug, Serialize)]
 pub struct ClientState {
     pub client: ClientKind,
@@ -118,6 +150,14 @@ impl LocalClient {
             account: config::verify(&credentials.server, &credentials.token)?,
             clients: self.client_states()?,
         })
+    }
+    pub fn usage(&self) -> Result<UsagePage> {
+        let credentials = config::load(&self.config_path)?;
+        config::usage(&credentials.server, &credentials.token)
+    }
+    pub fn ledger(&self) -> Result<LedgerPage> {
+        let credentials = config::load(&self.config_path)?;
+        config::ledger(&credentials.server, &credentials.token)
     }
     pub fn doctor(&self, server: Option<&str>) -> Result<Doctor> {
         let credentials = if config::read(&self.config_path)?.is_some() {
