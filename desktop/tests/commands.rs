@@ -408,9 +408,14 @@ fn workbench_exports_only_selected_real_logs_to_a_new_private_file() {
     .unwrap();
     assert_eq!(first["count"], 1);
     let path = std::path::Path::new(first["path"].as_str().unwrap());
+    // home 来自已规范化的临时目录：macOS 会带 /private 前缀、Windows 为 \\?\ 与
+    // 完整用户名形式，两侧都规范化后比较目录归属。
+    let normalize = |path: &std::path::Path| -> std::path::PathBuf {
+        std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
+    };
     assert_eq!(
-        path.parent().unwrap(),
-        dir.path().join(".pluginpocket/exports")
+        normalize(path.parent().unwrap()),
+        normalize(&dir.path().join(".pluginpocket/exports"))
     );
     let contents = fs::read_to_string(path).unwrap();
     assert!(contents.contains(logs[1]["message"].as_str().unwrap()));

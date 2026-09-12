@@ -3,5 +3,9 @@
   "identifier": "local-main",
   "description": "Only the bundled main window can use local companion commands.",
   "windows": ["main"],
-  "permissions": ["allow-local-command", "updater:default", "process:allow-restart"]
+  "permissions": [
+    "allow-local-command",
+    "updater:default",
+    "process:allow-restart"
+  ]
 }
