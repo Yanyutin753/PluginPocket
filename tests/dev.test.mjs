@@ -243,7 +243,7 @@ test('a healthy proxy destination cannot hide failure to start the local Go serv
       JSON.stringify({
         service: 'pluginpocket',
         status: 'ok',
-        version: '0.1.0',
+        version: '0.3.0',
       }),
     );
   });

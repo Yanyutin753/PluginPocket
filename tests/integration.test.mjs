@@ -84,7 +84,7 @@ test('production health API exposes the canonical contract without caching', asy
     assert.deepEqual(await response.json(), {
       status: 'ok',
       service: 'pluginpocket',
-      version: '0.1.0',
+      version: '0.3.0',
     });
     const head = await request(path, { method: 'HEAD' });
     assert.equal(head.status, 200);
@@ -147,6 +147,6 @@ test('real Rust release CLI checks the same Go service', {
       },
     },
   );
-  assert.match(stdout, /PluginPocket 0\.1\.0 is reachable/);
+  assert.match(stdout, /PluginPocket 0\.3\.0 is reachable/);
   assert.equal(stderr, '');
 });

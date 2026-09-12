@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Yanyutin753/PluginPocket/server/internal/version"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -167,7 +168,7 @@ func (p *httpSessionPool) acquire(parent context.Context) (*upstreamSession, err
 	if retired {
 		err = context.Canceled
 	} else if session == nil {
-		client := mcp.NewClient(&mcp.Implementation{Name: "pluginpocket-upstream", Version: "0.2.0"}, nil)
+		client := mcp.NewClient(&mcp.Implementation{Name: "pluginpocket-upstream", Version: version.Version}, nil)
 		session, err = client.Connect(ctx, &mcp.StreamableClientTransport{Endpoint: p.url, HTTPClient: p.client, MaxRetries: -1, DisableStandaloneSSE: true}, nil)
 	}
 	p.mu.Lock()

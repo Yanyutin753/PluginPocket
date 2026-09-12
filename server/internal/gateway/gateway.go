@@ -15,6 +15,7 @@ import (
 	"github.com/Yanyutin753/PluginPocket/server/internal/cache"
 	"github.com/Yanyutin753/PluginPocket/server/internal/httpapi"
 	"github.com/Yanyutin753/PluginPocket/server/internal/store"
+	"github.com/Yanyutin753/PluginPocket/server/internal/version"
 	"github.com/dop251/goja"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"golang.org/x/sync/errgroup"
@@ -145,7 +146,7 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		httpapi.Fail(w, http.StatusServiceUnavailable, "gateway_unavailable")
 		return
 	}
-	server := mcp.NewServer(&mcp.Implementation{Name: "pluginpocket", Version: "0.2.0"}, nil)
+	server := mcp.NewServer(&mcp.Implementation{Name: "pluginpocket", Version: version.Version}, nil)
 	for _, binding := range bindings {
 		server.AddTool(binding.definition, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			return g.call(ctx, principal, binding, req.Params.Arguments), nil

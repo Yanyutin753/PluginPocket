@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/Yanyutin753/PluginPocket/server/internal/version"
 	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -115,7 +116,7 @@ func (g *Gateway) upstream(ctx context.Context, row toolRow) (*upstreamSession, 
 		if err = json.Unmarshal(raw, &cfg); err != nil {
 			return nil, err
 		}
-		client := mcp.NewClient(&mcp.Implementation{Name: "pluginpocket-upstream", Version: "0.2.0"}, nil)
+		client := mcp.NewClient(&mcp.Implementation{Name: "pluginpocket-upstream", Version: version.Version}, nil)
 		var transport mcp.Transport
 		switch row.Kind {
 		case "stdio":

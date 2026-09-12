@@ -147,10 +147,14 @@ jobs:
           cd cli/target/${{ matrix.target }}/release
           if [ "${{ runner.os }}" = "Windows" ]; then
             7z a ../../../${{ matrix.name }}.zip pluginpocket${{ matrix.ext }}
-            gh release upload ${{ github.ref_name }} ../../../${{ matrix.name }}.zip --clobber
+            cd ../../..
+            { sha256sum ${{ matrix.name }}.zip 2>/dev/null || shasum -a 256 ${{ matrix.name }}.zip; } > ${{ matrix.name }}-SHA256SUMS
+            gh release upload ${{ github.ref_name }} ${{ matrix.name }}.zip ${{ matrix.name }}-SHA256SUMS --clobber
           else
             tar czf ../../../${{ matrix.name }}.tar.gz pluginpocket${{ matrix.ext }}
-            gh release upload ${{ github.ref_name }} ../../../${{ matrix.name }}.tar.gz --clobber
+            cd ../../..
+            sha256sum ${{ matrix.name }}.tar.gz > ${{ matrix.name }}-SHA256SUMS
+            gh release upload ${{ github.ref_name }} ${{ matrix.name }}.tar.gz ${{ matrix.name }}-SHA256SUMS --clobber
           fi
 
   # Docker 镜像

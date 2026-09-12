@@ -12,9 +12,11 @@ import (
 	"time"
 
 	"github.com/Yanyutin753/PluginPocket/server/internal/config"
+	ppversion "github.com/Yanyutin753/PluginPocket/server/internal/version"
 )
 
-var version = "0.1.0"
+// Overridable at link time; defaults to the single version constant.
+var version = ppversion.Version
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))

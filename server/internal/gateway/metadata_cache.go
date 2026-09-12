@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Yanyutin753/PluginPocket/server/internal/version"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -60,7 +61,7 @@ func validToolDefinitions(definitions []*mcp.Tool) (valid bool) {
 	if definitions == nil {
 		return false
 	}
-	server := mcp.NewServer(&mcp.Implementation{Name: "pluginpocket-metadata", Version: "0.2.0"}, nil)
+	server := mcp.NewServer(&mcp.Implementation{Name: "pluginpocket-metadata", Version: version.Version}, nil)
 	names := make(map[string]bool, len(definitions))
 	for _, tool := range definitions {
 		if tool == nil || tool.Name == "" || names[tool.Name] {

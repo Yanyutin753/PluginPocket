@@ -36,6 +36,10 @@ if (import.meta.main) {
   const jsonVersion = (path) => JSON.parse(readFileSync(path, 'utf8')).version;
   const cargoVersion = (path) =>
     readFileSync(path, 'utf8').match(/^version = "([^"]+)"$/m)?.[1];
+  const goVersion = () =>
+    readFileSync('server/internal/version/version.go', 'utf8').match(
+      /^const Version = "([^"]+)"$/m,
+    )?.[1];
   const tauriConfig = JSON.parse(
     readFileSync('desktop/tauri.conf.json', 'utf8'),
   );
@@ -46,6 +50,7 @@ if (import.meta.main) {
       jsonVersion('desktop/ui/package.json'),
       cargoVersion('desktop/Cargo.toml'),
       cargoVersion('cli/Cargo.toml'),
+      goVersion(),
     ],
     process.env.TAURI_SIGNING_PRIVATE_KEY,
   );
