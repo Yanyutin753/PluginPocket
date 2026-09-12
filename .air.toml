@@ -4,7 +4,9 @@ tmp_dir = "build/dev"
 env_files = []
 
 [build]
-cmd = "cd server && CGO_ENABLED=0 go build -trimpath -o ../build/dev/pluginpocket-server ./cmd/pluginpocket-server"
+# -buildvcs=false: dev reload builds need no VCS stamping, and go build fails
+# obtaining VCS status when run outside a git repo on a separate filesystem (e.g. /tmp).
+cmd = "cd server && CGO_ENABLED=0 go build -trimpath -buildvcs=false -o ../build/dev/pluginpocket-server ./cmd/pluginpocket-server"
 entrypoint = ["./build/dev/pluginpocket-server"]
 include_dir = ["server"]
 include_ext = ["go", "sql", "mod", "sum"]

@@ -67,6 +67,56 @@ func gatewayDB(t *testing.T) *store.Store {
 	return s
 }
 
+// hostProxyTransport rewrites every request's Host header, simulating a
+// same-host reverse proxy that forwards to the loopback listener while
+// preserving the public domain clients actually dial.
+type hostProxyTransport struct {
+	http.RoundTripper
+	host string
+}
+
+func (t hostProxyTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	cloned := r.Clone(r.Context())
+	cloned.Host = t.host
+	return t.RoundTripper.RoundTrip(cloned)
+}
+
+func TestGatewayServesPublicHostBehindLoopbackListener(t *testing.T) {
+	s := gatewayDB(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var user, wallet int64
+	if err := s.Pool.QueryRow(ctx, "INSERT INTO users(username,password_hash) VALUES ('proxyhost','hash') RETURNING id").Scan(&user); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Pool.QueryRow(ctx, "INSERT INTO wallets(user_id,balance) VALUES ($1,5) RETURNING id", user).Scan(&wallet); err != nil {
+		t.Fatal(err)
+	}
+	raw := "ppt_loopback_proxy_host"
+	sum := sha256.Sum256([]byte(raw))
+	if _, err := s.Pool.Exec(ctx, "INSERT INTO tokens(user_id,wallet_id,name,prefix,token_hash) VALUES ($1,$2,'test','ppt_test',$3)", user, wallet, hex.EncodeToString(sum[:])); err != nil {
+		t.Fatal(err)
+	}
+	g := New(s, Options{})
+	defer g.Close()
+	server := httptest.NewServer(g)
+	defer server.Close()
+	hc, err := upstreamClient(server.URL, map[string]string{"Authorization": "Bearer " + raw}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hc.Transport = hostProxyTransport{RoundTripper: hc.Transport, host: "pluginpocket.example.com"}
+	client := mcp.NewClient(&mcp.Implementation{Name: "proxyhost", Version: "1"}, nil)
+	session, err := client.Connect(ctx, &mcp.StreamableClientTransport{Endpoint: server.URL + "/mcp", HTTPClient: hc, MaxRetries: -1, DisableStandaloneSSE: true}, nil)
+	if err != nil {
+		t.Fatalf("public Host behind loopback listener rejected connection: %v", err)
+	}
+	defer func() { _ = session.Close() }()
+	if _, err := session.ListTools(ctx, nil); err != nil {
+		t.Fatalf("tools/list with public Host behind loopback listener failed: %v", err)
+	}
+}
+
 func TestOfficialMCPClientAndLedger(t *testing.T) {
 	s := gatewayDB(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

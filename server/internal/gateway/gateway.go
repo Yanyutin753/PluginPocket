@@ -151,7 +151,12 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return g.call(ctx, principal, binding, req.Params.Arguments), nil
 		})
 	}
-	handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return server }, &mcp.StreamableHTTPOptions{Stateless: true, JSONResponse: true, PropagateRequestCancellation: true, MaxRequestBodyBytes: 1 << 20})
+	// DisableLocalhostProtection: the gateway is a token-authenticated public
+	// endpoint normally fronted by a same-host reverse proxy (loopback listener,
+	// public Host header). The SDK DNS-rebinding guard rejects exactly that
+	// topology; cross-site defenses are CrossOriginProtection wrapping this
+	// handler plus the Bearer auth above.
+	handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return server }, &mcp.StreamableHTTPOptions{Stateless: true, JSONResponse: true, PropagateRequestCancellation: true, MaxRequestBodyBytes: 1 << 20, DisableLocalhostProtection: true})
 	http.NewCrossOriginProtection().Handler(handler).ServeHTTP(w, r)
 }
 func toolError(message string) *mcp.CallToolResult {

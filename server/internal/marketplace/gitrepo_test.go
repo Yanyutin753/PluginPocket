@@ -31,7 +31,9 @@ func gitClone(t *testing.T, url, dir string) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git binary required")
 	}
-	clone := exec.CommandContext(t.Context(), "git", "clone", "--quiet", url, dir)
+	// git records only the executable bit; checkout applies the caller's umask.
+	// Pin it so the cloned permissions are deterministic regardless of environment.
+	clone := exec.CommandContext(t.Context(), "sh", "-c", "umask 022 && exec git clone --quiet \"$1\" \"$2\"", "git-clone", url, dir)
 	clone.Env = append(clone.Environ(), "GIT_CONFIG_NOSYSTEM=1", "HOME="+t.TempDir())
 	if out, err := clone.CombinedOutput(); err != nil {
 		t.Fatalf("git clone failed: %v\n%s", err, out)
