@@ -24,10 +24,15 @@ it('keeps each development instance dependency cache inside its isolated run dir
     expect(a.cacheDir).not.toBe(b.cacheDir);
   } finally {
     vi.unstubAllEnvs();
-    await Promise.all([
-      rm(first, { recursive: true, force: true }),
-      rm(second, { recursive: true, force: true }),
-    ]);
+    // Vite 冷缓存依赖优化器可能在 close() 后仍有最后一笔写入，ENOTEMPTY 需重试
+    const cleanup = (dir: string) =>
+      rm(dir, {
+        recursive: true,
+        force: true,
+        maxRetries: 10,
+        retryDelay: 200,
+      });
+    await Promise.all([cleanup(first), cleanup(second)]);
   }
 });
 
@@ -98,6 +103,11 @@ it('serves anonymous plugin documents and git files through the real development
       upstream.close((error) => (error ? reject(error) : resolve())),
     );
     vi.unstubAllEnvs();
-    await rm(runDir, { recursive: true, force: true });
+    await rm(runDir, {
+      recursive: true,
+      force: true,
+      maxRetries: 10,
+      retryDelay: 200,
+    });
   }
 }, 20000);
