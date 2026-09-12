@@ -1,9 +1,10 @@
 name: Build & Publish
 
+# tag 发行由 release.yml 全权承担（含同一镜像的 semver/latest 推送与 CLI 产物），
+# 这里只做分支持续构建；历史首次 tag 触发曾因 {{branch}} 为空产出非法 sha 标签。
 on:
   push:
     branches: [main]
-    tags: ['v*']
   workflow_dispatch:
 
 env:
@@ -40,7 +41,7 @@ jobs:
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
-            type=sha,prefix={{branch}}-
+            type=sha,prefix={{branch}}-,enable=${{ github.ref_type == 'branch' }}
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push image
