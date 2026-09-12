@@ -12,9 +12,9 @@
     "windows": [
       {
         "label": "main",
-        "title": "PluginPocket 本地接入",
-        "width": 960,
-        "height": 740,
+        "title": "PluginPocket · 装备管理台",
+        "width": 1180,
+        "height": 800,
         "minWidth": 360,
         "minHeight": 540,
         "create": false
@@ -28,7 +28,7 @@
     "active": true,
     "targets": "all",
     "category": "DeveloperTool",
-    "shortDescription": "PluginPocket 本地 MCP 接入工具",
+    "shortDescription": "PluginPocket 本地 AI 装备管理台",
     "macOS": {
       "signingIdentity": "-"
     },

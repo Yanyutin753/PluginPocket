@@ -234,6 +234,12 @@ pub(crate) fn load(path: &Path) -> Result<Credentials> {
     Ok(credentials)
 }
 pub(crate) fn atomic_write(path: &Path, bytes: &[u8]) -> Result<()> {
+    atomic_write_inner(path, bytes, true)
+}
+pub(crate) fn atomic_write_new(path: &Path, bytes: &[u8]) -> Result<()> {
+    atomic_write_inner(path, bytes, false)
+}
+fn atomic_write_inner(path: &Path, bytes: &[u8], replace: bool) -> Result<()> {
     safe_path(path)?;
     let parent = path
         .parent()
@@ -255,7 +261,11 @@ pub(crate) fn atomic_write(path: &Path, bytes: &[u8]) -> Result<()> {
         .sync_all()
         .map_err(|_| "could not sync configuration")?;
     safe_path(path)?;
-    file.persist(path)
-        .map_err(|_| "could not replace configuration atomically")?;
+    if replace {
+        file.persist(path)
+    } else {
+        file.persist_noclobber(path)
+    }
+    .map_err(|_| "could not save local file atomically")?;
     Ok(())
 }

@@ -1,5 +1,9 @@
 # PluginPocket —— 产品与技术总体方案
 
+2026-09-12 桌面装备管理台首期实施：概览、我的装备、运行日志与连接诊断侧栏；共享 CLI 读取本地托管清单并按实际客户端更新/卸载，持久化有界安全操作日志和 bridge 失败，诊断分项展示服务/凭证/配置/可执行文件。浏览器实时预览明确不具备原生能力，不返回模拟成功；版本及装备组来源未记录时不推断。范围见 `superpowers/specs/2026-09-12-desktop-workbench.md`，验收以执行记录为准。
+
+同轮用户反馈“MCP没有”：我的装备补充独立的 PluginPocket MCP 网关分组，复用真实账号工具目录和客户端接入状态，显示可用工具与实际 bridge 目标；本地直连与 Skill 仍按安装清单管理，不把网关工具伪装成本地安装项，网关接入回概览管理。
+
 2026-09-12 计费角色机制：`billing_roles`（name/multiplier_bp/description，种子 default 1.0× / member 0.8× / vip 0.5×）+ `users.billing_role`；倍率在 store 预留事务内按基点折算（`ceil(cost×bp/10000)`，10000bp 即原价），`usage_logs` 记录每笔生效角色与倍率，个人/团队/管理员用量与用户管理全链路展示；工具可声明 `allowed_roles` 角色门槛（空=全开放，非空仅列出的角色可调用，对标 new-api 分组开放）。管理员 `GET/PATCH /api/v1/admin/billing-roles` 调倍率、admin 用户 PATCH 指派角色、工具编辑器配置门槛。方案见 `superpowers/plans/2026-09-12-billing-roles.md`。
 
 2026-09-12 CLI 技能生命周期修复：更新按本地已保存清单识别托管目录，允许新版增加、删除附件并清理旧文件；卸载递归核对嵌套附件。外来文件、目录与符号链接继续阻止破坏性操作，执行记录见 `superpowers/plans/2026-09-12-cli-skill-lifecycle.md`。

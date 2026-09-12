@@ -2,6 +2,10 @@ pub mod bridge;
 pub(crate) mod clients;
 mod config;
 mod device;
+mod workbench;
+pub use workbench::{
+    DiagnosticCheck, Diagnostics, InstalledItem, InstalledKind, LogEntry, LogExport,
+};
 pub mod plugins;
 pub use device::DevicePrompt;
 pub use plugins::MarketItem;
@@ -43,6 +47,7 @@ pub struct LocalClient {
     pub home: PathBuf,
     pub config_path: PathBuf,
     pub executable: PathBuf,
+    log_write_failed: std::sync::atomic::AtomicBool,
 }
 impl LocalClient {
     pub fn new(home: PathBuf, config_path: PathBuf, executable: PathBuf) -> Result<Self> {
@@ -60,6 +65,7 @@ impl LocalClient {
             home: canonical_home,
             config_path,
             executable,
+            log_write_failed: std::sync::atomic::AtomicBool::new(false),
         })
     }
     pub fn from_env() -> Result<Self> {
@@ -76,6 +82,11 @@ impl LocalClient {
         )
     }
     pub fn login(&self, server: &str, token: &str) -> Result<Account> {
+        let result = self.login_inner(server, token);
+        self.record_operation("login", &result);
+        result
+    }
+    fn login_inner(&self, server: &str, token: &str) -> Result<Account> {
         config::safe_path(&self.config_path)?;
         let account = config::verify(server, token)?;
         let credentials = config::Credentials {
@@ -89,6 +100,11 @@ impl LocalClient {
         Ok(account)
     }
     pub fn logout(&self) -> Result<()> {
+        let result = self.logout_inner();
+        self.record_operation("logout", &result);
+        result
+    }
+    fn logout_inner(&self) -> Result<()> {
         config::safe_path(&self.config_path)?;
         match std::fs::remove_file(&self.config_path) {
             Ok(()) => Ok(()),
@@ -130,9 +146,13 @@ impl LocalClient {
         })
     }
     pub fn apply(&self, clients: &[ClientKind], direct: bool) -> Result<Vec<ClientState>> {
-        self.write_clients(clients, direct, false)
+        let result = self.write_clients(clients, direct, false);
+        self.record_operation("apply", &result);
+        result
     }
     pub fn remove(&self, clients: &[ClientKind]) -> Result<Vec<ClientState>> {
-        self.write_clients(clients, false, true)
+        let result = self.write_clients(clients, false, true);
+        self.record_operation("remove", &result);
+        result
     }
 }

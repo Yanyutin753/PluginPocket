@@ -73,7 +73,7 @@ pluginpocket login --device --server https://pluginpocket.example.com
 pluginpocket apply --clients codex,claude,cursor
 ```
 
-重启对应客户端，即可使用管理员已启用的工具；也可以用 [Tauri 桌面端](desktop/README.md) 管理本地接入。
+重启对应客户端，即可使用管理员已启用的工具；也可以用 [Tauri 桌面端](desktop/README.md) 的概览、我的装备、运行日志与连接诊断管理本地接入。
 
 ### 3. 安装市场装备
 

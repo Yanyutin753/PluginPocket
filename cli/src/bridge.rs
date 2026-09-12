@@ -12,8 +12,14 @@ use std::{path::PathBuf, time::Duration};
 struct Bridge {
     config_path: PathBuf,
     http: reqwest::Client,
+    local: Option<crate::LocalClient>,
 }
 impl Bridge {
+    fn record_failure(&self, error: &'static str) {
+        if let Some(local) = &self.local {
+            local.record_bridge_failure(error);
+        }
+    }
     async fn connect(&self) -> Result<RunningService<RoleClient, ()>> {
         // A new MCP client per operation uses current credentials and discards stale sessions.
         // The reqwest pool still reuses HTTP connections; never replay tool calls after failure.
@@ -64,11 +70,15 @@ impl ServerHandler for Bridge {
         _: RequestContext<RoleServer>,
     ) -> std::result::Result<ListToolsResult, ErrorData> {
         let mut upstream = self.connect().await.map_err(|message| {
+            self.record_failure(message);
             ErrorData::internal_error(format!("[pluginpocket] {message}"), None)
         })?;
         let result =
             tokio::time::timeout(Duration::from_secs(30), upstream.list_tools(request)).await;
         let _ = upstream.close().await;
+        if !matches!(&result, Ok(Ok(_))) {
+            self.record_failure("gateway request failed; no tool call was retried");
+        }
         result
             .map_err(|_| {
                 ErrorData::internal_error("[pluginpocket] gateway request timed out", None)
@@ -82,16 +92,23 @@ impl ServerHandler for Bridge {
     ) -> std::result::Result<CallToolResponse, ErrorData> {
         let mut upstream = match self.connect().await {
             Ok(upstream) => upstream,
-            Err(message) => return Ok(call_error(message)),
+            Err(message) => {
+                self.record_failure(message);
+                return Ok(call_error(message));
+            }
         };
         let result =
             tokio::time::timeout(Duration::from_secs(30), upstream.call_tool_once(request)).await;
         let _ = upstream.close().await;
+        if !matches!(&result, Ok(Ok(_))) {
+            self.record_failure("gateway request failed; no tool call was retried");
+        }
         match result {
             Ok(Ok(mut response)) => {
                 if let CallToolResponse::Complete(ref mut result) = response
                     && result.is_error == Some(true)
                 {
+                    self.record_failure("gateway tool returned an error");
                     for content in &mut result.content {
                         if let ContentBlock::Text(text) = content
                             && !text.text.starts_with("[pluginpocket]")
@@ -113,6 +130,13 @@ impl ServerHandler for Bridge {
 }
 /// Serve MCP on stdio. Diagnostics must go to stderr; stdout belongs to the SDK.
 pub async fn run(config_path: PathBuf) -> Result<()> {
+    run_inner(config_path, None).await
+}
+/// Desktop bridge uses its already validated local paths for safe persistent failure logs.
+pub async fn run_local(local: crate::LocalClient) -> Result<()> {
+    run_inner(local.config_path.clone(), Some(local)).await
+}
+async fn run_inner(config_path: PathBuf, local: Option<crate::LocalClient>) -> Result<()> {
     let http = reqwest::Client::builder()
         .timeout(Duration::from_secs(30))
         .connect_timeout(Duration::from_secs(5))
@@ -120,10 +144,14 @@ pub async fn run(config_path: PathBuf) -> Result<()> {
         .retry(reqwest::retry::never())
         .build()
         .map_err(|_| "could not initialize HTTP client")?;
-    let service = Bridge { config_path, http }
-        .serve(rmcp::transport::stdio())
-        .await
-        .map_err(|_| "MCP stdio initialization failed")?;
+    let service = Bridge {
+        config_path,
+        http,
+        local,
+    }
+    .serve(rmcp::transport::stdio())
+    .await
+    .map_err(|_| "MCP stdio initialization failed")?;
     service
         .waiting()
         .await

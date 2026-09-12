@@ -5,7 +5,10 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 
-vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }));
+vi.mock('@tauri-apps/api/core', () => ({
+  invoke: vi.fn(),
+  isTauri: () => true,
+}));
 const initialClients = [
   { client: 'codex', detected: true, configured: false },
   { client: 'claude', detected: true, configured: false },

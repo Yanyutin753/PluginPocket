@@ -260,6 +260,102 @@ fn endpoint_url(raw: &str) -> Result<&str> {
     }
 }
 impl LocalClient {
+    pub fn installed(&self) -> Result<Vec<crate::InstalledItem>> {
+        let mut items = std::collections::BTreeMap::<(String, String), crate::InstalledItem>::new();
+        for key in self.manifest()?.keys() {
+            let parts: Vec<_> = key.split(':').collect();
+            let (kind, owner, slug) = match parts.as_slice() {
+                [owner, slug] => ("mcp", *owner, *slug),
+                ["skill", owner, slug] => ("skill", *owner, *slug),
+                _ => continue,
+            };
+            validate_slug(slug)?;
+            let client = match owner {
+                "codex" => ClientKind::Codex,
+                "claude" => ClientKind::Claude,
+                "cursor" if kind == "mcp" => ClientKind::Cursor,
+                _ => return Err("invalid installed client record"),
+            };
+            let item =
+                items
+                    .entry((slug.into(), kind.into()))
+                    .or_insert_with(|| crate::InstalledItem {
+                        slug: slug.into(),
+                        kind: kind.into(),
+                        clients: Vec::new(),
+                        version: None,
+                    });
+            item.clients.push(client);
+        }
+        for item in items.values_mut() {
+            item.clients.sort_by_key(|client| match client {
+                ClientKind::Codex => 0,
+                ClientKind::Claude => 1,
+                ClientKind::Cursor => 2,
+            });
+        }
+        Ok(items.into_values().collect())
+    }
+    fn installed_target(
+        &self,
+        slug: &str,
+        kind: crate::InstalledKind,
+        clients: &[ClientKind],
+    ) -> Result<crate::InstalledItem> {
+        validate_slug(slug)?;
+        let mut item = self
+            .installed()?
+            .into_iter()
+            .find(|item| item.slug == slug && item.kind == kind.as_str())
+            .ok_or("equipment is not installed")?;
+        if clients.iter().any(|client| !item.clients.contains(client)) {
+            return Err("client is not an installed target");
+        }
+        if !clients.is_empty() {
+            item.clients.retain(|client| clients.contains(client));
+        }
+        Ok(item)
+    }
+    pub fn uninstall_installed(
+        &self,
+        slug: &str,
+        kind: crate::InstalledKind,
+        clients: &[ClientKind],
+    ) -> Result<()> {
+        let result = (|| {
+            let item = self.installed_target(slug, kind, clients)?;
+            if item.kind == "skill" {
+                self.uninstall_skill(slug, &item.clients)
+            } else {
+                self.uninstall_plugin(slug, &item.clients).map(|_| ())
+            }
+        })();
+        self.record_operation("uninstall_installed", &result);
+        result
+    }
+    pub fn update_installed(
+        &self,
+        slug: &str,
+        kind: crate::InstalledKind,
+        clients: &[ClientKind],
+    ) -> Result<()> {
+        let result = (|| {
+            let installed = self.installed_target(slug, kind, clients)?;
+            let items = self.market()?;
+            let item = items
+                .iter()
+                .find(|item| item.slug == slug)
+                .ok_or("equipment is no longer in the marketplace")?;
+            if item.kind != installed.kind || (item.kind == "mcp" && item.transport != "http") {
+                return Err(
+                    "installed equipment kind or transport changed; review the marketplace entry",
+                );
+            }
+            self.install_from(&items, slug, None, &installed.clients)
+        })();
+        self.record_operation("update_installed", &result);
+        result
+    }
     pub fn market(&self) -> Result<Vec<MarketItem>> {
         let credentials = config::load(&self.config_path)?;
         config::market(&credentials.server, &credentials.token)
@@ -304,8 +400,11 @@ impl LocalClient {
     }
     /// 一键安装市场条目：mcp 写客户端配置，skill 写技能目录，bundle 递归成员。
     pub fn install(&self, slug: &str, url: Option<&str>, clients: &[ClientKind]) -> Result<()> {
-        let items = self.market()?;
-        self.install_from(&items, slug, url, clients)
+        let result = self
+            .market()
+            .and_then(|items| self.install_from(&items, slug, url, clients));
+        self.record_operation("install", &result);
+        result
     }
     fn install_from(
         &self,
@@ -349,6 +448,11 @@ impl LocalClient {
     }
     /// 一键刷新全部托管插件/技能到服务端最新内容（bridge 条目除外——它本来就实时）。
     pub fn update(&self, clients: &[ClientKind]) -> Result<Vec<String>> {
+        let result = self.update_inner(clients);
+        self.record_operation("update", &result);
+        result
+    }
+    fn update_inner(&self, clients: &[ClientKind]) -> Result<Vec<String>> {
         let manifest = self.manifest()?;
         let mut slugs = std::collections::BTreeSet::new();
         for key in manifest.keys() {
@@ -379,8 +483,11 @@ impl LocalClient {
 
     /// 卸载市场条目；bundle 递归卸载成员。
     pub fn uninstall(&self, slug: &str, clients: &[ClientKind]) -> Result<()> {
-        let items = self.market()?;
-        self.uninstall_from(&items, slug, clients)
+        let result = self
+            .market()
+            .and_then(|items| self.uninstall_from(&items, slug, clients));
+        self.record_operation("uninstall", &result);
+        result
     }
     fn uninstall_from(
         &self,
@@ -591,6 +698,9 @@ impl LocalClient {
         clients: &[ClientKind],
         remove: bool,
     ) -> Result<Vec<ClientState>> {
+        if !remove {
+            endpoint_url(endpoint)?;
+        }
         let selected: Vec<ClientKind> = if clients.is_empty() {
             self.client_states()?
                 .into_iter()

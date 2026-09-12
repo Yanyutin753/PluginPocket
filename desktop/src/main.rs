@@ -81,11 +81,14 @@ fn main() -> ExitCode {
         let result = LocalClient::from_env().and_then(|local| {
             tokio::runtime::Runtime::new()
                 .map_err(|_| "could not start bridge runtime")?
-                .block_on(pluginpocket::bridge::run(local.config_path))
+                .block_on(pluginpocket::bridge::run_local(local))
         });
         return match result {
             Ok(()) => ExitCode::SUCCESS,
             Err(message) => {
+                if let Ok(local) = LocalClient::from_env() {
+                    local.record_bridge_failure(message);
+                }
                 eprintln!("pluginpocket: {message}");
                 ExitCode::FAILURE
             }

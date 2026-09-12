@@ -24,6 +24,15 @@ impl LocalClient {
         server: &str,
         present: impl FnOnce(&DevicePrompt) -> Result<()>,
     ) -> Result<Account> {
+        let result = self.login_device_inner(server, present);
+        self.record_operation("login", &result);
+        result
+    }
+    fn login_device_inner(
+        &self,
+        server: &str,
+        present: impl FnOnce(&DevicePrompt) -> Result<()>,
+    ) -> Result<Account> {
         config::safe_path(&self.config_path)?;
         let mut url = config::root_url(server)?;
         url.set_path("/api/v1/device/authorize");
@@ -92,7 +101,7 @@ impl LocalClient {
                 let result: Token = response
                     .json()
                     .map_err(|_| "server returned an invalid device token")?;
-                return self.login(server, &result.token);
+                return self.login_inner(server, &result.token);
             }
             let status = response.status().as_u16();
             #[derive(Deserialize)]

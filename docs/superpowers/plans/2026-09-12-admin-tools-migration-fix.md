@@ -9,7 +9,7 @@ SQLite 没有运行中服务受此旧 PG 状态影响，031 已定义该列；�
 ## 验收与执行
 
 - RED：加载 .env 后，`cd server && go test ./internal/store -run "TestToolAllowedRolesUpgrade|TestSQLiteToolAllowedRolesUpgrade" -count=1`。original_031 用例失败：upgraded tools must be readable / column allowed_roles does not exist (42703)；已有列和 SQLite 用例通过。
-- GREEN / 回归 / make check：待运行。
+- GREEN / 回归 / make check：结果见下方执行记录。
 - 验收：旧库升级后工具可读取且名称/价格保留；完整 031 已有 vip 限制不变；重复迁移安全；真实开发 API 不再返回 500。
 
 - GREEN：`cd server && go test -race ./internal/store -run "TestToolAllowedRolesUpgrade|TestSQLite" -count=1` 通过（25.005s），包含双方言升级/重复执行及 SQLite 全轨道回归。
@@ -17,3 +17,6 @@ SQLite 没有运行中服务受此旧 PG 状态影响，031 已定义该列；�
 - 独立静态代码审查：未发现具体正确性问题。
 - REFACTOR：最小 SQL 补偿，无额外生产代码重构。
 - 相关回归：`cd server && go test -race ./internal/store ./internal/app -count=1` 通过（store 32.834s、app 167.344s）。
+
+- 全量：加载 .env 并将已安装 Node 26.8.2/pnpm、Go、Cargo 加入 PATH 后，`make check` 最终退出 0；覆盖 lint、Go race、CLI、Web、桌面构建/测试、真实产品旅程、process/dev/HTTP integration。完整日志 `.loadout/admin-tools-fix-check.log`。前两次因 shell PATH 缺少 pnpm/Go 在 lint 阶段退出，修正运行环境后重新完整执行成功。
+- 未验证范围：本次不涉及 UI 改动，未进行桌面/移动端人工视觉检查或真实桌面 GUI 操作；HTTP 冒烟证明接口恢复，不能代替这些视觉验收。

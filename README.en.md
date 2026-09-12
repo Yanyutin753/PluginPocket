@@ -73,7 +73,7 @@ pluginpocket login --device --server https://pluginpocket.example.com
 pluginpocket apply --clients codex,claude,cursor
 ```
 
-Restart your clients to use the administrator-enabled tools. The [Tauri desktop companion](desktop/README.md) also manages local connections.
+Restart your clients to use the administrator-enabled tools. The [Tauri desktop companion](desktop/README.md) manages local connections through Overview, My Equipment, Operation Logs, and Connection Diagnostics.
 
 ### 3. Install from the marketplace
 

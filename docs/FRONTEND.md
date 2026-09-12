@@ -38,6 +38,9 @@ TypeScript strict 开启，禁止 any、无说明 ts-ignore、非空断言掩盖
 
 ## 状态与请求
 
+- 原生桌面工作台的四页复用 TanStack Query 与 Zod 校验受限命令结果；浏览器预览禁用原生查询与写入，显示能力不可用说明。装备行以 `kind + slug` 标识，更新/卸载携带实际安装目标；类型与客户端筛选不推断版本或装备组来源。日志导出调用受限 `export_logs`，原生端校验所选记录并在固定 `.pluginpocket/exports/` 目录生成文件，UI 展示返回的实际路径，不能把触发下载当成保存成功。
+- 桌面诊断逐项显示服务、凭证、客户端配置与可执行文件结果；不因一个失败丢弃其余结果，不将健康检查等同 MCP 调用成功。日志最多 200 条安全摘要，不展示令牌或请求内容。Skill 卸载确认必须说明已编辑的托管文件也会删除并提示备份，不能笼统承诺保留所有手动改动。
+- 我的装备的网关区复用真实 `status` 查询，从账号工具目录与已配置 bridge 的客户端展示服务端托管能力；搜索、类型和客户端筛选同样适用，管理入口切回概览。本地 `installed` 清单仍只负责直连 MCP/Skill 文件管理；账号验证返回的已启用工具目录不作为调用授权或真实 MCP 调用成功的证据。
 - 服务端状态归 Query；局部交互归 useState；可分享的筛选将归 URL。不可把所有状态搬进全局 store。
 - 网络请求传 AbortSignal、合理超时；组件卸载取消；显示 loading/error/empty/success。
 - 健康检查禁用 HTTP 缓存和自动重试，用户主动重试；即使 navigator 报告离线也要尝试检查本地服务，失败后清除已连接展示；后台查询按业务设置 staleTime，不沿用健康检查设置到所有查询。
@@ -67,7 +70,7 @@ Web 正文优先自托管 Manrope 与中文系统字体；桌面端优先系统 
 
 Web 的 index.html 提供中文初始标题、产品描述、theme-color 与 color-scheme，运行时标题随实际语言更新。favicon 从原创 workshop-mark 本地派生：透明 16/32/48px ICO 和 16/32px PNG；apple-touch-icon 为中性底 180px，manifest 引用透明 192/512px PNG（purpose any）。图标以同一角色与安全留白保持一致；不使用生产站绝对 URL。site.webmanifest 只声明应用展示元数据，未注册 Service Worker，不承诺离线可用。
 
-桌面 index.html 使用“PluginPocket · 本地接入”初始标题与打包内相对 favicon，不硬编码 dark class；主题由现有设置逻辑决定。两端构建后应检查 HTML/manifest 引用都落在各自 dist 内。
+桌面 index.html 使用“PluginPocket · 装备管理台”初始标题与打包内相对 favicon，不硬编码 dark class；主题由现有设置逻辑决定。两端构建后应检查 HTML/manifest 引用都落在各自 dist 内。
 
 
 公共首页为 LandingPage，账户概览使用 /overview。品牌专用 Bricolage 字体只用于字标，许可与原始字体来源随仓库保存。偏好控件前置图标必须在可点击 trigger 内；选中、hover、键盘焦点分别表达。桌面侧栏可收起为图标栏，所有链接保留可访问名称；账号退出在右上菜单，失败可重试。左下账号设置入口是导航，不直接执行退出。
@@ -89,3 +92,7 @@ Web 的 index.html 提供中文初始标题、产品描述、theme-color 与 col
 工具列表以名称、短说明、调用成本与文字状态组织，参数进入右侧详情；工具/套餐编辑、插件市场与安装、用户调账、令牌/兑换码创建、团队操作、邮箱及系统配置复用 SidePanel（已安装的 Radix Dialog）。桌面宽 560px、窄屏全宽、标题与关闭固定、正文独立滚动；Escape 与关闭返回触发入口，提交中和一次性凭据未隐藏时阻止误关。系统配置主页面只呈现真实状态摘要。
 
 2026-09-12 全站质量修正：手机输入与文本框16px，市场类型按钮两列；SidePanel长标题不挤压固定操作栏。桌面客户端刷新或检测失败禁止写入配置，恢复后保留选择，新的操作清除旧成功/错误反馈。行为与构建验证见 `superpowers/plans/2026-09-12-quality-review.md`，不代表实际 GUI 视觉已验收。
+
+桌面工作台概览双栏断点为900px，760px以下切换顶部导航；原生窗口默认1180×800。2026-09-12已通过computer-use人工查看WSLg原生概览与装备页截图，未使用浏览器自动化；手机、Windows/macOS原生字体与布局仍未验收。
+
+工作台固定100dvh，顶部与侧栏留在网格中，main采用独立滚动、overscroll-behavior及stable gutter；侧栏内容过高时独立可滚动。原生滚动前后截图确认侧栏与顶部不移动。

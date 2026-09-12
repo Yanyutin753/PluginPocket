@@ -40,6 +40,15 @@ async fn installed_desktop_binary_runs_bridge_without_gui_and_exits_on_stdin_clo
         );
         service.close().await.unwrap();
         assert!(child.wait().await.unwrap().success());
+        let entries: serde_json::Value = serde_json::from_slice(
+            &std::fs::read(dir.path().join(".pluginpocket/operations.json"))
+                .expect("bridge failures are persisted"),
+        )
+        .unwrap();
+        assert_eq!(entries[0]["action"], "bridge");
+        assert_eq!(entries[0]["level"], "error");
+        assert!(entries[0]["message"].as_str().unwrap().contains("登录"));
+        assert!(!entries.to_string().contains("ppt_"));
     })
     .await
     .expect("native bridge watchdog");
