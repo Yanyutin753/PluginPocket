@@ -56,6 +56,10 @@
 - 修复 2：ci.yml（web/desktop job）与 release.yml（desktop job 的 UI 测试与 tauri build）直接调用 pnpm 脚本处统一加 `--config.verify-deps-before-run=install`；CI 内 frozen install 刚完成、策略为 install 仅在状态不可读时补装，不削弱本地 error 策略；make 内部调用的 pnpm 无法加参数，但相关 job 均为 ubuntu，未观察到该偶发。
 - 并行会话曾以 `44c5f9f` 在 `.npmrc` 加 `verify-deps-before-run=false` 修同一问题；本地复测证明 `.npmrc` 无法覆盖 `pnpm-workspace.yaml`（该行为 no-op），且若未来 pnpm 调整优先级会静默关闭本地保护，故删除该行，保留上述按命令生效的 install 自愈方案。
 
+## 最终验收（run 34671545802，2026-09-12）
+
+CI `success` 13m45s，12/12 job 全绿：Lint 4m39s、Server 7m2s、Web 55s、Desktop 三平台（linux 4m12s / mac 5m23s / win 7m37s）、CLI 三平台、SQLite 双方言 1m7s、容器 1m9s、E2E 13m45s 内完成；同批 Build & Publish 亦 success（2m15s）。两处偶发修复（Web ENOTEMPTY、Windows verify-deps）均在远端复验通过。
+
 ## 未验证范围（如实说明）
 
 - 新工作流未在 GitHub runner 上实际执行过：远端 CI 首跑是最终证明。各 job 命令与原 `make check`/旧工作流步骤逐字相同或为其直接子集，风险集中在 job 环境拼装（已按旧 harness 的 services/apt/工具链步骤镜像）。
