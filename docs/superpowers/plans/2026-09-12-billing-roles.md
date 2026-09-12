@@ -72,3 +72,9 @@
 - **回归保障**：默认角色 10000bp 下既有账本/团队/并发测试全部不变（倍率恒等）。
 - 全量 `make check` 结果见 `.loadout/billing-roles-check.log`。
 - 未验证范围：浏览器自动化按项目要求未使用；管理端编辑/用量徽标的桌面与移动端视觉人工检查待用户执行；`recordDenied` 的角色列读取失败时回退 default/10000（不阻塞拒绝留痕）。
+
+## CI 验证（2026-09-12 终态）
+
+- `make check` 退出 0（`.loadout/billing-roles-check.log`）；提交 `052bb99` 推送后经 CI 全量绿：
+  run 34671545802（Server -race / Desktop×3 / CLI×3 / SQLite 双方言迁移 / Vitest / Lint / 容器 / E2E 全部通过）。
+- 期间两次 CI 抖动均已闭环：PluginProxy 的 Vite deps_temp 清理竞态（并行会话重试修复）、Windows 桌面作业 pnpm verify-deps（workspace yaml 正确修法）。
