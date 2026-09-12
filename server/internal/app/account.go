@@ -67,6 +67,25 @@ type userQuerier interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
 }
 
+// currentUserOrToken resolves the caller from a Bearer ppt_ token first
+// (CLI/desktop workbench), falling back to the browser session. Only personal
+// read endpoints shared with the desktop use it; admin surfaces stay cookie-only.
+func (a *application) currentUserOrToken(w http.ResponseWriter, r *http.Request) (User, bool) {
+	if header := r.Header.Get("Authorization"); strings.HasPrefix(header, "Bearer ") {
+		if a.s == nil {
+			fail(w, 401, "unauthorized")
+			return User{}, false
+		}
+		p, e := a.s.AuthToken(r.Context(), strings.TrimPrefix(header, "Bearer "))
+		if e != nil {
+			fail(w, 401, "unauthorized")
+			return User{}, false
+		}
+		return User{ID: p.UserID, Username: p.Username, Role: p.Role, Enabled: true}, true
+	}
+	return a.currentUser(w, r, false)
+}
+
 // Read authorization after business locks using a fresh database statement timestamp.
 func currentUserQuery(w http.ResponseWriter, r *http.Request, admin bool, q userQuerier) (User, bool) {
 	var u User
@@ -471,7 +490,7 @@ func (a *application) revokeToken(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(204)
 }
 func (a *application) usage(w http.ResponseWriter, r *http.Request) {
-	u, ok := a.currentUser(w, r, false)
+	u, ok := a.currentUserOrToken(w, r)
 	if !ok {
 		return
 	}

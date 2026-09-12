@@ -274,6 +274,58 @@ func TestTokenCursorAndUsageAreUserScoped(t *testing.T) {
 		t.Fatalf("usage isolation %d %s", w.Code, w.Body)
 	}
 }
+func TestUsageAndLedgerAcceptScopedBearerToken(t *testing.T) {
+	alice, admin, h, exec := adminFixture(t)
+	bob := register(t, h, "bob")
+	w := request(h, "POST", "/api/v1/account/tokens", `{"name":"Desktop"}`, alice)
+	if w.Code != 201 {
+		t.Fatalf("create token %d %s", w.Code, w.Body)
+	}
+	var created struct{ Token string }
+	if e := json.Unmarshal(w.Body.Bytes(), &created); e != nil {
+		t.Fatal(e)
+	}
+	w = request(h, "POST", "/api/v1/admin/redemption-codes", `{"credits":5,"note":"alice grant"}`, admin)
+	if w.Code != 201 {
+		t.Fatalf("code for alice %d %s", w.Code, w.Body)
+	}
+	var aliceCode struct{ Code string }
+	_ = json.Unmarshal(w.Body.Bytes(), &aliceCode)
+	if w = request(h, "POST", "/api/v1/account/redeem", fmt.Sprintf(`{"code":%q}`, aliceCode.Code), alice); w.Code != 200 {
+		t.Fatalf("alice redeem %d %s", w.Code, w.Body)
+	}
+	w = request(h, "POST", "/api/v1/admin/redemption-codes", `{"credits":6,"note":"bob grant"}`, admin)
+	var bobCode struct{ Code string }
+	_ = json.Unmarshal(w.Body.Bytes(), &bobCode)
+	if w = request(h, "POST", "/api/v1/account/redeem", fmt.Sprintf(`{"code":%q}`, bobCode.Code), bob); w.Code != 200 {
+		t.Fatalf("bob redeem %d %s", w.Code, w.Body)
+	}
+	exec("INSERT INTO usage_logs(user_id,token_id,wallet_id,tool,cost,status,request_key) SELECT user_id,id,wallet_id,'her-tool',0,'denied','test' FROM tokens WHERE user_id=(SELECT id FROM users WHERE username='alice')")
+	exec("INSERT INTO usage_logs(user_id,token_id,wallet_id,tool,cost,status,request_key) SELECT user_id,id,wallet_id,'private',0,'denied','test' FROM tokens WHERE user_id=(SELECT id FROM users WHERE username='bob')")
+	bearer := func(path string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest("GET", "http://example.com"+path, nil)
+		r.Header.Set("Authorization", "Bearer "+created.Token)
+		wr := httptest.NewRecorder()
+		h.ServeHTTP(wr, r)
+		return wr
+	}
+	if w = bearer("/api/v1/account/usage"); w.Code != 200 || !strings.Contains(w.Body.String(), "her-tool") || strings.Contains(w.Body.String(), "private") {
+		t.Fatalf("bearer usage %d %s", w.Code, w.Body)
+	}
+	if w = bearer("/api/v1/account/ledger"); w.Code != 200 || !strings.Contains(w.Body.String(), `"delta":5`) || strings.Contains(w.Body.String(), `"delta":6`) {
+		t.Fatalf("bearer ledger %d %s", w.Code, w.Body)
+	}
+	if w = bearer("/api/v1/account/usage?limit=101"); w.Code != 400 {
+		t.Fatalf("bearer invalid pagination %d", w.Code)
+	}
+	r := httptest.NewRequest("GET", "http://example.com/api/v1/account/usage", nil)
+	r.Header.Set("Authorization", "Bearer ppt_forged")
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Code != 401 {
+		t.Fatalf("forged bearer %d", w.Code)
+	}
+}
 func TestAdjustmentReplayReturnsOriginalBalanceAndRecordsActor(t *testing.T) {
 	s, h := setup(t)
 	register(t, h, "alice")

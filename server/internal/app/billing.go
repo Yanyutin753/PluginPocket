@@ -282,7 +282,7 @@ func ledgerKind(w http.ResponseWriter, r *http.Request) (string, bool) {
 	}
 }
 func (a *application) ledger(w http.ResponseWriter, r *http.Request) {
-	u, ok := a.currentUser(w, r, false)
+	u, ok := a.currentUserOrToken(w, r)
 	if !ok {
 		return
 	}
