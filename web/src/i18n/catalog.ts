@@ -123,6 +123,10 @@ export const en: Record<string, string> = {
   团队用量: 'Team usage',
   '逐次查看工具调用、执行结果与实际消耗。':
     'Review each tool call, its result, and actual credit usage.',
+  用量概览: 'Usage overview',
+  当前页记录: 'Records on this page',
+  当前页合计: 'Page total',
+  当前页失败调用: 'Failed calls on this page',
   工具筛选: 'Filter by tool',
   工具标识: 'Tool identifier',
   结果筛选: 'Filter by result',

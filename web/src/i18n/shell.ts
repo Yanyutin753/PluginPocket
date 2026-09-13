@@ -70,6 +70,9 @@ export const shell: Record<string, string> = {
   今日调用: 'Calls today',
   本月消耗: 'Credits this month',
   有效令牌: 'Active tokens',
+  今日暂无调用: 'No calls today',
+  本月暂无消耗: 'No credits used this month',
+  当前暂无有效令牌: 'No active tokens yet',
   让工具接入你的工作流: 'Better tools. In your flow.',
   '为每台设备创建独立令牌，再通过本地 CLI 登录并配置客户端。':
     'Create a token for each device, then connect your clients with the CLI.',

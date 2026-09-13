@@ -65,6 +65,10 @@
   box-shadow: none;
   animation: none;
 }
+.side-panel-heading h2 {
+  font-size: 17px;
+  font-weight: 700;
+}
 .side-panel-body :is(.editor-panel, .adjustment-panel) > h2 {
   display: none;
 }
@@ -112,4 +116,24 @@
   .side-panel {
     animation: none;
   }
+}
+
+.side-panel {
+  box-shadow:
+    -16px 0 64px color-mix(in srgb, var(--foreground) 12%, transparent),
+    inset 1px 0 0 color-mix(in srgb, var(--foreground) 5%, transparent);
+}
+.side-panel-heading {
+  border-bottom-color: color-mix(in srgb, var(--border) 70%, transparent);
+}
+.side-panel-body {
+  gap: 28px;
+}
+.side-panel-body > :is(section, fieldset, form) + :is(section, fieldset, form) {
+  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  padding-top: 24px;
+}
+.side-panel-body .action-row:last-child {
+  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  padding-top: 20px;
 }

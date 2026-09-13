@@ -37,7 +37,7 @@ export default function LandingPage() {
               {t('支持 Codex · Claude Code · Cursor')}
             </p>
           </div>
-          <div className="landing-hero-art">
+          <div className="landing-hero-art landing-hero-stage">
             <img
               src="/images/workshop-welcome.webp"
               alt={t('薄荷绿色工具箱伙伴打开装满 AI 工具的工作台')}
@@ -148,7 +148,12 @@ export default function LandingPage() {
             </li>
           </ol>
           <div className="landing-terminal">
-            <div>
+            <div className="landing-terminal-window">
+              <span className="terminal-dots" aria-hidden="true">
+                <i />
+                <i />
+                <i />
+              </span>
               <Terminal aria-hidden="true" />
               <span>{t('已安装 PluginPocket CLI？从终端连接。')}</span>
             </div>

@@ -24,7 +24,7 @@ export default function DevicePage() {
       <Heading title={t('设备授权')} artwork="device">
         {t('将本地 CLI 或桌面客户端连接到你的账号。')}
       </Heading>
-      <section className="editor-panel">
+      <section className="editor-panel device-authorization-panel">
         <p>
           {t(
             '请确认下面的授权码与你自己设备上显示的一致。批准后，该设备可以使用你的额度调用工具。',

@@ -206,7 +206,7 @@ function Catalog() {
                     <span className="catalog-monogram" aria-hidden="true">
                       {Array.from(item.name.trim()).slice(0, 2).join('')}
                     </span>
-                    <span className="catalog-kind">
+                    <span className="catalog-kind" data-tone={item.kind}>
                       <Icon aria-hidden="true" />
                       {t(
                         kinds.find(([value]) => value === item.kind)?.[1] ??

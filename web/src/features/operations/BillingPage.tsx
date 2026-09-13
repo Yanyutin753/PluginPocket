@@ -117,7 +117,7 @@ export default function BillingPage() {
               <li key={plan.id}>
                 <div className="record-main">
                   <h3>{plan.name}</h3>
-                  <p>
+                  <p className="record-values numeric">
                     {t('{credits} 额度 · {price}', {
                       credits: number(plan.credits, locale),
                       price: price(plan.price_cents, plan.currency, locale),

@@ -41,7 +41,7 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px 24px;
-  padding: 16px 20px;
+  padding: 12px 14px;
 }
 .market-record-title,
 .market-record-meta {

@@ -1,4 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
+import { Activity, AlertTriangle, ChartNoAxesCombined } from 'lucide-react';
 import { useState } from 'react';
 import { useParams, useSearchParams } from 'react-router';
 import { Pagination } from '@/components/Pagination';
@@ -57,6 +58,36 @@ export default function UsagePage({
       >
         {t('逐次查看工具调用、执行结果与实际消耗。')}
       </Heading>
+      {usage.data && (
+        <dl className="stats-grid usage-stats" aria-label={t('用量概览')}>
+          {(
+            [
+              [t('调用次数'), usage.items.length, Activity, t('当前页记录')],
+              [
+                t('消耗额度'),
+                usage.items.reduce((sum, item) => sum + item.cost, 0),
+                ChartNoAxesCombined,
+                t('当前页合计'),
+              ],
+              [
+                t('失败次数'),
+                usage.items.filter((item) => item.status === 'error').length,
+                AlertTriangle,
+                t('当前页失败调用'),
+              ],
+            ] as const
+          ).map(([label, value, Icon, note]) => (
+            <div key={String(label)} className="stat-card">
+              <dt>
+                {label}
+                <Icon aria-hidden="true" className="stat-icon" />
+              </dt>
+              <dd>{number(Number(value), locale)}</dd>
+              <p className="stat-note">{note}</p>
+            </div>
+          ))}
+        </dl>
+      )}
       <form
         key={filter.toString()}
         onSubmit={(event) => {

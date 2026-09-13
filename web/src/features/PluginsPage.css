@@ -85,6 +85,18 @@
   background: var(--card);
   color: var(--foreground);
   border-color: var(--input-border);
+  box-shadow: inset 0 1px 0
+    color-mix(in srgb, var(--foreground) 4%, transparent);
+  transition:
+    background-color 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease;
+}
+.catalog-search [data-slot="input"]:focus-visible {
+  background: color-mix(in srgb, var(--primary) 3%, var(--card));
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--primary) 32%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--foreground) 4%, transparent);
 }
 .catalog-toolbar {
   border-bottom: 1px solid var(--border);
@@ -138,15 +150,28 @@
   padding: 22px;
   border: 1px solid var(--border);
   border-radius: 16px;
-  background: var(--card);
+  background: linear-gradient(
+    180deg,
+    var(--card),
+    color-mix(in srgb, var(--card) 96%, var(--background))
+  );
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--foreground) 5%, transparent),
+    var(--shadow-sm);
   transition:
-    border-color 160ms ease,
-    background-color 160ms ease;
+    border-color 180ms ease,
+    background-color 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease;
 }
 .catalog-card:hover,
 .catalog-card:focus-within {
-  border-color: var(--input-border);
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
   background: color-mix(in srgb, var(--primary) 3%, var(--card));
+  transform: translateY(-4px);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--foreground) 5%, transparent),
+    var(--shadow-md);
 }
 .catalog-card-top {
   display: flex;
@@ -161,11 +186,12 @@
   display: grid;
   place-items: center;
   border-radius: 14px;
-  background: color-mix(in srgb, var(--success) 12%, var(--card));
+  background: color-mix(in srgb, var(--primary) 8%, var(--card));
   color: var(--success);
   font-size: 19px;
   font-weight: 800;
   letter-spacing: -0.03em;
+  box-shadow: var(--shadow-sm);
 }
 .catalog-card[data-kind="skill"] .catalog-monogram {
   color: var(--link);
@@ -179,8 +205,25 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 12px;
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 14px;
   color: var(--muted-foreground);
+  background: color-mix(in srgb, var(--foreground) 6%, var(--card));
+}
+.catalog-kind[data-tone="mcp"] {
+  color: var(--link);
+  background: color-mix(in srgb, var(--primary) 12%, var(--card));
+}
+.catalog-kind[data-tone="skill"] {
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 12%, var(--card));
+}
+.catalog-kind[data-tone="bundle"] {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 8%, var(--card));
 }
 .catalog-kind svg {
   width: 14px;
@@ -344,6 +387,7 @@
     gap: 4px;
   }
   .catalog-filters button {
+    min-height: 40px;
     justify-content: space-between;
     padding-inline: 6px;
     gap: 5px;

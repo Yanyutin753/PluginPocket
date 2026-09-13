@@ -63,12 +63,23 @@ export default function OverviewPage() {
         <h2 id="account-overview">{t('账号概览')}</h2>
         <dl className="stats-grid">
           {stats.map(([label, value, Icon]) => (
-            <div key={label}>
+            <div key={label} className="stat-card">
               <dt>
                 {t(label)}
-                <Icon aria-hidden="true" />
+                <Icon aria-hidden="true" className="stat-icon" />
               </dt>
               <dd>{number(value, locale)}</dd>
+              {value === 0 && (
+                <p className="stat-note">
+                  {t(
+                    label === '今日调用'
+                      ? '今日暂无调用'
+                      : label === '本月消耗'
+                        ? '本月暂无消耗'
+                        : '当前暂无有效令牌',
+                  )}
+                </p>
+              )}
             </div>
           ))}
         </dl>

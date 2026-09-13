@@ -91,7 +91,7 @@ export default function CodesPage() {
         {list.items.map((item) => (
           <li key={item.id}>
             <div className="record-main">
-              <h2>
+              <h2 className="numeric">
                 {t('{credits} 额度', {
                   credits: number(item.credits, locale),
                 })}

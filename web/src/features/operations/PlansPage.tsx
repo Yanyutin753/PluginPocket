@@ -180,7 +180,7 @@ export default function PlansPage() {
           <li key={item.id}>
             <div className="record-main">
               <h2>{item.name}</h2>
-              <p>
+              <p className="record-values numeric">
                 {t('{credits} 额度 · {price}', {
                   credits: number(item.credits, locale),
                   price: price(item.price_cents, item.currency, locale),

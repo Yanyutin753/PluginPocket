@@ -80,6 +80,15 @@
   --signal-yellow: #f2ce60;
   --signal-mint: #93bc98;
   --radius: 1rem;
+  --shadow-sm:
+    0 1px 2px color-mix(in srgb, var(--foreground) 6%, transparent),
+    0 4px 12px color-mix(in srgb, var(--foreground) 5%, transparent);
+  --shadow-md:
+    0 2px 4px color-mix(in srgb, var(--foreground) 7%, transparent),
+    0 10px 28px color-mix(in srgb, var(--foreground) 8%, transparent);
+  --shadow-lg:
+    0 4px 8px color-mix(in srgb, var(--foreground) 8%, transparent),
+    0 18px 48px color-mix(in srgb, var(--foreground) 10%, transparent);
   font-family: Manrope, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -101,11 +110,21 @@
   --primary-foreground: #202124;
   --success: #a0d6ab;
   --destructive: #ffb3a6;
+  --shadow-sm:
+    0 1px 2px color-mix(in srgb, var(--foreground) 18%, transparent),
+    0 4px 12px color-mix(in srgb, var(--foreground) 12%, transparent);
+  --shadow-md:
+    0 2px 4px color-mix(in srgb, var(--foreground) 20%, transparent),
+    0 10px 28px color-mix(in srgb, var(--foreground) 16%, transparent);
+  --shadow-lg:
+    0 4px 8px color-mix(in srgb, var(--foreground) 22%, transparent),
+    0 18px 48px color-mix(in srgb, var(--foreground) 18%, transparent);
 }
 @layer base {
   * {
     border-color: var(--border);
-    scrollbar-color: var(--border) transparent;
+    scrollbar-color: color-mix(in srgb, var(--border) 70%, transparent)
+      transparent;
     scrollbar-width: thin;
   }
   body {
@@ -134,11 +153,11 @@
   }
   :focus-visible {
     outline: 2px solid var(--focus);
-    outline-offset: 4px;
+    outline-offset: 2px;
   }
   ::selection {
-    background: var(--primary);
-    color: var(--primary-foreground);
+    background: color-mix(in srgb, var(--primary) 34%, var(--background));
+    color: var(--foreground);
   }
   code {
     font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
@@ -161,6 +180,19 @@
       border-color 160ms;
     font-weight: 600;
   }
+  [data-slot="button"][data-variant="default"] {
+    background: linear-gradient(
+      180deg,
+      var(--primary),
+      color-mix(in srgb, var(--primary) 88%, var(--foreground))
+    );
+    box-shadow:
+      0 1px 2px color-mix(in srgb, var(--primary) 35%, transparent),
+      0 4px 12px color-mix(in srgb, var(--primary) 25%, transparent);
+  }
+  [data-slot="button"][data-variant="default"]:enabled:active {
+    transform: translateY(1px);
+  }
   [data-slot="input"] {
     background: var(--card);
     border-color: var(--input-border);
@@ -180,6 +212,10 @@
 }
 /* App surface styles override vendor utility defaults without changing vendor code. */
 @layer utilities {
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
   [data-slot="button"] {
     border-radius: 12px;
     transition:
@@ -197,7 +233,7 @@
   select:focus-visible {
     border-color: var(--focus);
     outline: 2px solid var(--focus);
-    outline-offset: 3px;
+    outline-offset: 2px;
   }
   :where(
     .main-nav a,
@@ -246,7 +282,7 @@
 @layer utilities {
   :root [data-slot="button"]:focus-visible {
     outline: 2px solid var(--focus);
-    outline-offset: 3px;
+    outline-offset: 2px;
     box-shadow: none;
   }
 
@@ -383,8 +419,8 @@
     font-weight: 650;
   }
   .workshop-steps li:first-child .step-number {
-    background: var(--primary);
-    color: var(--primary-foreground);
+    background: color-mix(in srgb, var(--primary) 34%, var(--background));
+    color: var(--foreground);
   }
   .workshop-steps h2 {
     font-size: 17px;
@@ -906,7 +942,7 @@
     padding: 2rem;
     position: relative;
     background: color-mix(in srgb, var(--card) 65%, var(--background));
-    border: 1px dashed var(--border);
+    border: 1px solid var(--border);
     border-radius: var(--radius);
     color: var(--muted-foreground);
     line-height: 1.8;
@@ -933,7 +969,7 @@
     align-items: flex-start;
     flex-direction: column;
     gap: 0.75rem;
-    padding: 1.25rem 1.5rem;
+    padding: 0.75rem 0.875rem;
     border-bottom: 1px solid var(--border);
   }
   .record-main {
@@ -1028,9 +1064,6 @@
     padding: 1rem 1.25rem;
     white-space: nowrap;
     border-bottom: 1px solid var(--border);
-  }
-  tbody tr:last-child td {
-    border-bottom: 0;
   }
   tbody tr:hover,
   tbody tr:focus-within {
@@ -1252,8 +1285,8 @@
     left: 0.5rem;
     z-index: 50;
     transform: translateY(-200%);
-    background: var(--primary);
-    color: var(--primary-foreground);
+    background: color-mix(in srgb, var(--primary) 34%, var(--background));
+    color: var(--foreground);
     padding: 0.75rem 1rem;
   }
   .skip-link:focus {
@@ -1268,16 +1301,34 @@
     border: 1px solid var(--border);
     border-radius: var(--radius);
   }
+  .device-authorization-panel {
+    max-width: 52rem;
+    gap: 1.25rem;
+    background: color-mix(in srgb, var(--card) 92%, var(--background));
+  }
+  .device-authorization-panel [data-slot="field-group"] {
+    max-width: 38rem;
+  }
   .editor-panel h2,
   .section-stack > h2 {
-    font-size: 1.1rem;
-    font-weight: 650;
+    font-size: 17px;
+    font-weight: 600;
     letter-spacing: -0.025em;
+  }
+  .editor-panel fieldset > legend,
+  .editor-panel [data-slot="field-set"] > legend {
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 1.4;
   }
   .editor-panel p {
     font-size: 13px;
     line-height: 1.8;
     color: var(--muted-foreground);
+  }
+  .editor-panel fieldset > p,
+  .editor-panel [data-slot="field-set"] > p {
+    margin-top: -0.5rem;
   }
   .editor-panel > button,
   .section-stack > button {
@@ -1355,10 +1406,6 @@
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background: var(--card);
-  }
-  .tool-records .record-main h2 {
-    font-size: 20px;
-    margin-bottom: 0.75rem;
   }
   .tool-records .record-main > p {
     font-size: 14px;
@@ -1872,6 +1919,10 @@
     background: color-mix(in srgb, var(--destructive) 10%, var(--card));
     color: var(--destructive);
   }
+  .status-badge[data-tone="neutral"] {
+    background: color-mix(in srgb, var(--foreground) 8%, var(--card));
+    color: var(--foreground);
+  }
   .summary-heading {
     display: flex;
     flex-wrap: wrap;
@@ -1918,6 +1969,154 @@
     max-width: 280px;
     margin-top: 0;
   }
+
+  /* Account surface refinement: keep the existing visual language, but give
+     metrics and setup content a clearer reading rhythm. */
+  .overview-hero {
+    min-height: 0;
+    padding: 1.5rem 0 2rem;
+    align-items: stretch;
+    grid-template-columns: minmax(0, 1.1fr) minmax(15rem, 0.9fr);
+    gap: clamp(1.5rem, 4vw, 4rem);
+  }
+  .overview-hero .workshop-intro {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+  }
+  .overview-hero .workshop-intro h1 {
+    font-size: clamp(2rem, 3.5vw, 3.25rem);
+    line-height: 1.12;
+    letter-spacing: -0.04em;
+  }
+  .overview-hero .workshop-intro > p {
+    max-width: 34rem;
+    line-height: 1.65;
+  }
+  .overview-hero .workshop-illustration {
+    width: min(100%, 26rem);
+    max-width: none;
+    align-self: center;
+    justify-self: end;
+  }
+  .stats-grid > .stat-card {
+    min-width: 0;
+    padding: 1.25rem;
+    border-radius: 16px;
+    transition:
+      background-color 160ms ease,
+      border-color 160ms ease;
+  }
+  .stat-card :where(dt) {
+    color: var(--muted-foreground);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .stat-card .stat-icon {
+    width: 20px;
+    height: 20px;
+    color: var(--foreground);
+    stroke-width: 1.8;
+  }
+  .stat-card :where(dd) {
+    margin-top: 0.8rem;
+    font-size: clamp(1.75rem, 2.7vw, 2rem);
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-note {
+    margin-top: 0.5rem;
+    color: var(--muted-foreground);
+    font-size: 12px;
+    line-height: 1.45;
+  }
+  .command-list {
+    padding: 1.25rem 1.5rem 1.35rem;
+    border: 1px solid color-mix(in srgb, var(--art-foreground) 10%, transparent);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .command-lines {
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+  .command-list code {
+    white-space: nowrap;
+    font-family:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .record-list > li {
+    padding: 1rem 1.25rem;
+    transition: background-color 160ms ease;
+  }
+  @media (min-width: 900px) {
+    .record-list > li {
+      flex-direction: row;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.75rem 0.875rem;
+    }
+    .record-list > li > .record-main {
+      min-width: 0;
+    }
+    .record-list > li > .action-row,
+    .record-list > li > .tool-actions,
+    .record-list > li > .inline-action,
+    .record-list > li > .status-badge {
+      flex-shrink: 0;
+    }
+  }
+  .record-list > li .action-row [data-slot="button"] {
+    transition:
+      background-color 160ms ease,
+      border-color 160ms ease,
+      color 160ms ease;
+  }
+  .record-list > li:hover,
+  .record-list > li:focus-within {
+    background: color-mix(in srgb, var(--muted) 42%, transparent);
+  }
+  .record-main code {
+    font-variant-numeric: tabular-nums;
+  }
+  .table-scroll table {
+    font-variant-numeric: tabular-nums;
+  }
+  .table-scroll td {
+    border-bottom-color: color-mix(in srgb, var(--border) 60%, transparent);
+  }
+  .table-scroll th {
+    padding-block: 0.75rem;
+    font-size: 12px;
+    letter-spacing: 0.01em;
+  }
+  .table-scroll table tbody td {
+    padding-block: 0.8rem;
+  }
+  .table-scroll th.numeric,
+  .table-scroll td.numeric {
+    text-align: right;
+  }
+  .table-scroll tbody tr {
+    transition: background-color 160ms ease;
+  }
+  .usage-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-block: 1.5rem;
+  }
+  .usage-stats .stat-card {
+    min-width: 0;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .stats-grid .stat-card,
+    .record-list > li,
+    .table-scroll tbody tr {
+      transition: none;
+    }
+  }
   @media (min-width: 900px) {
     .compact-editor {
       max-width: none;
@@ -1949,6 +2148,11 @@
     }
   }
   @media (max-width: 639px) {
+    .usage-stats {
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+      margin-block: 1rem;
+    }
     .pagination {
       gap: 0.5rem;
     }
@@ -2038,8 +2242,9 @@
       margin-left: 0;
     }
     .overview-hero {
-      grid-template-columns: minmax(0, 1fr) 80px;
+      grid-template-columns: minmax(0, 1fr);
       align-items: start;
+      gap: 0.5rem;
     }
     .overview-hero .workshop-intro h1 {
       font-size: 24px;
@@ -2050,8 +2255,13 @@
     .overview-hero .client-wordmarks span {
       padding: 0.25rem 0.5rem;
     }
+    .overview-hero .workshop-illustration {
+      width: min(100%, 16rem);
+      justify-self: center;
+      order: -1;
+    }
     .record-list > li {
-      padding: 1rem;
+      padding: 0.75rem 0.875rem;
     }
   }
 }
@@ -2166,10 +2376,6 @@
     width: 20px;
     height: 20px;
   }
-  .tool-records .record-main h2 {
-    font-size: 15px;
-    margin: 0 0 4px;
-  }
   .tool-records .record-main > p {
     font-size: 13px;
     margin: 0;
@@ -2189,9 +2395,6 @@
   }
   .tool-cost {
     font-variant-numeric: tabular-nums;
-  }
-  .tool-records > li > .action-row {
-    grid-column: 2 / -1;
   }
   .tool-records > li > button {
     font-size: 13px;
@@ -2252,5 +2455,107 @@
     .tool-records .record-main > p {
       -webkit-line-clamp: 2;
     }
+  }
+}
+
+/* P2 console surfaces: reuse the P1 token system across dense admin views. */
+@layer components {
+  .app-sidebar {
+    border-right: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  }
+  .nav-section-label {
+    font-size: 11px;
+    font-weight: 650;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .main-nav a {
+    position: relative;
+  }
+  .main-nav a:hover {
+    background: color-mix(in srgb, var(--muted) 55%, transparent);
+  }
+  .main-nav a[aria-current="page"] {
+    background: color-mix(in srgb, var(--primary) 14%, var(--card));
+  }
+  .main-nav a[aria-current="page"]::before {
+    content: "";
+    position: absolute;
+    inset-block: 9px;
+    left: 0;
+    width: 3px;
+    border-radius: 999px;
+    background: var(--primary);
+  }
+  .workspace-header {
+    border-bottom-color: color-mix(in srgb, var(--border) 72%, transparent);
+    background: linear-gradient(
+      to bottom,
+      var(--card),
+      color-mix(in srgb, var(--card) 94%, var(--background))
+    );
+  }
+  .stats-grid > .stat-card,
+  .record-list,
+  .table-scroll,
+  .secret-panel,
+  .adjustment-panel {
+    box-shadow:
+      var(--shadow-sm),
+      inset 0 1px 0 color-mix(in srgb, var(--foreground) 5%, transparent);
+  }
+  .stat-card .stat-icon {
+    width: 40px;
+    height: 40px;
+    padding: 10px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--primary) 16%, var(--card));
+  }
+  .stats-grid .stat-card:nth-child(2) .stat-icon {
+    background: color-mix(in srgb, var(--success) 16%, var(--card));
+  }
+  .stats-grid .stat-card:nth-child(3) .stat-icon {
+    background: color-mix(in srgb, var(--muted) 70%, var(--card));
+  }
+  .stats-grid dd {
+    font-size: clamp(1.9rem, 2.7vw, 2.15rem);
+    font-weight: 750;
+  }
+  .record-list > li {
+    border-bottom-color: color-mix(in srgb, var(--border) 60%, transparent);
+  }
+  .record-main h2,
+  .record-main h3 {
+    font-size: 15px;
+    font-weight: 650;
+  }
+  .action-row,
+  .tool-actions,
+  .market-record-actions {
+    gap: 8px;
+  }
+  .table-scroll th {
+    font-size: 11.5px;
+    font-weight: 650;
+    letter-spacing: 0.05em;
+    border-bottom-color: color-mix(in srgb, var(--border) 70%, transparent);
+  }
+  /* 列表/表格系统规则之上的既有例外，集中置于系统规则之后以保持级联 */
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+  .tool-records .record-main h2 {
+    font-size: 15px;
+    margin: 0 0 4px;
+  }
+  .tool-records > li > .action-row {
+    grid-column: 2 / -1;
+  }
+  .command-list {
+    box-shadow: var(--shadow-md);
+  }
+  .command-list code,
+  .schema-code {
+    font-size: 12.5px;
   }
 }
