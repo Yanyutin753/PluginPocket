@@ -51,6 +51,7 @@ import { PreferencesProvider, useI18n } from './i18n';
 import { SessionBoundary } from './SessionBoundary';
 
 const LandingPage = lazy(() => import('./features/LandingPage'));
+const DownloadPage = lazy(() => import('./features/DownloadPage'));
 const PluginsPage = lazy(() => import('./features/PluginsPage'));
 const HealthPage = lazy(() => import('./HealthPage'));
 const AuthPage = lazy(() => import('./features/account/AuthPage'));
@@ -423,6 +424,7 @@ function AppRoutes() {
         >
           <Routes>
             <Route path="/" element={<LandingPage />} />
+            <Route path="/download" element={<DownloadPage />} />
             <Route element={<Shell publicCatalog />}>
               <Route path="/plugins" element={<PluginsPage embedded />} />
               <Route path="/plugins/:slug" element={<PluginsPage embedded />} />

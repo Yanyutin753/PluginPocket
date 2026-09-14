@@ -27,6 +27,9 @@ export function PublicHeader() {
         <Link className="inline-action" to="/plugins">
           {t('插件市场')}
         </Link>
+        <Link className="inline-action" to="/download">
+          {t('下载客户端')}
+        </Link>
         {session.data && !session.error ? (
           <Button asChild>
             <Link to="/overview">{t('进入工作空间')}</Link>
