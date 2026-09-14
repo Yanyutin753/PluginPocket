@@ -364,6 +364,10 @@
   }
   .landing-feature-tools {
     grid-row: auto;
+    grid-column: auto;
+  }
+  .landing-feature-team {
+    grid-column: auto;
   }
   .landing-feature-team {
     grid-template-columns: 1fr;
@@ -448,6 +452,9 @@
   .landing-actions .inline-action {
     justify-content: center;
     min-height: 44px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0 16px;
   }
   .landing-clients {
     margin: 14px 0 0;
@@ -475,6 +482,7 @@
     padding: 44px 0 58px;
   }
   .landing-feature-grid {
+    grid-template-columns: 1fr;
     gap: 12px;
   }
   .landing-feature {
@@ -501,6 +509,7 @@
     padding: 58px 0;
   }
   .landing-steps {
+    grid-template-columns: 1fr;
     gap: 20px;
     margin: 26px 0 30px;
   }
