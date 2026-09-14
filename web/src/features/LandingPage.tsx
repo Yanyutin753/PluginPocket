@@ -57,7 +57,10 @@ export default function LandingPage() {
             <p>{t('从个人探索到团队协作，在一个地方管理 AI 的工具入口。')}</p>
           </div>
           <div className="landing-feature-grid">
-            <article className="landing-feature landing-feature-tools">
+            <article
+              className="landing-feature landing-feature-tools"
+              aria-label={t('一个网关，连接工具')}
+            >
               <img
                 src="/images/workshop-tools.webp"
                 alt=""
