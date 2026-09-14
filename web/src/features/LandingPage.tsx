@@ -12,7 +12,7 @@ export default function LandingPage() {
         {t('跳至主要内容')}
       </a>
       <PublicHeader />
-      <main id="landing-main">
+        <main id="landing-main" className="landing-main">
         <section className="landing-hero">
           <div className="landing-hero-copy">
             <h1>{t('把 AI 的超能力，装进口袋。')}</h1>
@@ -22,7 +22,7 @@ export default function LandingPage() {
               )}
             </p>
             <div className="landing-actions">
-              <Button asChild size="lg">
+              <Button asChild size="lg" className="landing-primary-action">
                 <a href="/register">
                   {t('创建账号，开始装备')}
                   <ArrowRight aria-hidden="true" />

@@ -48,6 +48,10 @@ it('introduces PluginPocket publicly with honest setup steps and account navigat
     ),
   ).toBeVisible();
   expect(screen.getByRole('combobox', { name: '外观' })).toBeInTheDocument();
+  expect(screen.getByRole('main')).toHaveClass('landing-main');
+  expect(screen.getByRole('link', { name: '创建账号，开始装备' })).toHaveClass(
+    'landing-primary-action',
+  );
   expect(
     screen.queryByText(/今日调用|余额|月度消耗|已有.*用户/),
   ).not.toBeInTheDocument();
